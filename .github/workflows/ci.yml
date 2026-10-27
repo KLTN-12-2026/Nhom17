@@ -13,11 +13,11 @@ jobs:
 
     env:
       NEXT_TELEMETRY_DISABLED: "1"
-      MONGODB_URI: ${{ secrets.MONGODB_URI }}
-      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MONGODB_URI: ${{ secrets.MONGODB_URI || 'mongodb://localhost:27017/ci_build' }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || 'http://localhost:3000' }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'ci-build-secret-key-at-least-32-chars-long' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'dummy-key' }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'dummy-key' }}
 
     steps:
       - name: Checkout repository

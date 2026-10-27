@@ -1,10 +1,5 @@
 import mongoose from "mongoose";
 
-const mongoUri: string = process.env.MONGODB_URI ?? "";
-
-if (!mongoUri) {
-  throw new Error("Vui long them MONGODB_URI vao file .env.local");
-}
 
 type MongooseCache = {
   conn: typeof mongoose | null;
@@ -25,6 +20,12 @@ globalForMongoose.mongooseCache = cached;
 export async function connectDB() {
   if (cached.conn) {
     return cached.conn;
+  }
+
+  const mongoUri: string = process.env.MONGODB_URI ?? "";
+
+  if (!mongoUri) {
+    throw new Error("Vui long them MONGODB_URI vao file .env.local");
   }
 
   if (!cached.promise) {
