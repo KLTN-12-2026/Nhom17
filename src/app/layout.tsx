@@ -26,13 +26,12 @@ export const metadata: Metadata = {
   authors: [{ name: "EduAI Systems Inc." }],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="vi"
-      className={`${inter.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">{children}</body>
+    <html lang="vi" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+        {children}
+      </body>
     </html>
   );
 }
