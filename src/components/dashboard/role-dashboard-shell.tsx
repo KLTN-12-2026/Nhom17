@@ -264,22 +264,6 @@ export default function RoleDashboardShell({
               </svg>
             </button>
 
-<<<<<<< HEAD
-            {/* Logo & App title */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs group-hover:bg-blue-700 transition">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                </svg>
-              </div>
-              <div>
-                <span className="font-bold tracking-tight text-base sm:text-lg block text-slate-900 dark:text-white leading-tight">
-                  Khảo Thí & Trắc Nghiệm THPT
-                </span>
-                <span className="text-[11px] text-slate-500 font-medium block">
-                  Đại Học Duy Tân • Đồ Án Tốt Nghiệp
-=======
             {/* Logo & App title with Glowing Effect */}
             <Link href="/" className="flex items-center gap-3 group">
               <div
@@ -300,28 +284,11 @@ export default function RoleDashboardShell({
                 </div>
                 <span className="text-xs text-slate-500 font-medium block mt-1">
                   Nền Tảng Đánh Giá & Khảo Thí AI
->>>>>>> 467d2232cd4c66d67def38a41b154458f8b494b9
                 </span>
               </div>
             </Link>
           </div>
 
-<<<<<<< HEAD
-          {/* User profile & Role Badge */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${roleConfig.badgeClass}`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-current" />
-              {roleConfig.title}
-            </span>
-
-            <div className="hidden sm:flex flex-col text-right">
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[150px]">
-                {user.name || "Người dùng"}
-              </span>
-              <span className="text-[11px] text-slate-400 truncate max-w-[150px]">
-                {user.email}
-              </span>
-=======
           {/* Quick Search Command Bar & System Status (Desktop) */}
           <div className="hidden lg:flex items-center gap-4">
             <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-500 w-64 hover:border-indigo-400/60 transition-colors">
@@ -332,7 +299,6 @@ export default function RoleDashboardShell({
               <kbd className="px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-400 shadow-2xs">
                 ⌘K
               </kbd>
->>>>>>> 467d2232cd4c66d67def38a41b154458f8b494b9
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
