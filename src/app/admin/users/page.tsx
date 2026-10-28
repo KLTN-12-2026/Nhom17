@@ -47,7 +47,7 @@ export default async function AdminUsersPage() {
       <div className="mb-6 flex items-center justify-between">
         <Link
           href="/admin"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition"
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition"
         >
           ← Quay lại Tổng quan Quản trị
         </Link>

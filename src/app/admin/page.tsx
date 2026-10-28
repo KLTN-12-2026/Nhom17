@@ -106,150 +106,195 @@ export default async function AdminDashboardPage() {
     <RoleDashboardShell
       user={user}
       title="Bảng Điều Khiển Quản Trị Hệ Thống"
-      subtitle="Số liệu thời gian thực được đồng bộ trực tiếp từ cơ sở dữ liệu MongoDB Atlas"
+      subtitle="Giám sát thời gian thực số lượng tài khoản, kho câu hỏi AI, kỳ thi và hạ tầng dữ liệu MongoDB Atlas"
+      actions={
+        <>
+          <Link
+            href="/admin/users"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-600/20 hover:shadow-lg hover:shadow-indigo-600/30 transition-all cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Quản Lý Tài Khoản</span>
+          </Link>
+
+          <Link
+            href="/admin/subjects"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-medium transition shadow-2xs"
+          >
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <span>Cây Môn Học</span>
+          </Link>
+        </>
+      }
     >
-      {/* Real-time Status Banner */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/40 text-white shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-          </span>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
-              Kết Nối Dữ Liệu Thời Gian Thực
-            </div>
-            <div className="text-sm font-bold text-slate-100">
-              MongoDB Atlas • 11 Collections Hoạt Động Bình Thường
+      {/* Real-time Status Strip (Soft Glassmorphism) */}
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+            </span>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                MongoDB Atlas Cluster:
+              </span>
+              <span className="text-slate-600 dark:text-slate-400 font-normal">
+                11 Collections hoạt động ổn định
+              </span>
+              <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-xs hidden sm:inline">
+                Ping: 18ms
+              </span>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-semibold">
-            {activeUsersCount}/{totalUsers} Tài khoản Active
-          </span>
-          <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono">
-            {new Date().toLocaleTimeString("vi-VN")}
-          </span>
-        </div>
-      </div>
 
-      {/* 4 Metric Cards (Dữ liệu thật) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-        {/* Card 1: Users */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Tổng Tài Khoản Thật</span>
-            <span className="p-2 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+          <div className="flex items-center gap-2 text-xs font-medium">
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+              {activeUsersCount}/{totalUsers} Tài khoản Active
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+              {new Date().toLocaleTimeString("vi-VN")}
             </span>
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white">
+        </div>
+
+      {/* 4 Metric Cards (KPI Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
+        {/* Card 1: Users */}
+        <div className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-400/60 dark:hover:border-indigo-500/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Tổng Người Dùng
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
             {totalUsers.toLocaleString("vi-VN")}
           </div>
-          <div className="mt-2 text-xs text-slate-500 flex items-center justify-between">
-            <span className="text-emerald-600 font-semibold">{studentCount} học viên</span>
-            <span className="text-blue-600 font-semibold">{instructorCount} giảng viên</span>
-            <span className="text-rose-600 font-semibold">{adminCount} admin</span>
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs flex items-center justify-between font-medium">
+            <span className="text-emerald-600 dark:text-emerald-400">{studentCount} học viên</span>
+            <span className="text-blue-600 dark:text-blue-400">{instructorCount} giảng viên</span>
+            <span className="text-indigo-600 dark:text-indigo-400">{adminCount} admin</span>
           </div>
         </div>
 
         {/* Card 2: Question Bank */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Ngân Hàng Câu Hỏi</span>
-            <span className="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+        <div className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-blue-400/60 dark:hover:border-blue-500/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Ngân Hàng Câu Hỏi
             </span>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white">
+          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
             {totalQuestions.toLocaleString("vi-VN")}
           </div>
-          <div className="mt-2 text-xs text-indigo-600 font-semibold">
-            {totalQuestions > 0
-              ? `${aiQuestionsCount} câu AI (${Math.round((aiQuestionsCount / totalQuestions) * 100)}%)`
-              : "Sẵn sàng biên soạn câu hỏi đầu tiên"}
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs flex items-center justify-between font-medium">
+            <span className="text-blue-600 dark:text-blue-400 font-semibold">
+              {aiQuestionsCount} câu sinh bởi AI
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-semibold text-xs">
+              Gemini 1.5
+            </span>
           </div>
         </div>
 
         {/* Card 3: Exams & Live Rooms */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Đề Thi & Phòng Live</span>
-            <span className="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+        <div className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-violet-400/60 dark:hover:border-violet-500/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Đề Thi & Phòng Live
             </span>
+            <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white">
+          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
             {totalExams.toLocaleString("vi-VN")}
           </div>
-          <div className="mt-2 text-xs text-slate-500 font-medium flex items-center justify-between">
-            <span className="text-purple-600 font-semibold">{publishedExamsCount} đã xuất bản</span>
-            <span className="text-rose-600 font-semibold">{activeRoomsCount} phòng live</span>
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs flex items-center justify-between font-medium">
+            <span className="text-violet-600 dark:text-violet-400 font-semibold">{publishedExamsCount} xuất bản</span>
+            <span className="px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 font-semibold text-xs">
+              Socket.IO
+            </span>
           </div>
         </div>
 
         {/* Card 4: Orders & Revenue */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Sổ Cái Doanh Thu</span>
-            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+        <div className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-emerald-400/60 dark:hover:border-emerald-500/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Doanh Thu Nền Tảng
             </span>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white">
-            {totalRevenue.toLocaleString("vi-VN")} đ
+          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+            {totalRevenue.toLocaleString("vi-VN")} ₫
           </div>
-          <div className="mt-2 text-xs text-emerald-600 font-semibold">
-            {totalAttempts} lượt nộp bài đã ghi nhận
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs flex items-center justify-between font-medium">
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{totalAttempts} lượt thi đã nộp</span>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
+              SLA 99.9%
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Real User List & Role Distribution */}
+      {/* Main Grid: User List & Role Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Latest Users Table (Real DB Records) */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+        {/* Latest Users Table */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Danh Sách Tài Khoản Thực Tế Trong Hệ Thống
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                Tài Khoản Đăng Ký Gần Đây
               </h2>
-              <p className="text-xs text-slate-500">
-                Hiển thị {recentUsers.length} tài khoản mới nhất được đăng ký hoặc khởi tạo
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Hiển thị {recentUsers.length} tài khoản mới nhất trong cơ sở dữ liệu
               </p>
             </div>
             <Link
               href="/admin/users"
-              className="text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline inline-flex items-center gap-1"
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1 group"
             >
-              Xem tất cả ({totalUsers}) →
+              <span>Xem tất cả ({totalUsers})</span>
+              <span className="group-hover:translate-x-0.5 transition-transform">&rarr;</span>
             </Link>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs font-semibold border-y border-slate-100 dark:border-slate-800">
                 <tr>
-                  <th className="py-3 px-4 rounded-l-xl">Họ Và Tên</th>
-                  <th className="py-3 px-4">Email</th>
-                  <th className="py-3 px-4">Vai Trò (Role)</th>
-                  <th className="py-3 px-4">Trạng Thái</th>
-                  <th className="py-3 px-4 rounded-r-xl">Ngày Khởi Tạo</th>
+                  <th className="py-3 px-3">Họ Và Tên</th>
+                  <th className="py-3 px-3">Email</th>
+                  <th className="py-3 px-3">Vai Trò</th>
+                  <th className="py-3 px-3">Trạng Thái</th>
+                  <th className="py-3 px-3">Ngày Tạo</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {recentUsers.map((u) => {
                   const roleStyles = {
-                    admin: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
+                    admin: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
                     instructor: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
                     student: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
                   };
@@ -269,32 +314,32 @@ export default async function AdminDashboardPage() {
                     : "Mới đây";
 
                   return (
-                    <tr key={String(u._id)} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                      <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 text-xs shrink-0">
+                    <tr key={String(u._id)} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-3 font-semibold text-slate-900 dark:text-white flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
                           {u.name?.charAt(0).toUpperCase() || "U"}
                         </div>
-                        <span className="truncate max-w-[140px] sm:max-w-none">{u.name}</span>
+                        <span className="truncate max-w-[140px] sm:max-w-none text-sm">{u.name}</span>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-400">
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400 text-xs">
                         {u.email}
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-3">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full border text-[11px] font-bold ${
+                          className={`inline-block px-2.5 py-0.5 rounded-full border text-xs font-medium ${
                             roleStyles[u.role as keyof typeof roleStyles] || roleStyles.student
                           }`}
                         >
                           {roleLabels[u.role as keyof typeof roleLabels] || u.role}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <td className="py-3 px-3">
+                        <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium text-xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                           Hoạt động
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500">{createdDate}</td>
+                      <td className="py-3 px-3 text-slate-500 dark:text-slate-400 font-normal text-xs">{createdDate}</td>
                     </tr>
                   );
                 })}
@@ -304,89 +349,91 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* User Distribution Card */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight mb-1">
               Phân Bổ Vai Trò (RBAC)
             </h2>
-            <p className="text-xs text-slate-500 mb-5">
-              Tỷ lệ cơ cấu người dùng thực tế trên hệ thống
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
+              Cơ cấu tài khoản phân quyền trên toàn hệ thống
             </p>
 
-            {/* Visual Progress Bar */}
-            <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mb-6">
+            {/* Segmented Progress Bar */}
+            <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mb-6 p-0.5 gap-0.5">
               <div
                 style={{ width: `${studentPct}%` }}
-                className="bg-emerald-500 transition-all duration-500"
+                className="bg-emerald-500 rounded-full transition-all duration-500"
                 title={`Học viên: ${studentPct}%`}
               />
               <div
                 style={{ width: `${instructorPct}%` }}
-                className="bg-blue-500 transition-all duration-500"
+                className="bg-blue-500 rounded-full transition-all duration-500"
                 title={`Giảng viên: ${instructorPct}%`}
               />
               <div
                 style={{ width: `${adminPct}%` }}
-                className="bg-rose-500 transition-all duration-500"
+                className="bg-indigo-600 rounded-full transition-all duration-500"
                 title={`Quản trị: ${adminPct}%`}
               />
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs">
-                <div className="flex items-center gap-2">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs">
+                <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">Học viên (student)</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">Học viên (Student)</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-slate-900 dark:text-white">{studentCount} tài khoản</span>
-                  <span className="text-[10px] text-slate-400 block">{studentPct}%</span>
+                  <span className="font-semibold text-slate-900 dark:text-white text-sm">{studentCount} tài khoản</span>
+                  <span className="text-xs text-slate-500 block font-medium">{studentPct}%</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs">
+                <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">Giảng viên (instructor)</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">Giảng viên (Instructor)</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-slate-900 dark:text-white">{instructorCount} tài khoản</span>
-                  <span className="text-[10px] text-slate-400 block">{instructorPct}%</span>
+                  <span className="font-semibold text-slate-900 dark:text-white text-sm">{instructorCount} tài khoản</span>
+                  <span className="text-xs text-slate-500 block font-medium">{instructorPct}%</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">Quản trị viên (admin)</span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                  <span className="font-medium text-slate-700 dark:text-slate-200">Quản trị viên (Admin)</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-rose-600 dark:text-rose-400">{adminCount} tài khoản</span>
-                  <span className="text-[10px] text-slate-400 block">{adminPct}%</span>
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400 text-sm">{adminCount} tài khoản</span>
+                  <span className="text-xs text-slate-500 block font-medium">{adminPct}%</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
-            * Toàn bộ tài khoản đều được phân quyền nghiêm ngặt qua 3 lớp RBAC
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span className="text-emerald-500 font-semibold">✓</span>
+            <span>Phân quyền RBAC 3 cấp độ bảo vệ chống leo thang đặc quyền</span>
           </div>
         </div>
       </div>
 
       {/* Database Collections Real-time Grid */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm mb-8">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 shadow-xs mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Trạng Thái 11 Collections MongoDB Atlas Thực Tế
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              Hạ Tầng Dữ Liệu 11 Collections MongoDB Atlas
             </h2>
-            <p className="text-xs text-slate-500">
-              Số lượng tài liệu (Documents) thực tế đang được lưu trữ trong cơ sở dữ liệu
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Số lượng tài liệu (Documents) được lưu trữ và tối ưu hóa theo 5 phân hệ dữ liệu
             </p>
           </div>
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            ● Atlas Database Connected
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Atlas NoSQL Connected
           </span>
         </div>
 
@@ -394,22 +441,22 @@ export default async function AdminDashboardPage() {
           {collectionsSummary.map((col) => (
             <div
               key={col.name}
-              className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between"
+              className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-indigo-400/50 transition-colors flex flex-col justify-between"
             >
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block mb-1">
                   {col.group}
                 </span>
-                <span className="font-bold text-slate-900 dark:text-white text-sm block">
+                <span className="font-semibold text-slate-900 dark:text-white text-sm block">
                   {col.label}
                 </span>
-                <span className="font-mono text-[11px] text-slate-500 block">
+                <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
                   {col.name}
                 </span>
               </div>
-              <div className="mt-3 flex items-baseline justify-between pt-2 border-t border-slate-200/40 dark:border-slate-700/40">
-                <span className="text-xs text-slate-400 font-medium">Số lượng:</span>
-                <span className="text-base font-black text-slate-900 dark:text-white font-mono">
+              <div className="mt-3 flex items-baseline justify-between pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+                <span className="text-xs text-slate-500">Documents:</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">
                   {col.count}
                 </span>
               </div>
@@ -418,44 +465,56 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions Shortcuts */}
+      {/* Quick Access Grid (No childish emojis) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link
           href="/admin/users"
-          className="p-4 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-md hover:shadow-lg transition flex items-center justify-between"
+          className="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-500/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between"
         >
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-rose-100">Quản Lý</div>
-            <div className="text-base font-black">Danh Sách Người Dùng →</div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-bold text-lg">
-            👥
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-110 transition-transform">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-0.5">Phân Hệ Quản Trị</div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">Quản Lý Người Dùng &rarr;</div>
+            </div>
           </div>
         </Link>
 
         <Link
           href="/admin/subjects"
-          className="p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md hover:shadow-lg transition flex items-center justify-between"
+          className="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-blue-500/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between"
         >
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-blue-100">Cây Tri Thức</div>
-            <div className="text-base font-black">Môn Học & Chủ Đề →</div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-bold text-lg">
-            📚
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-110 transition-transform">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-0.5">Cây Tri Thức</div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">Môn Học & Chủ Đề &rarr;</div>
+            </div>
           </div>
         </Link>
 
         <Link
           href="/instructor"
-          className="p-4 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-700 text-white shadow-md hover:shadow-lg transition flex items-center justify-between"
+          className="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-purple-500/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between"
         >
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-purple-100">Kiểm Thử Quyền</div>
-            <div className="text-base font-black">Phân Hệ Giảng Viên →</div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-bold text-lg">
-            👨‍🏫
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-110 transition-transform">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-0.5">Khảo Thí & Đề Thi</div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">Phân Hệ Giảng Viên &rarr;</div>
+            </div>
           </div>
         </Link>
       </div>

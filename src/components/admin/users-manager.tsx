@@ -267,11 +267,10 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl text-xs font-bold text-white transition-all transform animate-bounce">
           <div
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
-              toast.type === "success"
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${toast.type === "success"
                 ? "bg-emerald-600 border border-emerald-400"
                 : "bg-rose-600 border border-rose-400"
-            }`}
+              }`}
           >
             <span>{toast.type === "success" ? "✓" : "⚠"}</span>
             <span>{toast.message}</span>
@@ -283,73 +282,79 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <button
           onClick={() => setRoleFilter(roleFilter === "student" ? "all" : "student")}
-          className={`p-4 rounded-2xl border text-left transition shadow-sm ${
-            roleFilter === "student"
+          className={`p-4 rounded-2xl border text-left transition-all duration-150 shadow-xs hover:shadow-md cursor-pointer ${roleFilter === "student"
               ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20"
-              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-          }`}
+              : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
+            }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Học Viên (Student)
             </span>
-            <span className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs">
-              🎓
-            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.student}</div>
-          <div className="text-[11px] text-emerald-600 font-medium mt-1">
-            {roleFilter === "student" ? "Đang lọc theo Học viên • Bấm để bỏ" : "Bấm để lọc danh sách"}
+          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{stats.student}</div>
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1.5 flex items-center gap-1">
+            <span>●</span>
+            <span>{roleFilter === "student" ? "Đang lọc • Bấm để hủy" : "Bấm để lọc theo học viên"}</span>
           </div>
         </button>
 
         <button
           onClick={() => setRoleFilter(roleFilter === "instructor" ? "all" : "instructor")}
-          className={`p-4 rounded-2xl border text-left transition shadow-sm ${
-            roleFilter === "instructor"
+          className={`p-4 rounded-2xl border text-left transition-all duration-150 shadow-xs hover:shadow-md cursor-pointer ${roleFilter === "instructor"
               ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/20"
-              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-          }`}
+              : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
+            }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Giảng Viên (Instructor)
             </span>
-            <span className="p-1.5 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold text-xs">
-              👨‍🏫
-            </span>
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.instructor}</div>
-          <div className="text-[11px] text-blue-600 font-medium mt-1">
-            {roleFilter === "instructor" ? "Đang lọc theo Giảng viên • Bấm để bỏ" : "Bấm để lọc danh sách"}
+          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{stats.instructor}</div>
+          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1.5 flex items-center gap-1">
+            <span>●</span>
+            <span>{roleFilter === "instructor" ? "Đang lọc • Bấm để hủy" : "Bấm để lọc theo giảng viên"}</span>
           </div>
         </button>
 
         <button
           onClick={() => setRoleFilter(roleFilter === "admin" ? "all" : "admin")}
-          className={`p-4 rounded-2xl border text-left transition shadow-sm ${
-            roleFilter === "admin"
-              ? "bg-rose-50/80 dark:bg-rose-950/40 border-rose-500 ring-2 ring-rose-500/20"
-              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-          }`}
+          className={`p-4 rounded-2xl border text-left transition-all duration-150 shadow-xs hover:shadow-md cursor-pointer ${roleFilter === "admin"
+              ? "bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 ring-2 ring-indigo-500/20"
+              : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
+            }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Quản Trị Viên (Admin)
             </span>
-            <span className="p-1.5 rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-bold text-xs">
-              👑
-            </span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.admin}</div>
-          <div className="text-[11px] text-rose-600 font-medium mt-1">
-            {roleFilter === "admin" ? "Đang lọc theo Quản trị • Bấm để bỏ" : "Bấm để lọc danh sách"}
+          <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{stats.admin}</div>
+          <div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mt-1.5 flex items-center gap-1">
+            <span>●</span>
+            <span>{roleFilter === "admin" ? "Đang lọc • Bấm để hủy" : "Bấm để lọc theo quản trị"}</span>
           </div>
         </button>
       </div>
 
       {/* Action Toolbar: Search, Filters, Add Button */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xs mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         {/* Search Input */}
         <div className="relative flex-1">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
@@ -362,12 +367,12 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm theo họ tên, email hoặc số điện thoại..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs"
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs font-medium"
             >
               ✕
             </button>
@@ -379,7 +384,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+            className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           >
             <option value="all">Tất cả trạng thái ({stats.total})</option>
             <option value="active">● Đang hoạt động ({stats.active})</option>
@@ -391,20 +396,22 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
               setIsCreateOpen(true);
               setCreateError("");
             }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 text-white text-xs font-bold hover:from-rose-700 hover:to-pink-700 active:scale-95 transition shadow-sm shadow-rose-500/25 shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 active:scale-95 transition shadow-sm shadow-indigo-600/20 shrink-0 cursor-pointer"
           >
-            <span>+</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+            </svg>
             <span>Thêm Tài Khoản Mới</span>
           </button>
         </div>
       </div>
 
       {/* Users Data Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
           <div>
             Hiển thị <strong>{filteredUsers.length}</strong> / <strong>{stats.total}</strong> tài khoản
-            {isPending && <span className="ml-2 text-rose-500 animate-pulse font-medium">Đang đồng bộ...</span>}
+            {isPending && <span className="ml-2 text-indigo-500 animate-pulse font-medium">Đang đồng bộ...</span>}
           </div>
           {(searchQuery || roleFilter !== "all" || statusFilter !== "all") && (
             <button
@@ -413,7 +420,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                 setRoleFilter("all");
                 setStatusFilter("all");
               }}
-              className="text-xs font-semibold text-rose-600 hover:underline"
+              className="text-xs font-semibold text-indigo-600 hover:underline cursor-pointer"
             >
               Xóa bộ lọc
             </button>
@@ -422,7 +429,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
+            <thead className="bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs font-semibold border-y border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="py-3 px-4">Tài Khoản / Họ Tên</th>
                 <th className="py-3 px-4">Liên Hệ</th>
@@ -444,7 +451,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   const isCurrentAdmin = u._id === currentAdminId;
 
                   const roleBadgeStyles = {
-                    admin: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
+                    admin: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
                     instructor: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
                     student: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
                   };
@@ -457,18 +464,17 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
 
                   const createdDate = u.createdAt
                     ? new Date(u.createdAt).toLocaleDateString("vi-VN", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })
                     : "Mới đây";
 
                   return (
                     <tr
                       key={u._id}
-                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition ${
-                        u.status === "disabled" ? "opacity-60 bg-slate-50/40 dark:bg-slate-900/40" : ""
-                      }`}
+                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition ${u.status === "disabled" ? "opacity-60 bg-slate-50/40 dark:bg-slate-900/40" : ""
+                        }`}
                     >
                       {/* Name & Avatar */}
                       <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white flex items-center gap-3">
@@ -476,34 +482,33 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                           {u.name?.charAt(0).toUpperCase() || "U"}
                         </div>
                         <div>
-                          <div className="flex items-center gap-1.5 font-bold">
+                          <div className="flex items-center gap-1.5 font-semibold text-sm">
                             <span>{u.name}</span>
                             {isCurrentAdmin && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-extrabold uppercase">
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-medium uppercase">
                                 Bạn
                               </span>
                             )}
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono">ID: {u._id}</div>
+                          <div className="text-xs text-slate-400 font-normal">ID: {u._id}</div>
                         </div>
                       </td>
 
                       {/* Contact */}
                       <td className="py-3.5 px-4">
-                        <div className="font-mono text-slate-700 dark:text-slate-300">{u.email}</div>
+                        <div className="text-sm text-slate-700 dark:text-slate-300 font-normal">{u.email}</div>
                         {u.phone_number ? (
-                          <div className="text-[11px] text-slate-400 font-mono">{u.phone_number}</div>
+                          <div className="text-xs text-slate-500 font-normal">{u.phone_number}</div>
                         ) : (
-                          <span className="text-[10px] text-slate-400 italic">Chưa có SĐT</span>
+                          <span className="text-xs text-slate-400 italic font-normal">Chưa có SĐT</span>
                         )}
                       </td>
 
                       {/* Role */}
                       <td className="py-3.5 px-4">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full border text-[11px] font-bold ${
-                            roleBadgeStyles[u.role] || roleBadgeStyles.student
-                          }`}
+                          className={`inline-block px-2.5 py-0.5 rounded-full border text-xs font-medium ${roleBadgeStyles[u.role] || roleBadgeStyles.student
+                            }`}
                         >
                           {roleLabels[u.role] || u.role}
                         </span>
@@ -512,12 +517,12 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                       {/* Status */}
                       <td className="py-3.5 px-4">
                         {u.status === "active" ? (
-                          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium text-xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             Hoạt động
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-semibold text-[11px]">
+                          <span className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium text-xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                             Đã bị khóa
                           </span>
@@ -525,7 +530,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                       </td>
 
                       {/* Created date */}
-                      <td className="py-3.5 px-4 text-slate-500 text-[11px]">{createdDate}</td>
+                      <td className="py-3.5 px-4 text-slate-500 text-xs font-normal">{createdDate}</td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
@@ -545,19 +550,18 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                           <button
                             onClick={() => handleToggleStatus(u)}
                             disabled={isCurrentAdmin && u.status === "active"}
-                            className={`p-1.5 rounded-lg border transition ${
-                              u.status === "active"
+                            className={`p-1.5 rounded-lg border transition ${u.status === "active"
                                 ? isCurrentAdmin
                                   ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
                                   : "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 hover:bg-amber-100"
                                 : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 hover:bg-emerald-100"
-                            }`}
+                              }`}
                             title={
                               isCurrentAdmin && u.status === "active"
                                 ? "Không thể tự khóa tài khoản của mình"
                                 : u.status === "active"
-                                ? "Khóa tài khoản vi phạm"
-                                : "Mở khóa tài khoản"
+                                  ? "Khóa tài khoản vi phạm"
+                                  : "Mở khóa tài khoản"
                             }
                           >
                             {u.status === "active" ? (
@@ -575,11 +579,10 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                           <button
                             onClick={() => setDeletingUser(u)}
                             disabled={isCurrentAdmin}
-                            className={`p-1.5 rounded-lg border transition ${
-                              isCurrentAdmin
+                            className={`p-1.5 rounded-lg border transition ${isCurrentAdmin
                                 ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
                                 : "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100"
-                            }`}
+                              }`}
                             title={
                               isCurrentAdmin
                                 ? "Không thể tự xóa tài khoản của mình"
@@ -605,19 +608,19 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 Thêm Tài Khoản Mới
               </h3>
               <button
                 onClick={() => setIsCreateOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 text-sm font-semibold"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
               Tạo tài khoản và phân quyền trực tiếp cho Giảng viên hoặc Học viên trong hệ thống.
             </p>
 
@@ -629,7 +632,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Họ Và Tên *
                 </label>
                 <input
@@ -638,12 +641,12 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                   placeholder="Ví dụ: ThS. Nguyễn Văn A"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Địa Chỉ Email *
                 </label>
                 <input
@@ -652,13 +655,13 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   value={createForm.email}
                   onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                   placeholder="name@organization.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Số Điện Thoại
                   </label>
                   <input
@@ -666,12 +669,12 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                     value={createForm.phone_number}
                     onChange={(e) => setCreateForm({ ...createForm, phone_number: e.target.value })}
                     placeholder="0905..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Mật Khẩu Khởi Tạo *
                   </label>
                   <input
@@ -681,14 +684,14 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                     value={createForm.password}
                     onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                     placeholder="Tối thiểu 6 ký tự"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Phân Quyền (Vai Trò) *
                   </label>
                   <select
@@ -699,7 +702,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                         role: e.target.value as "admin" | "instructor" | "student",
                       })
                     }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   >
                     <option value="student">🎓 Học viên</option>
                     <option value="instructor">👨‍🏫 Giảng viên</option>
@@ -708,7 +711,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Trạng Thái Ban Đầu *
                   </label>
                   <select
@@ -719,7 +722,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                         status: e.target.value as "active" | "disabled",
                       })
                     }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   >
                     <option value="active">🟢 Đang hoạt động</option>
                     <option value="disabled">🔴 Khóa tài khoản</option>
@@ -731,14 +734,14 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50"
                 >
                   Hủy Bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={createLoading}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition shadow-sm disabled:opacity-50"
                 >
                   {createLoading ? "Đang tạo..." : "Xác Nhận Tạo"}
                 </button>
@@ -753,19 +756,19 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 Cập Nhật & Phân Quyền
               </h3>
               <button
                 onClick={() => setEditingUser(null)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 text-sm font-semibold"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 mb-4">
-              Tài khoản: <strong className="text-slate-800 dark:text-slate-200 font-mono">{editingUser.email}</strong>
+            <p className="text-sm text-slate-500 mb-4">
+              Tài khoản: <strong className="text-slate-800 dark:text-slate-200">{editingUser.email}</strong>
             </p>
 
             {editError && (
@@ -776,7 +779,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Họ Và Tên
                 </label>
                 <input
@@ -784,12 +787,12 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   required
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Số Điện Thoại
                 </label>
                 <input
@@ -797,13 +800,13 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   value={editForm.phone_number}
                   onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
                   placeholder="Chưa cập nhật SĐT"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Vai Trò (Phân Quyền)
                   </label>
                   <select
@@ -814,7 +817,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                         role: e.target.value as "admin" | "instructor" | "student",
                       })
                     }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   >
                     <option value="student">🎓 Học viên</option>
                     <option value="instructor">👨‍🏫 Giảng viên</option>
@@ -823,7 +826,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Trạng Thái
                   </label>
                   <select
@@ -835,7 +838,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                       })
                     }
                     disabled={editingUser._id === currentAdminId}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20 disabled:opacity-50"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
                   >
                     <option value="active">🟢 Đang hoạt động</option>
                     <option value="disabled">🔴 Đã bị khóa</option>
@@ -844,7 +847,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Đổi Mật Khẩu Mới (Tùy chọn)
                 </label>
                 <input
@@ -852,7 +855,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   value={editForm.password}
                   onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                   placeholder="Để trống nếu không muốn đổi mật khẩu"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
@@ -860,14 +863,14 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50"
                 >
                   Hủy Bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={editLoading}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition shadow-sm disabled:opacity-50"
                 >
                   {editLoading ? "Đang lưu..." : "Lưu Thay Đổi"}
                 </button>
@@ -887,21 +890,21 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
               </svg>
             </div>
 
-            <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">
               Xác Nhận Xóa Tài Khoản?
             </h3>
 
-            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
               Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản của{" "}
-              <strong className="text-slate-800 dark:text-slate-200 font-bold">{deletingUser.name}</strong> (
-              <span className="font-mono">{deletingUser.email}</span>)? Hành động này không thể hoàn tác.
+              <strong className="text-slate-800 dark:text-slate-200 font-semibold">{deletingUser.name}</strong> (
+              <span>{deletingUser.email}</span>)? Hành động này không thể hoàn tác.
             </p>
 
             <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => setDeletingUser(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50"
               >
                 Hủy
               </button>
@@ -909,7 +912,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                 type="button"
                 onClick={handleDeleteConfirm}
                 disabled={deleteLoading}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium transition shadow-sm disabled:opacity-50"
               >
                 {deleteLoading ? "Đang xóa..." : "Xác Nhận Xóa"}
               </button>

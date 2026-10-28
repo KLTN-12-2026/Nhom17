@@ -20,42 +20,43 @@ interface RoleDashboardShellProps {
   };
   title: string;
   subtitle: string;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }
 
 const roleConfigs = {
   admin: {
     title: "QUẢN TRỊ VIÊN",
-    roleNameEn: "Admin Portal",
-    badgeClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-    gradientClass: "from-rose-500 via-pink-600 to-rose-700",
-    glowClass: "from-rose-500/10 to-pink-500/5",
-    accentBg: "bg-rose-50/90 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-500 shadow-sm",
-    indicatorColor: "bg-rose-500",
-    iconColor: "text-rose-500",
-    subtleBorder: "border-rose-200/60 dark:border-rose-900/40",
+    roleNameEn: "Admin Console",
+    badgeClass: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 font-bold",
+    gradientClass: "from-indigo-600 via-blue-600 to-violet-700",
+    glowClass: "from-indigo-500/15 via-blue-500/10 to-violet-500/5",
+    accentBg: "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md shadow-slate-900/10 font-bold",
+    indicatorColor: "bg-indigo-600",
+    iconColor: "text-indigo-600",
+    subtleBorder: "border-indigo-200/80 dark:border-indigo-800/80",
   },
   instructor: {
     title: "GIẢNG VIÊN",
     roleNameEn: "Instructor Hub",
-    badgeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    badgeClass: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30 font-bold",
     gradientClass: "from-blue-600 via-indigo-600 to-blue-700",
     glowClass: "from-blue-500/10 to-indigo-500/5",
-    accentBg: "bg-blue-50/90 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-500 shadow-sm",
-    indicatorColor: "bg-blue-500",
-    iconColor: "text-blue-500",
-    subtleBorder: "border-blue-200/60 dark:border-blue-900/40",
+    accentBg: "bg-blue-600 text-white shadow-md shadow-blue-600/20 font-bold",
+    indicatorColor: "bg-blue-600",
+    iconColor: "text-blue-600",
+    subtleBorder: "border-blue-200/80 dark:border-blue-800/80",
   },
   student: {
     title: "HỌC VIÊN",
     roleNameEn: "Student Station",
-    badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    badgeClass: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-bold",
     gradientClass: "from-emerald-600 via-teal-600 to-emerald-700",
     glowClass: "from-emerald-500/10 to-teal-500/5",
-    accentBg: "bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-500 shadow-sm",
-    indicatorColor: "bg-emerald-500",
-    iconColor: "text-emerald-500",
-    subtleBorder: "border-emerald-200/60 dark:border-emerald-900/40",
+    accentBg: "bg-emerald-600 text-white shadow-md shadow-emerald-600/20 font-bold",
+    indicatorColor: "bg-emerald-600",
+    iconColor: "text-emerald-600",
+    subtleBorder: "border-emerald-200/80 dark:border-emerald-800/80",
   },
 };
 
@@ -218,6 +219,7 @@ export default function RoleDashboardShell({
   user,
   title,
   subtitle,
+  actions,
   children,
 }: RoleDashboardShellProps) {
   const pathname = usePathname();
@@ -265,55 +267,67 @@ export default function RoleDashboardShell({
             {/* Logo & App title with Glowing Effect */}
             <Link href="/" className="flex items-center gap-3 group">
               <div
-                className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${roleConfig.gradientClass} flex items-center justify-center text-white font-black text-sm tracking-tighter shadow-lg shadow-black/10 group-hover:scale-105 transition-transform duration-200`}
+                className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${roleConfig.gradientClass} flex items-center justify-center text-white font-bold text-sm tracking-tight shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200`}
               >
-                AI
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </div>
               <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black tracking-tight text-base sm:text-lg block leading-none text-slate-900 dark:text-white">
-                    Trắc Nghiệm AI
+                <div className="flex items-center gap-2">
+                  <span className="font-bold tracking-tight text-base sm:text-lg block leading-none text-slate-900 dark:text-white">
+                    Edu<span className="text-indigo-600 dark:text-indigo-400">AI</span>
                   </span>
-                  <span className="hidden sm:inline-block px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold font-mono">
-                    v1.0
+                  <span className="hidden sm:inline-block px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-semibold tracking-wide border border-indigo-200/50 dark:border-indigo-800/50">
+                    Enterprise
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">
+                <span className="text-xs text-slate-500 font-medium block mt-1">
                   Nền Tảng Đánh Giá & Khảo Thí AI
                 </span>
               </div>
             </Link>
           </div>
 
-          {/* System Status Pill (Desktop only) */}
-          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span>Hệ Thống Trực Tuyến</span>
-            <span className="text-slate-300 dark:text-slate-600">•</span>
-            <span className="font-semibold text-slate-900 dark:text-white">{roleConfig.roleNameEn}</span>
+          {/* Quick Search Command Bar & System Status (Desktop) */}
+          <div className="hidden lg:flex items-center gap-4">
+            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-500 w-64 hover:border-indigo-400/60 transition-colors">
+              <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="flex-1 truncate text-xs font-normal text-slate-400">Tìm kiếm nhanh tài khoản, đề...</span>
+              <kbd className="px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-400 shadow-2xs">
+                ⌘K
+              </kbd>
+            </div>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span>Cluster Online (99.98%)</span>
+            </div>
           </div>
 
           {/* User profile & Role Badge */}
           <div className="flex items-center gap-3 sm:gap-4">
-            <div className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase border shadow-2xs ${roleConfig.badgeClass}`}>
+            <div className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase border shadow-2xs ${roleConfig.badgeClass}`}>
               <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
               {roleConfig.title}
             </div>
 
             {/* Profile Avatar Card */}
             <div className="flex items-center gap-2.5 pl-2 sm:border-l border-slate-200 dark:border-slate-800">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-600 flex items-center justify-center font-black text-slate-700 dark:text-slate-200 text-xs shadow-inner ring-2 ring-white dark:ring-slate-800 shrink-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-indigo-500/20 ring-2 ring-white dark:ring-slate-800 shrink-0">
                 {initials}
               </div>
 
               <div className="hidden xl:flex flex-col text-left leading-tight">
-                <span className="text-xs font-extrabold text-slate-900 dark:text-white truncate max-w-[130px]">
+                <span className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[130px]">
                   {user.name || "Người dùng"}
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono truncate max-w-[130px]">
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[130px]">
                   {user.email}
                 </span>
               </div>
@@ -324,7 +338,7 @@ export default function RoleDashboardShell({
               variant="ghost"
               size="sm"
               label="Đăng xuất"
-              className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-800 transition rounded-xl px-3 py-1.5"
+              className="text-xs font-semibold transition rounded-xl px-3 py-1.5"
             />
           </div>
         </div>
@@ -336,44 +350,44 @@ export default function RoleDashboardShell({
         <aside className="hidden lg:block w-68 shrink-0">
           <div className="sticky top-24 space-y-4">
             {/* Nav Menu Box */}
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-4 shadow-sm">
-              <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-3 px-3 flex items-center justify-between">
-                <span>Điều Hướng Phân Hệ</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-3.5 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2.5 px-3 flex items-center justify-between">
+                <span>Menu Quản Trị</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
               </div>
 
-              <nav className="space-y-1.5">
+              <nav className="space-y-1">
                 {navItems.map((item) => {
                   const isActive = pathname === item.href;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`group flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 relative ${
+                      className={`group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all duration-150 relative ${
                         isActive
-                          ? `${roleConfig.accentBg} font-black`
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-slate-800/60 hover:translate-x-1"
+                          ? `${roleConfig.accentBg} font-semibold`
+                          : "font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:translate-x-0.5"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
                         <span
-                          className={`p-1.5 rounded-xl transition-colors ${
+                          className={`p-1.5 rounded-lg transition-colors ${
                             isActive
-                              ? "bg-white dark:bg-slate-900 shadow-2xs text-current"
+                              ? "bg-white/20 dark:bg-slate-900/40 text-current"
                               : "text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200"
                           }`}
                         >
-                          {item.icon({ className: "w-4 h-4 shrink-0 transition-transform group-hover:scale-110" })}
+                          {item.icon({ className: "w-4 h-4 shrink-0 transition-transform group-hover:scale-105" })}
                         </span>
                         <span>{item.label}</span>
                       </div>
 
                       {item.badge && (
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold tracking-wide ${
+                          className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
                             isActive
-                              ? "bg-white/80 dark:bg-slate-900/80 text-current shadow-2xs"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                              ? "bg-white/20 text-white"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                           }`}
                         >
                           {item.badge}
@@ -385,21 +399,24 @@ export default function RoleDashboardShell({
               </nav>
             </div>
 
-            {/* AI & Security Info Widget */}
-            <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 border border-slate-800 rounded-3xl p-4 text-white shadow-md relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-full blur-xl pointer-events-none" />
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300">
-                  AI Engine & RBAC
-                </span>
+            {/* Cloud & AI Infrastructure Status Card */}
+            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/50 rounded-3xl p-4 text-white shadow-md relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-semibold text-indigo-300">
+                    MongoDB Atlas • AI Ready
+                  </span>
+                </div>
+                <span className="text-xs text-emerald-400 font-semibold">18ms</span>
               </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
-                Bảo vệ 3 tầng an ninh nghiêm ngặt. Trí tuệ nhân tạo Gemini 1.5 hỗ trợ biên soạn đề và giám sát trực tuyến.
+              <p className="text-xs text-slate-300 leading-relaxed font-normal">
+                Hệ thống 11 Collections NoSQL và AI Gemini 1.5 Pro vận hành tự động liên tục.
               </p>
-              <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                <span>Enterprise Cloud</span>
-                <span className="text-emerald-400 font-bold">Uptime 99.9%</span>
+              <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                <span>SLA Uptime</span>
+                <span className="text-emerald-400 font-semibold">99.98% Healthy</span>
               </div>
             </div>
           </div>
@@ -417,12 +434,12 @@ export default function RoleDashboardShell({
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-2.5">
-                    <div className={`w-8 h-8 rounded-xl bg-gradient-to-tr ${roleConfig.gradientClass} flex items-center justify-center text-white font-black text-xs`}>
+                    <div className={`w-8 h-8 rounded-xl bg-gradient-to-tr ${roleConfig.gradientClass} flex items-center justify-center text-white font-bold text-xs`}>
                       AI
                     </div>
                     <div>
-                      <span className="font-extrabold text-sm block leading-none">Trắc Nghiệm AI</span>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">{roleConfig.title}</span>
+                      <span className="font-semibold text-sm block leading-none">EduAI Enterprise</span>
+                      <span className="text-xs text-slate-500 uppercase font-medium">{roleConfig.title}</span>
                     </div>
                   </div>
                   <button
@@ -444,10 +461,10 @@ export default function RoleDashboardShell({
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition ${
+                        className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm transition ${
                           isActive
-                            ? `${roleConfig.accentBg} font-black`
-                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            ? `${roleConfig.accentBg} font-semibold`
+                            : "font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -455,7 +472,7 @@ export default function RoleDashboardShell({
                           <span>{item.label}</span>
                         </div>
                         {item.badge && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-bold">
+                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-medium">
                             {item.badge}
                           </span>
                         )}
@@ -473,12 +490,12 @@ export default function RoleDashboardShell({
                       {initials}
                     </div>
                     <div>
-                      <div className="text-xs font-bold truncate max-w-[130px]">{user.name}</div>
-                      <div className="text-[10px] text-slate-400 font-mono truncate max-w-[130px]">{user.email}</div>
+                      <div className="text-sm font-semibold truncate max-w-[130px]">{user.name}</div>
+                      <div className="text-xs text-slate-500 truncate max-w-[130px]">{user.email}</div>
                     </div>
                   </div>
                 </div>
-                <LogoutButton className="w-full text-center py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/40 hover:bg-rose-100" />
+                <LogoutButton className="w-full text-center py-2 rounded-xl text-xs font-semibold bg-rose-50 text-rose-600 dark:bg-rose-950/40 hover:bg-rose-100" />
               </div>
             </div>
           </div>
@@ -487,21 +504,25 @@ export default function RoleDashboardShell({
         {/* Primary Page Content */}
         <main className="flex-1 min-w-0">
           {/* Header Banner */}
-          <div className="mb-6 sm:mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-slate-200/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-mono">
-                {roleConfig.roleNameEn}
-              </span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="text-xs font-semibold text-slate-500">Nền Tảng Trực Tuyến Doanh Nghiệp</span>
+          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                  {roleConfig.roleNameEn}
+                </span>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <span className="text-xs font-medium text-slate-500">EduAI Cloud Infrastructure</span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {title}
+              </h1>
+              <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
+                {subtitle}
+              </p>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-              {title}
-            </h1>
-            <p className="mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl leading-relaxed">
-              {subtitle}
-            </p>
+            {actions && <div className="flex items-center gap-2.5 shrink-0">{actions}</div>}
           </div>
 
           {/* Children View */}
