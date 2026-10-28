@@ -1,3 +1,4 @@
+//src\app\api\auth\reset-password
 import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -20,13 +21,15 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { message: parsed.error.issues[0]?.message ?? "Invalid request" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   await connectDB();
   const now = new Date();
-  const tokenHash = createHash("sha256").update(parsed.data.token).digest("hex");
+  const tokenHash = createHash("sha256")
+    .update(parsed.data.token)
+    .digest("hex");
   const resetToken = await PasswordResetToken.findOneAndUpdate(
     {
       token_hash: tokenHash,
@@ -34,26 +37,26 @@ export async function POST(request: Request) {
       used_at: null,
     },
     { $set: { used_at: now } },
-    { new: true }
+    { new: true },
   );
 
   if (!resetToken) {
     return NextResponse.json(
       { message: "The reset link is invalid or has expired." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   const userUpdate = await User.updateOne(
     { _id: resetToken.user_id, status: { $ne: "disabled" } },
-    { $set: { password: passwordHash } }
+    { $set: { password: passwordHash } },
   );
 
   if (userUpdate.matchedCount !== 1) {
     return NextResponse.json(
       { message: "The reset link is invalid or has expired." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

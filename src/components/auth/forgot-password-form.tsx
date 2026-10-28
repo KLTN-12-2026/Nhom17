@@ -1,3 +1,4 @@
+//src\components\auth\forgot-password-form.tsx
 "use client";
 
 import { forgotPasswordSchema } from "@/lib/validations/auth";
@@ -34,7 +35,9 @@ export default function ForgotPasswordForm() {
       const data = (await response.json()) as { message?: string };
 
       if (!response.ok) {
-        setError(data.message ?? "Unable to process the request. Please try again.");
+        setError(
+          data.message ?? "Unable to process the request. Please try again.",
+        );
         return;
       }
 

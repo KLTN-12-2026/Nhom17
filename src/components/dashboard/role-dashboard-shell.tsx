@@ -250,7 +250,8 @@ export default function RoleDashboardShell({
       </div>
 
       {/* Top Navigation Bar with Glassmorphism */}
-      <header className="sticky top-0 z-40 w-full bg-white/75 dark:bg-slate-900/75 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+      <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+        <div className="h-[2px] w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-17 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
             {/* Mobile menu trigger */}
@@ -276,14 +277,17 @@ export default function RoleDashboardShell({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold tracking-tight text-base sm:text-lg block leading-none text-slate-900 dark:text-white">
-                    Edu<span className="text-indigo-600 dark:text-indigo-400">AI</span>
+                    Trắc Nghiệm{" "}
+                    <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                      AI
+                    </span>
                   </span>
                   <span className="hidden sm:inline-block px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-semibold tracking-wide border border-indigo-200/50 dark:border-indigo-800/50">
-                    Enterprise
+                    DTU • {roleConfig.title}
                   </span>
                 </div>
                 <span className="text-xs text-slate-500 font-medium block mt-1">
-                  Nền Tảng Đánh Giá & Khảo Thí AI
+                  Bàn làm việc {roleConfig.roleNameEn}
                 </span>
               </div>
             </Link>
@@ -306,7 +310,7 @@ export default function RoleDashboardShell({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-              <span>Cluster Online (99.98%)</span>
+              <span>Hệ thống trực tuyến (99.9%)</span>
             </div>
           </div>
 
@@ -526,9 +530,34 @@ export default function RoleDashboardShell({
           </div>
 
           {/* Children View */}
-          <div className="animate-fade-in">{children}</div>
+          <div className="animate-fade-in pb-12">{children}</div>
         </main>
+
       </div>
+
+
+      {/* Dashboard Unified Footer */}
+      <footer className="mt-auto border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl py-6 text-xs text-slate-500 dark:text-slate-400 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>
+              © 2026 <strong className="text-slate-700 dark:text-slate-300">Nhóm 17</strong> • Khóa Luận Tốt Nghiệp • Khoa CNTT — Trường Đại học Duy Tân (DTU)
+            </span>
+          </div>
+          <div className="flex items-center gap-5 text-xs font-medium">
+            <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
+              Trang chủ
+            </Link>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <Link href="/unauthorized" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
+              Bảo mật RBAC
+            </Link>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <span className="text-[11px] text-slate-400">Gemini 1.5 &amp; MongoDB Atlas</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

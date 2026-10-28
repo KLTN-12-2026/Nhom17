@@ -1,3 +1,4 @@
+//src\app\api\extension\devices\heartbeat\route.ts
 import { NextResponse } from "next/server";
 
 export async function POST() {
@@ -7,7 +8,7 @@ export async function POST() {
       status: "alive",
       timestamp: Date.now(),
     },
-    { status: 200 }
+    { status: 200 },
   );
 }
 

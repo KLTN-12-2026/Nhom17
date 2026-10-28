@@ -1,3 +1,4 @@
+//src\models\PasswordResetToken.ts
 import mongoose, { models, Schema, Document } from "mongoose";
 
 export interface IPasswordResetToken extends Document {
@@ -9,7 +10,6 @@ export interface IPasswordResetToken extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
-
 
 const PasswordResetTokenSchema = new Schema<IPasswordResetToken>(
   {
@@ -40,7 +40,7 @@ const PasswordResetTokenSchema = new Schema<IPasswordResetToken>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // TTL index: Tự động xóa token sau khi hết hạn để giải phóng bộ nhớ
@@ -50,5 +50,5 @@ export const PasswordResetToken =
   models.PasswordResetToken ||
   mongoose.model<IPasswordResetToken>(
     "PasswordResetToken",
-    PasswordResetTokenSchema
+    PasswordResetTokenSchema,
   );

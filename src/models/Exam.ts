@@ -1,3 +1,4 @@
+//src\models\Exam.ts
 import mongoose, { models, Schema, Document } from "mongoose";
 import { Question, IOption } from "./Question";
 
@@ -46,7 +47,7 @@ const ExamOptionSnapshotSchema = new Schema(
     content: { type: String, required: true },
     is_correct: { type: Boolean, required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const ExamQuestionSnapshotSchema = new Schema(
@@ -60,9 +61,8 @@ const ExamQuestionSnapshotSchema = new Schema(
     explanation: { type: String, default: "" },
     options: { type: [ExamOptionSnapshotSchema], required: true },
   },
-  { _id: false }
+  { _id: false },
 );
-
 
 const ExamQuestionSchema = new Schema({
   question_id: {
@@ -84,7 +84,6 @@ const ExamQuestionSchema = new Schema({
     type: ExamQuestionSnapshotSchema,
   },
 });
-
 
 const ExamSchema = new Schema<IExam>(
   {
@@ -149,14 +148,14 @@ const ExamSchema = new Schema<IExam>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 ExamSchema.pre("validate", async function () {
   this.total_questions = this.questions.length;
   this.max_score = this.questions.reduce(
     (total, question) => total + (question.question_score || 1),
-    0
+    0,
   );
 
   const questionsToSnapshot = this.isNew
@@ -170,7 +169,7 @@ ExamSchema.pre("validate", async function () {
   }).select("content difficulty_level explanation options");
 
   const sourceQuestionsById = new Map(
-    sourceQuestions.map((q) => [q._id.toString(), q])
+    sourceQuestions.map((q) => [q._id.toString(), q]),
   );
 
   for (const examQuestion of questionsToSnapshot) {

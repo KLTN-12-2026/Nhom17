@@ -1,3 +1,4 @@
+//src\app\api\extension\jobs\next\route.ts
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -6,7 +7,7 @@ export async function GET() {
       success: true,
       jobs: [],
     },
-    { status: 200 }
+    { status: 200 },
   );
 }
 

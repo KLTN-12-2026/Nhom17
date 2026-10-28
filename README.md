@@ -1,4 +1,7 @@
+//README.md
+
 # NỀN TẢNG LUYỆN THI TRẮC NGHIỆM TRỰC TUYẾN TÍCH HỢP AI
+
 ### Khóa Luận Tốt Nghiệp Đại Học (12-2026) • Nhóm 17 • Trường Đại Học Duy Tân
 
 ![Next.js](https://img.shields.io/badge/Next.js-16.3.6-black?style=for-the-badge&logo=next.js)
@@ -14,21 +17,21 @@
 
 Hệ thống **Quản lý & Tổ chức Thi Trắc nghiệm Trực tuyến Tích hợp Trí tuệ Nhân tạo (AI)** là nền tảng kiểm tra, đánh giá và luyện thi thông minh. Dự án áp dụng công nghệ AI để tự động sinh câu hỏi từ tài liệu học tập, phát hiện hành vi gian lận thi cử qua Camera thời gian thực, đồng thời phân tích lỗ hổng kiến thức để đề xuất lộ trình ôn tập cá nhân hóa cho học viên.
 
-* **Giảng viên hướng dẫn**: ThS. Ngô Văn Hiếu & ThS. Phan Long
-* **Đơn vị đào tạo**: Khoa Công nghệ Thông tin — Trường Đại học Duy Tân (DTU)
-* **Đơn vị thực hiện**: Nhóm 17 (KLTN 12-2026)
+- **Giảng viên hướng dẫn**: ThS. Ngô Văn Hiếu & ThS. Phan Long
+- **Đơn vị đào tạo**: Khoa Công nghệ Thông tin — Trường Đại học Duy Tân (DTU)
+- **Đơn vị thực hiện**: Nhóm 17 (KLTN 12-2026)
 
 ---
 
 ## ⚡ 2. CÔNG NGHỆ CHỦ CHỐT (TECH STACK)
 
-* **Frontend**: Next.js 16 (App Router, Turbopack), React 19, Tailwind CSS v4, Responsive Glassmorphism Design.
-* **Backend**: Next.js Server Components, API Route Handlers, Edge Proxy Middleware.
-* **Database (NoSQL)**: MongoDB Atlas, Mongoose ODM 9 (Áp dụng kỹ thuật Embedding Subdocuments & Snapshot Pattern).
-* **Authentication**: NextAuth.js v4 (Hỗ trợ Credentials Login, Google OAuth 2.0 Social Login, SHA-256 OTP Password Reset).
-* **AI Engine**: Google Gemini 1.5 API & OpenAI API (Sinh câu hỏi tự động, chấm thi tự luận ngắn, phân tích điểm yếu học viên).
-* **Real-time Engine**: Socket.IO (Phòng thi trực tuyến đồng bộ thời gian thực).
-* **Quality Assurance**: TypeScript strict mode, ESLint 9, GitHub Actions Automated CI/CD.
+- **Frontend**: Next.js 16 (App Router, Turbopack), React 19, Tailwind CSS v4, Responsive Glassmorphism Design.
+- **Backend**: Next.js Server Components, API Route Handlers, Edge Proxy Middleware.
+- **Database (NoSQL)**: MongoDB Atlas, Mongoose ODM 9 (Áp dụng kỹ thuật Embedding Subdocuments & Snapshot Pattern).
+- **Authentication**: NextAuth.js v4 (Hỗ trợ Credentials Login, Google OAuth 2.0 Social Login, SHA-256 OTP Password Reset).
+- **AI Engine**: Google Gemini 1.5 API & OpenAI API (Sinh câu hỏi tự động, chấm thi tự luận ngắn, phân tích điểm yếu học viên).
+- **Real-time Engine**: Socket.IO (Phòng thi trực tuyến đồng bộ thời gian thực).
+- **Quality Assurance**: TypeScript strict mode, ESLint 9, GitHub Actions Automated CI/CD.
 
 ---
 
@@ -58,9 +61,10 @@ Hệ thống tối ưu hóa từ **Sơ đồ ERD 19 bảng quan hệ** thành **
 ## 🔐 4. PHÂN QUYỀN TRUY CẬP (ROLE-BASED ACCESS CONTROL - RBAC)
 
 Hệ thống được bảo vệ nghiêm ngặt qua 3 lớp:
-* **Lớp 1 (Edge Middleware)**: Chặn đứng URL trái phép, tự động đẩy về `/unauthorized` (403 Forbidden).
-* **Lớp 2 (API Guards)**: Hàm kiểm tra quyền `checkApiAuthorization()` bảo vệ backend API.
-* **Lớp 3 (Dynamic Dashboard)**: Giao diện và thanh Sidebar tự động thay đổi theo vai trò:
+
+- **Lớp 1 (Edge Middleware)**: Chặn đứng URL trái phép, tự động đẩy về `/unauthorized` (403 Forbidden).
+- **Lớp 2 (API Guards)**: Hàm kiểm tra quyền `checkApiAuthorization()` bảo vệ backend API.
+- **Lớp 3 (Dynamic Dashboard)**: Giao diện và thanh Sidebar tự động thay đổi theo vai trò:
   - 👑 **Quản trị viên (`/admin`)**: Quản lý người dùng, duyệt đề thi, theo dõi sổ cái doanh thu.
   - 👨‍🏫 **Giảng viên (`/instructor`)**: Quản lý câu hỏi AI, tổ chức đề thi, mở phòng thi Live.
   - 🎓 **Học viên (`/student`)**: Vào phòng thi thời gian thực, luyện tập trắc nghiệm, nhận xét điểm yếu từ AI.
@@ -114,33 +118,42 @@ ai-quiz-app/
 ## 🚀 6. HƯỚNG DẪN CÀI ĐẶT & CHẠY LOCAL (GETTING STARTED)
 
 ### 1. Yêu cầu tiên quyết
-* Node.js v20+ hoặc v22+
-* Cơ sở dữ liệu MongoDB (Local MongoDB hoặc MongoDB Atlas URI)
+
+- Node.js v20+ hoặc v22+
+- Cơ sở dữ liệu MongoDB (Local MongoDB hoặc MongoDB Atlas URI)
 
 ### 2. Cài đặt các gói phụ thuộc
+
 ```bash
 npm install
 ```
 
 ### 3. Cấu hình Biến môi trường
+
 Sao chép file `.env.example` thành `.env.local` và điền các thông số kết nối:
+
 ```bash
 cp .env.example .env.local
 ```
 
 ### 4. Khởi tạo tài khoản Quản trị viên (Admin)
+
 Chạy script tự động tạo tài khoản Admin mẫu để kiểm thử phân quyền:
+
 ```bash
 npm run seed:admin
 ```
-* **Email đăng nhập**: `admin@dtu.edu.vn`
-* **Mật khẩu**: `Admin@123456`
-* **Quyền hạn**: `admin`
+
+- **Email đăng nhập**: `admin@dtu.edu.vn`
+- **Mật khẩu**: `Admin@123456`
+- **Quyền hạn**: `admin`
 
 ### 5. Khởi động môi trường phát triển
+
 ```bash
 npm run dev
 ```
+
 Mở trình duyệt tại [http://localhost:3000](http://localhost:3000) để trải nghiệm ứng dụng.
 
 ---
@@ -162,4 +175,4 @@ npm run build
 
 ---
 
-*© 2026 Nhóm 17 • Khoa Công nghệ Thông tin • Trường Đại học Duy Tân. Mọi quyền được bảo lưu.*
+_© 2026 Nhóm 17 • Khoa Công nghệ Thông tin • Trường Đại học Duy Tân. Mọi quyền được bảo lưu._

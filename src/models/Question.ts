@@ -1,3 +1,4 @@
+//src\models\Question.ts
 import mongoose, { models, Schema, Document } from "mongoose";
 
 export interface IOption {
@@ -18,7 +19,6 @@ export interface IQuestion extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
-
 
 const OptionSchema = new Schema<IOption>({
   option_label: {
@@ -86,7 +86,7 @@ const QuestionSchema = new Schema<IQuestion>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const Question =

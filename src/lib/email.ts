@@ -1,3 +1,4 @@
+//src\lib\email.ts
 import nodemailer from "nodemailer";
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {

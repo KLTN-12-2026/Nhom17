@@ -1,3 +1,4 @@
+//src\app\api\auth\[...nextauth]\route.ts
 import { connectDB } from "@/lib/db";
 import { loginSchema } from "@/lib/validations/auth";
 import { User } from "@/models/User";
@@ -28,7 +29,9 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         const data = loginSchema.parse(credentials);
         await connectDB();
-        const user = await User.findOne({ email: data.email }).select("+password");
+        const user = await User.findOne({ email: data.email }).select(
+          "+password",
+        );
 
         if (!user || user.status === "disabled" || user.is_active === false) {
           return null;

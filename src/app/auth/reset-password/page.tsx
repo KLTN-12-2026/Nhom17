@@ -1,3 +1,4 @@
+//src\app\auth\reset-password\page.tsx
 import AuthShell from "@/components/auth/auth-shell";
 import ResetPasswordForm from "@/components/auth/reset-password-form";
 

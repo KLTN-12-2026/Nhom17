@@ -1,3 +1,4 @@
+//src\lib\auth-guards.ts
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
@@ -51,12 +52,16 @@ export async function checkApiAuthorization(allowedRoles?: UserRole[]) {
           success: false,
           error: "Unauthorized: Vui lòng đăng nhập để thực hiện thao tác này.",
         },
-        { status: 401 }
+        { status: 401 },
       ),
     };
   }
 
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+  if (
+    allowedRoles &&
+    allowedRoles.length > 0 &&
+    !allowedRoles.includes(user.role)
+  ) {
     return {
       user: null,
       errorResponse: NextResponse.json(
@@ -64,7 +69,7 @@ export async function checkApiAuthorization(allowedRoles?: UserRole[]) {
           success: false,
           error: `Forbidden: Tài khoản của bạn [${user.role}] không có quyền truy cập tài nguyên này. Yêu cầu quyền: [${allowedRoles.join(", ")}].`,
         },
-        { status: 403 }
+        { status: 403 },
       ),
     };
   }
@@ -75,7 +80,10 @@ export async function checkApiAuthorization(allowedRoles?: UserRole[]) {
 /**
  * Kiểm tra xem người dùng có quyền cụ thể hay không (helper logic)
  */
-export function hasRequiredRole(userRole: UserRole | undefined, allowedRoles: UserRole[]): boolean {
+export function hasRequiredRole(
+  userRole: UserRole | undefined,
+  allowedRoles: UserRole[],
+): boolean {
   if (!userRole) return false;
   return allowedRoles.includes(userRole);
 }

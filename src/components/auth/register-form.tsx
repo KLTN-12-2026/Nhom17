@@ -1,3 +1,4 @@
+//src\components\auth\register-form.tsx
 "use client";
 
 import { signIn } from "next-auth/react";
@@ -29,7 +30,9 @@ export default function RegisterForm() {
     }
 
     if (role === "instructor" && !teacherSecretCode.trim()) {
-      setMessage("Please enter the Instructor Verification Key provided by your school.");
+      setMessage(
+        "Please enter the Instructor Verification Key provided by your school.",
+      );
       return;
     }
 
@@ -40,7 +43,8 @@ export default function RegisterForm() {
       email: email.trim().toLowerCase(),
       password,
       role,
-      teacherSecretCode: role === "instructor" ? teacherSecretCode.trim() : undefined,
+      teacherSecretCode:
+        role === "instructor" ? teacherSecretCode.trim() : undefined,
     };
 
     try {
@@ -86,8 +90,18 @@ export default function RegisterForm() {
           href="/"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 transition mb-4"
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
           </svg>
           Back to Home
         </Link>
@@ -131,7 +145,9 @@ export default function RegisterForm() {
           />
         </svg>
         <span>
-          {isGoogleLoading ? "Connecting to Google..." : "Sign up with Google (Student)"}
+          {isGoogleLoading
+            ? "Connecting to Google..."
+            : "Sign up with Google (Student)"}
         </span>
       </button>
 
@@ -203,8 +219,18 @@ export default function RegisterForm() {
           {role === "instructor" && (
             <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 transition-all">
               <div className="flex items-center gap-2 mb-1.5">
-                <svg className="w-4 h-4 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                <svg
+                  className="w-4 h-4 text-blue-600 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                  />
                 </svg>
                 <label className="block text-xs font-bold uppercase tracking-wider text-blue-900">
                   Instructor Verification Key
@@ -222,7 +248,9 @@ export default function RegisterForm() {
                 className="h-11 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-mono font-bold tracking-wider text-slate-800 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 uppercase"
               />
               <p className="mt-1.5 text-[11px] text-blue-700/80 leading-relaxed">
-                Security notice: Institutional key issued by the Academic Affairs Department or Department Chair is required to create an instructor workspace.
+                Security notice: Institutional key issued by the Academic
+                Affairs Department or Department Chair is required to create an
+                instructor workspace.
               </p>
             </div>
           )}
@@ -309,12 +337,28 @@ export default function RegisterForm() {
             role="alert"
           >
             {isSuccess ? (
-              <svg className="w-5 h-5 shrink-0 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              <svg
+                className="w-5 h-5 shrink-0 text-emerald-600"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
               </svg>
             ) : (
-              <svg className="w-4 h-4 shrink-0 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              <svg
+                className="w-4 h-4 shrink-0 text-rose-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
             )}
             <span>{message}</span>
