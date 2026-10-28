@@ -1,3 +1,4 @@
+//src\models\User.ts
 import mongoose, { models, Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
@@ -12,7 +13,6 @@ export interface IUser extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
-
 
 const UserSchema = new Schema<IUser>(
   {
@@ -65,7 +65,7 @@ const UserSchema = new Schema<IUser>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const User = models.User || mongoose.model<IUser>("User", UserSchema);

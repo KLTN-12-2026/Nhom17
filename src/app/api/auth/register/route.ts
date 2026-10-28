@@ -1,3 +1,4 @@
+//src\app\api\auth\register\route.ts
 import { connectDB } from "@/lib/db";
 import { registerSchema } from "@/lib/validations/auth";
 import { User } from "@/models/User";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
             message:
               "Invalid Instructor Verification Key. Please enter the valid institutional key provided by your academic administration.",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -29,8 +30,10 @@ export async function POST(request: Request) {
     const existingUser = await User.findOne({ email: data.email });
     if (existingUser) {
       return NextResponse.json(
-        { message: "This email is already in use. Please choose another email." },
-        { status: 409 }
+        {
+          message: "This email is already in use. Please choose another email.",
+        },
+        { status: 409 },
       );
     }
 
@@ -46,20 +49,23 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { message: "Account registered successfully!" },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { message: error.issues[0]?.message ?? "Invalid form data" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     console.error("Registration error:", error);
     return NextResponse.json(
-      { message: "An error occurred while creating your account. Please try again later." },
-      { status: 500 }
+      {
+        message:
+          "An error occurred while creating your account. Please try again later.",
+      },
+      { status: 500 },
     );
   }
 }

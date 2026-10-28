@@ -1,3 +1,4 @@
+//scripts\seed-admin.mjs
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import fs from "fs";
@@ -13,7 +14,10 @@ function loadEnv() {
       if (!trimmed || trimmed.startsWith("#")) continue;
       const [key, ...values] = trimmed.split("=");
       if (key && values.length > 0) {
-        process.env[key.trim()] = values.join("=").trim().replace(/^["']|["']$/g, "");
+        process.env[key.trim()] = values
+          .join("=")
+          .trim()
+          .replace(/^["']|["']$/g, "");
       }
     }
   }
@@ -21,18 +25,23 @@ function loadEnv() {
 
 loadEnv();
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/ai_quiz_app";
+const MONGODB_URI =
+  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/ai_quiz_app";
 
 const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, select: false },
-    role: { type: String, enum: ["admin", "instructor", "student"], default: "student" },
+    role: {
+      type: String,
+      enum: ["admin", "instructor", "student"],
+      default: "student",
+    },
     status: { type: String, default: "active" },
     is_active: { type: Boolean, default: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const User = mongoose.models.User || mongoose.model("User", UserSchema);
@@ -65,7 +74,9 @@ async function seedAdmin() {
       existing.password = hashedPassword;
       await existing.save();
       console.log(`\n🎉 ĐÃ CẬP NHẬT TÀI KHOẢN THÀNH ADMIN THÀNH CÔNG!`);
-      console.log(`👉 Bạn có thể đăng nhập ngay tại: http://localhost:3000/auth/login`);
+      console.log(
+        `👉 Bạn có thể đăng nhập ngay tại: http://localhost:3000/auth/login`,
+      );
     } else {
       const newAdmin = await User.create({
         name: adminName,

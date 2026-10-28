@@ -1,3 +1,4 @@
+//src\app\api\extension\devices\register\route.ts
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
         message: "Device registered successfully",
         data: body,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch {
     return NextResponse.json({ success: false }, { status: 500 });

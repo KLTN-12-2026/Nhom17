@@ -1,3 +1,5 @@
+//docs\GIT_WORKFLOW.md
+
 # Git Workflow cho nhom
 
 Tai lieu nay huong dan cach lam viec voi Git/GitHub cho du an `ai-quiz-app`.
@@ -188,4 +190,3 @@ npm run dev
 8. Cho CI xanh va review.
 9. Merge vao `main`.
 10. Cap nhat lai `main` tren may.
-

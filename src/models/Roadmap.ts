@@ -1,3 +1,4 @@
+//src\models\Roadmap.ts
 import mongoose, { models, Schema, Document } from "mongoose";
 
 export interface IStageContent {
@@ -129,7 +130,7 @@ const RoadmapSchema = new Schema<IRoadmap>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const Roadmap =

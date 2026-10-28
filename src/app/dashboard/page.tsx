@@ -1,3 +1,4 @@
+//src\app\dashboard\page.tsx
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-guards";
 

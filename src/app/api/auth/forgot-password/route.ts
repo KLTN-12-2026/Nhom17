@@ -1,3 +1,4 @@
+//src\app\api\auth\forgot-password\route.ts
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { message: parsed.error.issues[0]?.message ?? "Invalid email address" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -72,11 +73,14 @@ export async function POST(request: Request) {
     try {
       await PasswordResetToken.deleteOne({ token_hash: tokenHash });
     } catch (cleanupError) {
-      console.error("Failed to remove unused password reset token", cleanupError);
+      console.error(
+        "Failed to remove unused password reset token",
+        cleanupError,
+      );
     }
     console.error(
       "Password reset email delivery failed",
-      error instanceof Error ? error.message : "Unknown SMTP error"
+      error instanceof Error ? error.message : "Unknown SMTP error",
     );
   }
 

@@ -1,3 +1,4 @@
+//src\components\auth\reset-password-form.tsx
 "use client";
 
 import { resetPasswordSchema } from "@/lib/validations/auth";
@@ -57,7 +58,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-950">
-           Set a New Password
+          Set a New Password
         </h1>
         <p className="mt-3 text-sm text-slate-500">
           Your password must be at least 8 characters long.

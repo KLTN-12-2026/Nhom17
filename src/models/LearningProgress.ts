@@ -1,3 +1,4 @@
+//src\models\LearningProgress.ts
 import mongoose, { models, Schema, Document } from "mongoose";
 
 export interface ILearningProgress extends Document {
@@ -47,7 +48,7 @@ const LearningProgressSchema = new Schema<ILearningProgress>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Một học viên chỉ có 1 bản ghi tiến độ cho 1 lộ trình

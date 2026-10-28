@@ -1,3 +1,4 @@
+//src\models\ExamRoom.ts
 import mongoose, { models, Schema, Document } from "mongoose";
 
 export interface IRoomCandidate {
@@ -88,7 +89,7 @@ const ExamRoomSchema = new Schema<IExamRoom>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const ExamRoom =
