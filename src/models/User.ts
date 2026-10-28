@@ -5,6 +5,8 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   phone_number?: string;
+  date_of_birth?: Date | null;
+  school_name?: string;
   avatar_url?: string;
   role: "admin" | "instructor" | "student";
   status: "active" | "disabled";
@@ -40,6 +42,16 @@ const UserSchema = new Schema<IUser>(
       trim: true,
       default: "",
       maxlength: 20,
+    },
+    date_of_birth: {
+      type: Date,
+      default: null,
+    },
+    school_name: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 150,
     },
     avatar_url: {
       type: String,

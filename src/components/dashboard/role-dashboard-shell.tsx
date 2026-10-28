@@ -38,9 +38,9 @@ const roleConfigs = {
   },
   student: {
     title: "HỌC VIÊN",
-    badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-    gradientClass: "from-emerald-600 to-teal-600",
-    accentBg: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    badgeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    gradientClass: "from-blue-600 to-cyan-600",
+    accentBg: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
   },
 };
 
@@ -107,6 +107,15 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
       ),
     },
     {
+      label: "Thông Tin Cá Nhân",
+      href: "/instructor/profile",
+      icon: ({ className }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+    },
+    {
       label: "Ngân Hàng Câu Hỏi & AI",
       href: "/instructor/questions",
       badge: "AI Gen",
@@ -150,6 +159,15 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
     {
       label: "Tổng Quan Học Tập",
       href: "/student",
+      icon: ({ className }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Thông Tin Cá Nhân",
+      href: "/student/profile",
       icon: ({ className }) => (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

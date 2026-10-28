@@ -21,14 +21,14 @@ export default async function StudentDashboardPage() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Bài Thi Đã Nộp</span>
-            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+            <span className="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </span>
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white">24</div>
-          <div className="mt-2 text-xs text-emerald-600 font-semibold">
+          <div className="mt-2 text-xs text-blue-600 font-semibold">
             Tỷ lệ đạt chuẩn: 91.6%
           </div>
         </div>
@@ -82,16 +82,16 @@ export default async function StudentDashboardPage() {
       {/* Main Student Hub */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Join Live Room Prompt */}
-        <div className="lg:col-span-2 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="lg:col-span-2 bg-gradient-to-br from-blue-700 to-indigo-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10 max-w-lg">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/20 text-white mb-4">
-              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-sky-300 animate-ping" />
               Phòng Thi Thời Gian Thực
             </span>
             <h2 className="text-2xl sm:text-3xl font-black mb-3">
               Nhập mã phòng thi từ giáo viên
             </h2>
-            <p className="text-sm text-emerald-100 mb-6 leading-relaxed">
+            <p className="text-sm text-blue-100 mb-6 leading-relaxed">
               Bạn có mã phòng thi trực tuyến? Hãy nhập mã phòng (ví dụ: <code className="bg-white/20 px-2 py-0.5 rounded font-mono font-bold">THI-TOAN-101</code>) để bước vào phòng thi và kết nối giám sát webcam AI.
             </p>
             <form action="/student/join-room" method="GET" className="flex flex-col sm:flex-row gap-3">

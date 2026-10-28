@@ -85,22 +85,40 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         if (account?.provider === "google") {
           await connectDB();
-          const dbUser = await User.findOne({ email: user.email });
+          const dbUser = await User.findOne({ email: user.email }).select("_id");
           if (dbUser) {
             token.id = dbUser._id.toString();
-            token.role = dbUser.role;
           }
         } else {
           token.id = user.id;
           token.role = user.role;
         }
       }
+
+      if (token.id) {
+        await connectDB();
+        const dbUser = await User.findById(token.id).select(
+          "name email role avatar_url"
+        );
+        if (dbUser) {
+          token.name = dbUser.name;
+          token.email = dbUser.email;
+          token.role = dbUser.role;
+          if (dbUser.avatar_url) {
+            token.picture = dbUser.avatar_url;
+          }
+        }
+      }
+
       return token;
     },
 
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = token.id as string;
+        session.user.name = token.name ?? null;
+        session.user.email = token.email ?? null;
+        session.user.image = token.picture ?? null;
         session.user.role = token.role as "admin" | "instructor" | "student";
       }
       return session;
