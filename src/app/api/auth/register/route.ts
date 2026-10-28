@@ -12,6 +12,20 @@ export async function POST(request: Request) {
 
     await connectDB();
 
+    if (data.role === "instructor") {
+      const validKey = process.env.INSTRUCTOR_SECRET_KEY || "DTU-TEACHER-2026";
+      const providedKey = (data.teacherSecretCode ?? "").trim().toUpperCase();
+      if (!providedKey || providedKey !== validKey.toUpperCase()) {
+        return NextResponse.json(
+          {
+            message:
+              "Invalid Instructor Verification Key. Please enter the valid institutional key provided by your academic administration.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const existingUser = await User.findOne({ email: data.email });
     if (existingUser) {
       return NextResponse.json(

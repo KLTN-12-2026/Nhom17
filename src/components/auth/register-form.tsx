@@ -11,6 +11,7 @@ export default function RegisterForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<"student" | "instructor">("student");
+  const [teacherSecretCode, setTeacherSecretCode] = useState("");
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +28,11 @@ export default function RegisterForm() {
       return;
     }
 
+    if (role === "instructor" && !teacherSecretCode.trim()) {
+      setMessage("Please enter the Instructor Verification Key provided by your school.");
+      return;
+    }
+
     setIsLoading(true);
 
     const payload = {
@@ -34,6 +40,7 @@ export default function RegisterForm() {
       email: email.trim().toLowerCase(),
       password,
       role,
+      teacherSecretCode: role === "instructor" ? teacherSecretCode.trim() : undefined,
     };
 
     try {
@@ -50,6 +57,7 @@ export default function RegisterForm() {
         setName("");
         setEmail("");
         setPassword("");
+        setTeacherSecretCode("");
 
         setTimeout(() => {
           router.push("/auth/login?registered=true");
@@ -190,6 +198,34 @@ export default function RegisterForm() {
               </span>
             </button>
           </div>
+
+          {/* Instructor Secret Verification Key (Only when Instructor is selected) */}
+          {role === "instructor" && (
+            <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 transition-all">
+              <div className="flex items-center gap-2 mb-1.5">
+                <svg className="w-4 h-4 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <label className="block text-xs font-bold uppercase tracking-wider text-blue-900">
+                  Instructor Verification Key
+                </label>
+              </div>
+              <input
+                type="text"
+                value={teacherSecretCode}
+                onChange={(e) => {
+                  setTeacherSecretCode(e.target.value);
+                  if (message) setMessage("");
+                }}
+                placeholder="Enter institutional key (e.g. DTU-INS-XXXXXX)"
+                required={role === "instructor"}
+                className="h-11 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-mono font-bold tracking-wider text-slate-800 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 uppercase"
+              />
+              <p className="mt-1.5 text-[11px] text-blue-700/80 leading-relaxed">
+                Security notice: Institutional key issued by the Academic Affairs Department or Department Chair is required to create an instructor workspace.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Full Name */}
