@@ -29,7 +29,7 @@ const sizeStyles: Record<NonNullable<LogoutButtonProps["size"]>, string> = {
 export default function LogoutButton({
   variant = "solid",
   size = "md",
-  label = "Dang xuat",
+  label = "Đăng xuất",
   callbackUrl = "/auth/login",
   className = "",
 }: LogoutButtonProps) {

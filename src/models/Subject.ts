@@ -3,6 +3,7 @@ import mongoose, { models, Schema, Document } from "mongoose";
 export interface ISubject extends Document {
   subject_name: string;
   description?: string;
+  created_by?: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,6 +21,11 @@ const SubjectSchema = new Schema<ISubject>(
       type: String,
       trim: true,
       default: "",
+    },
+    created_by: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
   },
   {

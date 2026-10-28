@@ -7,11 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:admin": "node scripts/seed-admin.mjs"
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "seed:questions": "node scripts/seed-questions.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
+    "mammoth": "^1.13.0",
     "mongoose": "^9.10.2",
     "next": "16.3.6",
     "next-auth": "^4.24.15",
@@ -19,6 +21,7 @@
     "openai": "^6.49.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "xlsx": "^0.18.5",
     "zod": "^4.6.5"
   },
   "devDependencies": {

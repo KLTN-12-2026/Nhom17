@@ -228,16 +228,19 @@ export default function RoleDashboardShell({
             </button>
 
             {/* Logo & App title */}
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${roleConfig.gradientClass} flex items-center justify-center text-white font-black text-lg shadow-md`}>
-                AI
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs group-hover:bg-blue-700 transition">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                </svg>
               </div>
               <div>
-                <span className="font-extrabold tracking-tight text-base sm:text-lg block leading-none">
-                  Trắc Nghiệm AI
+                <span className="font-bold tracking-tight text-base sm:text-lg block text-slate-900 dark:text-white leading-tight">
+                  Khảo Thí & Trắc Nghiệm THPT
                 </span>
-                <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">
-                  ĐH Duy Tân • Nhóm 17
+                <span className="text-[11px] text-slate-500 font-medium block">
+                  Đại Học Duy Tân • Đồ Án Tốt Nghiệp
                 </span>
               </div>
             </Link>
@@ -245,16 +248,16 @@ export default function RoleDashboardShell({
 
           {/* User profile & Role Badge */}
           <div className="flex items-center gap-3 sm:gap-4">
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${roleConfig.badgeClass}`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${roleConfig.badgeClass}`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current" />
               {roleConfig.title}
             </span>
 
             <div className="hidden sm:flex flex-col text-right">
-              <span className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[140px]">
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[150px]">
                 {user.name || "Người dùng"}
               </span>
-              <span className="text-[11px] text-slate-500 truncate max-w-[140px]">
+              <span className="text-[11px] text-slate-400 truncate max-w-[150px]">
                 {user.email}
               </span>
             </div>
@@ -360,11 +363,11 @@ export default function RoleDashboardShell({
 
         {/* Primary Page Content */}
         <main className="flex-1 min-w-0">
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+          <div className="mb-6">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
               {title}
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               {subtitle}
             </p>
           </div>

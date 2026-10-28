@@ -3,6 +3,7 @@ import mongoose, { models, Schema, Document } from "mongoose";
 export interface ITopic extends Document {
   subject_id: mongoose.Types.ObjectId;
   parent_id?: mongoose.Types.ObjectId | null;
+  created_by?: mongoose.Types.ObjectId | null;
   topic_name: string;
   level: number;
   description?: string;
@@ -24,6 +25,11 @@ const TopicSchema = new Schema<ITopic>(
       ref: "Topic",
       default: null,
       index: true,
+    },
+    created_by: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
     topic_name: {
       type: String,
