@@ -16,9 +16,9 @@ type LogoutButtonProps = {
 };
 
 const variantStyles: Record<NonNullable<LogoutButtonProps["variant"]>, string> = {
-  solid: "bg-blue-600 text-white hover:bg-blue-700 border border-transparent",
-  ghost: "bg-transparent text-white hover:bg-white/10 border border-white/30",
-  link:  "bg-transparent text-blue-500 hover:underline border-0 px-0 py-0",
+  solid: "bg-blue-600 text-white hover:bg-blue-700 border border-transparent shadow-xs",
+  ghost: "bg-transparent text-slate-700 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-700",
+  link:  "bg-transparent text-blue-600 dark:text-blue-400 hover:underline border-0 px-0 py-0",
 };
 
 const sizeStyles: Record<NonNullable<LogoutButtonProps["size"]>, string> = {
@@ -29,7 +29,7 @@ const sizeStyles: Record<NonNullable<LogoutButtonProps["size"]>, string> = {
 export default function LogoutButton({
   variant = "solid",
   size = "md",
-  label = "Dang xuat",
+  label = "Đăng xuất",
   callbackUrl = "/auth/login",
   className = "",
 }: LogoutButtonProps) {
@@ -38,15 +38,19 @@ export default function LogoutButton({
       type="button"
       onClick={() => signOut({ callbackUrl })}
       className={[
-        "rounded-lg font-semibold transition-colors duration-150 cursor-pointer",
+        "inline-flex items-center gap-1.5 rounded-xl font-semibold transition-all duration-150 cursor-pointer",
         variantStyles[variant],
         variant !== "link" ? sizeStyles[size] : "",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
+      title="Đăng xuất khỏi hệ thống"
     >
-      {label}
+      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+      </svg>
+      <span>{label}</span>
     </button>
   );
 }

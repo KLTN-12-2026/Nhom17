@@ -1,6 +1,6 @@
 /**
  * TẬP TRUNG XUẤT TOÀN BỘ 11 MODELS CỦA HỆ THỐNG
- * Chuẩn hóa theo sơ đồ CSDL Nền Tảng Luyện Thi Tích Hợp AI - ĐH Duy Tân
+ * Hệ Thống CSDL Nền Tảng Đánh Giá & Khảo Thí Trắc Nghiệm Trực Tuyến Tích Hợp AI
  */
 
 // Phân hệ 1: Người Dùng & Tài Khoản
