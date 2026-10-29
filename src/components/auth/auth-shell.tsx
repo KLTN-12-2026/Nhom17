@@ -42,17 +42,14 @@ export default function AuthShell({ children }: AuthShellProps) {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-black text-lg tracking-tight text-white leading-none">
-                  Trắc Nghiệm{" "}
+                  AI-
                   <span className="bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">
-                    AI
+                    Quizz
                   </span>
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 uppercase tracking-wider">
-                  DTU
                 </span>
               </div>
               <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mt-1">
-                KLTN • Nhóm 17 (12-2026)
+                Nền tảng thi &amp; đánh giá thông minh
               </span>
             </div>
           </Link>
@@ -82,7 +79,7 @@ export default function AuthShell({ children }: AuthShellProps) {
 
           <p className="text-sm text-slate-300 leading-relaxed font-medium mb-8">
             Hệ sinh thái thi trắc nghiệm trực tuyến thông minh dành cho Giảng viên &amp;
-            Học viên Trường Đại học Duy Tân.
+            Học viên.
           </p>
 
           {/* 3 Feature cards */}
@@ -94,7 +91,7 @@ export default function AuthShell({ children }: AuthShellProps) {
                 </svg>
               }
               title="Sinh Câu Hỏi AI Tự Động"
-              description="Google Gemini 1.5 tự động phân tích giáo trình để tạo bộ đề trắc nghiệm đa cấp độ."
+              description="Google Gemini 1.5 tự động phân tích tài liệu ôn thi để tạo bộ đề trắc nghiệm đa cấp độ."
             />
 
             <FeatureCard
@@ -125,7 +122,7 @@ export default function AuthShell({ children }: AuthShellProps) {
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Hệ thống Khảo thí Trực tuyến Sẵn sàng</span>
           </div>
-          <span className="text-[11px] text-slate-500 font-medium">Khoa CNTT — DTU</span>
+          <span className="text-[11px] text-slate-500 font-medium">Powered by Gemini AI</span>
         </div>
       </section>
 

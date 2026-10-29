@@ -50,10 +50,11 @@ export default function HeaderClient({ user }: HeaderClientProps) {
 
   return (
     <header
-      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled
+      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+        scrolled
           ? "bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-md shadow-slate-900/5"
           : "bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50"
-        }`}
+      }`}
     >
       {/* Thanh viền gradient trang trí trên cùng */}
       <div className="h-[2.5px] w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500" />
@@ -86,14 +87,14 @@ export default function HeaderClient({ user }: HeaderClientProps) {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-black tracking-tight text-lg sm:text-xl text-slate-900 dark:text-white leading-none">
-                Trắc Nghiệm{" "}
+                AI-
                 <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
-                  AI
+                  Quizz
                 </span>
               </span>
             </div>
             <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider block mt-1">
-              Nền tảng thi & đánh giá thông minh
+              Nền tảng thi &amp; đánh giá thông minh
             </span>
           </div>
         </Link>
@@ -107,7 +108,7 @@ export default function HeaderClient({ user }: HeaderClientProps) {
             Trang Chủ
           </Link>
           <a
-            href="#features"
+            href="/#ai-features"
             className="px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all flex items-center gap-1.5"
           >
             <span>Tính Năng AI</span>
@@ -116,23 +117,23 @@ export default function HeaderClient({ user }: HeaderClientProps) {
             </span>
           </a>
           <a
-            href="#features"
+            href="/#live-proctoring"
             className="px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all"
           >
             Giám Sát Live
           </a>
           <a
-            href="#features"
+            href="/#student-experience"
             className="px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all"
           >
-            Lộ Trình Cá Nhân
+            Dành Cho Học Viên
           </a>
-          <Link
-            href="/dashboard"
+          <a
+            href="/#practice-preview"
             className="px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-all"
           >
             Đề Thi Mẫu
-          </Link>
+          </a>
         </nav>
 
         {/* AUTH ACTION AREA */}
@@ -274,7 +275,6 @@ export default function HeaderClient({ user }: HeaderClientProps) {
       {/* MOBILE FLYOUT MENU */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl px-4 pt-4 pb-6 space-y-3 animate-fade-in shadow-2xl">
-          {/* Thông tin tài khoản khi mở menu trên mobile */}
           {user && (
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
@@ -310,7 +310,7 @@ export default function HeaderClient({ user }: HeaderClientProps) {
               <span>Trang Chủ</span>
             </Link>
             <a
-              href="#features"
+              href="/#ai-features"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70"
             >
@@ -323,7 +323,7 @@ export default function HeaderClient({ user }: HeaderClientProps) {
               </span>
             </a>
             <a
-              href="#features"
+              href="/#live-proctoring"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70"
             >
@@ -331,21 +331,21 @@ export default function HeaderClient({ user }: HeaderClientProps) {
               <span>Giám Sát Gian Lận Live</span>
             </a>
             <a
-              href="#features"
+              href="/#student-experience"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70"
             >
-              <span>🎯</span>
-              <span>Lộ Trình Cá Nhân Hóa</span>
+              <span>🎓</span>
+              <span>Dành Cho Học Viên</span>
             </a>
-            <Link
-              href="/dashboard"
+            <a
+              href="/#practice-preview"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70"
             >
               <span>📚</span>
               <span>Đề Thi Trắc Nghiệm Mẫu</span>
-            </Link>
+            </a>
           </div>
 
           <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
@@ -394,4 +394,3 @@ export default function HeaderClient({ user }: HeaderClientProps) {
     </header>
   );
 }
-
