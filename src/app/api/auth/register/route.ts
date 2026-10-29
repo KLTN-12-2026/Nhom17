@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     await connectDB();
 
     if (data.role === "instructor") {
-      const validKey = process.env.INSTRUCTOR_SECRET_KEY || "DTU-TEACHER-2026";
+      const validKey = process.env.INSTRUCTOR_SECRET_KEY || "INSTRUCTOR-KEY-2026";
       const providedKey = (data.teacherSecretCode ?? "").trim().toUpperCase();
       if (!providedKey || providedKey !== validKey.toUpperCase()) {
         return NextResponse.json(

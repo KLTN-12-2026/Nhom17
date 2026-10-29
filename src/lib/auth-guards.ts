@@ -17,7 +17,12 @@ export interface AuthenticatedUser {
  * Lấy session hiện tại ở phía Server Component hoặc Server Action
  */
 export async function getServerAuthSession() {
-  return await getServerSession(authOptions);
+  try {
+    return await getServerSession(authOptions);
+  } catch {
+    // Tránh sập server component khi cookie session cũ hoặc secret không khớp
+    return null;
+  }
 }
 
 /**

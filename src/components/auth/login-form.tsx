@@ -19,7 +19,7 @@ export default function LoginForm() {
 
   const isRegistered = searchParams.get("registered") === "true";
   const successNotice = isRegistered
-    ? "Registration successful! Please sign in with your account."
+    ? "Đăng ký tài khoản thành công! Vui lòng đăng nhập để tiếp tục."
     : "";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -35,16 +35,14 @@ export default function LoginForm() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password. Please try again.");
+        setError("Tài khoản hoặc mật khẩu không chính xác, vui lòng thử lại.");
         return;
       }
 
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError(
-        "Could not connect to the server. Please check your connection.",
-      );
+      setError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại đường truyền.");
     } finally {
       setIsLoading(false);
     }
@@ -76,19 +74,19 @@ export default function LoginForm() {
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-          Back to Home
+          Về trang chủ
         </Link>
 
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-          Welcome back
+          Chào mừng trở lại
         </p>
 
-        <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-          Sign in to your account
+        <h2 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+          Đăng nhập tài khoản
         </h2>
 
         <p className="mt-2 text-sm text-slate-500">
-          Continue your personalized learning and AI-powered assessments.
+          Đăng nhập để vào không gian luyện thi và làm bài trắc nghiệm AI thông minh.
         </p>
       </div>
 
@@ -118,7 +116,7 @@ export default function LoginForm() {
         type="button"
         onClick={handleGoogleLogin}
         disabled={isGoogleLoading || isLoading}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer text-sm"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">
           <path
@@ -139,7 +137,7 @@ export default function LoginForm() {
           />
         </svg>
         <span>
-          {isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}
+          {isGoogleLoading ? "Đang kết nối Google..." : "Tiếp tục với Google"}
         </span>
       </button>
 
@@ -149,8 +147,8 @@ export default function LoginForm() {
           <div className="w-full border-t border-slate-200"></div>
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-[#f8f7f3] px-3 font-semibold tracking-wider text-slate-400">
-            Or continue with email
+          <span className="bg-[#f8f7f3] dark:bg-slate-900 px-3 font-semibold tracking-wider text-slate-400">
+            Hoặc đăng nhập bằng Email
           </span>
         </div>
       </div>
@@ -158,8 +156,8 @@ export default function LoginForm() {
       {/* Email / Password Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-            Email address
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Địa chỉ Email
           </label>
           <input
             type="email"
@@ -169,22 +167,22 @@ export default function LoginForm() {
               setEmail(e.target.value);
               if (error) setError("");
             }}
-            placeholder="you@university.edu"
+            placeholder="hocvien@gmail.com"
             required
-            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              Password
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Mật khẩu
             </label>
             <Link
               href="/auth/forgot-password"
-              className="text-xs font-semibold text-blue-600 hover:underline"
+              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Forgot password?
+              Quên mật khẩu?
             </Link>
           </div>
 
@@ -197,9 +195,9 @@ export default function LoginForm() {
                 setPassword(e.target.value);
                 if (error) setError("");
               }}
-              placeholder="Enter your password"
+              placeholder="Nhập mật khẩu của bạn"
               required
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-16 text-sm outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 pr-16 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
 
             <button
@@ -207,14 +205,14 @@ export default function LoginForm() {
               onClick={() => setShowPassword((v) => !v)}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-blue-600 transition cursor-pointer"
             >
-              {showPassword ? "Hide" : "Show"}
+              {showPassword ? "Ẩn" : "Hiện"}
             </button>
           </div>
         </div>
 
         {error && (
           <div
-            className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+            className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 animate-fadeIn"
             role="alert"
           >
             <svg
@@ -235,18 +233,18 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={isLoading || isGoogleLoading}
-          className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white shadow-[0_4px_0_#1d4ed8] transition hover:bg-blue-700 active:translate-y-0.5 active:shadow-[0_2px_0_#1d4ed8] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer text-sm"
+          className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer text-sm"
         >
-          {isLoading ? "Signing in..." : "Sign In to Adaptive Quiz"}
+          {isLoading ? "Đang đăng nhập..." : "Đăng Nhập Vào Hệ Thống"}
         </button>
 
         <p className="pt-2 text-center text-sm text-slate-500">
-          Don&apos;t have an account?{" "}
+          Chưa có tài khoản?{" "}
           <Link
             href="/auth/register"
             className="font-bold text-blue-600 hover:underline"
           >
-            Create an account
+            Đăng ký tài khoản mới
           </Link>
         </p>
       </form>

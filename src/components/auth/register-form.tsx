@@ -10,7 +10,9 @@ export default function RegisterForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [role, setRole] = useState<"student" | "instructor">("student");
   const [teacherSecretCode, setTeacherSecretCode] = useState("");
   const [message, setMessage] = useState("");
@@ -24,22 +26,25 @@ export default function RegisterForm() {
     setMessage("");
     setIsSuccess(false);
 
-    if (password.length < 8) {
-      setMessage("Password must be at least 8 characters long.");
+    if (password.length < 6) {
+      setMessage("Mật khẩu phải có tối thiểu 6 ký tự.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setMessage("Mật khẩu xác nhận không khớp với mật khẩu đã nhập.");
       return;
     }
 
     if (role === "instructor" && !teacherSecretCode.trim()) {
-      setMessage(
-        "Please enter the Instructor Verification Key provided by your school.",
-      );
+      setMessage("Vui lòng nhập Mã xác thực giáo viên được trung tâm cấp.");
       return;
     }
 
     setIsLoading(true);
 
     const payload = {
-      name,
+      name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
       role,
@@ -54,23 +59,25 @@ export default function RegisterForm() {
         body: JSON.stringify(payload),
       });
       const data = await response.json();
-      setMessage(data.message);
 
       if (response.ok) {
         setIsSuccess(true);
+        setMessage("Đăng ký tài khoản thành công! Đang chuyển hướng đến đăng nhập...");
         setName("");
         setEmail("");
         setPassword("");
+        setConfirmPassword("");
         setTeacherSecretCode("");
 
         setTimeout(() => {
           router.push("/auth/login?registered=true");
         }, 1200);
       } else {
+        setMessage(data.message || "Đăng ký không thành công. Vui lòng thử lại.");
         setIsSuccess(false);
       }
     } catch {
-      setMessage("Could not connect to the server. Please try again later.");
+      setMessage("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại đường truyền.");
       setIsSuccess(false);
     } finally {
       setIsLoading(false);
@@ -103,19 +110,19 @@ export default function RegisterForm() {
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-          Back to Home
+          Về trang chủ
         </Link>
 
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-          Join your learning desk
+          Khởi đầu bứt phá
         </p>
 
-        <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-          Create your account
+        <h2 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+          Đăng ký tài khoản mới
         </h2>
 
         <p className="mt-2 text-sm text-slate-500">
-          Set up your workspace and start practicing in less than a minute.
+          Tạo tài khoản để tham gia luyện thi trắc nghiệm và trải nghiệm trợ lý AI.
         </p>
       </div>
 
@@ -124,7 +131,7 @@ export default function RegisterForm() {
         type="button"
         onClick={handleGoogleRegister}
         disabled={isGoogleLoading || isLoading}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer text-sm"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">
           <path
@@ -146,8 +153,8 @@ export default function RegisterForm() {
         </svg>
         <span>
           {isGoogleLoading
-            ? "Connecting to Google..."
-            : "Sign up with Google (Student)"}
+            ? "Đang kết nối Google..."
+            : "Đăng ký nhanh với Google (Học viên)"}
         </span>
       </button>
 
@@ -157,8 +164,8 @@ export default function RegisterForm() {
           <div className="w-full border-t border-slate-200"></div>
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-[#f8f7f3] px-3 font-semibold tracking-wider text-slate-400">
-            Or register with email
+          <span className="bg-[#f8f7f3] dark:bg-slate-900 px-3 font-semibold tracking-wider text-slate-400">
+            Hoặc đăng ký bằng Email
           </span>
         </div>
       </div>
@@ -166,8 +173,8 @@ export default function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Role selection */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-            Select your role
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+            Chọn vai trò của bạn
           </label>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -175,20 +182,20 @@ export default function RegisterForm() {
               onClick={() => setRole("student")}
               className={`rounded-2xl border p-3.5 text-left transition cursor-pointer ${
                 role === "student"
-                  ? "border-blue-600 bg-blue-50 ring-2 ring-blue-500/20"
-                  : "border-slate-200 bg-white hover:border-slate-300"
+                  ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 ring-2 ring-emerald-500/20"
+                  : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="block text-sm font-bold text-slate-900">
-                  Student
+                <span className="block text-sm font-bold text-slate-900 dark:text-white">
+                  Học viên Cấp 3
                 </span>
                 {role === "student" && (
-                  <span className="h-2 w-2 rounded-full bg-blue-600"></span>
+                  <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
                 )}
               </div>
-              <span className="mt-1 block text-xs text-slate-500">
-                Practice & AI diagnostics
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                Luyện đề thi &amp; nhận trợ lý AI
               </span>
             </button>
 
@@ -197,27 +204,27 @@ export default function RegisterForm() {
               onClick={() => setRole("instructor")}
               className={`rounded-2xl border p-3.5 text-left transition cursor-pointer ${
                 role === "instructor"
-                  ? "border-blue-600 bg-blue-50 ring-2 ring-blue-500/20"
-                  : "border-slate-200 bg-white hover:border-slate-300"
+                  ? "border-blue-600 bg-blue-50 dark:bg-blue-950/40 ring-2 ring-blue-500/20"
+                  : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="block text-sm font-bold text-slate-900">
-                  Instructor
+                <span className="block text-sm font-bold text-slate-900 dark:text-white">
+                  Giáo viên THPT
                 </span>
                 {role === "instructor" && (
                   <span className="h-2 w-2 rounded-full bg-blue-600"></span>
                 )}
               </div>
-              <span className="mt-1 block text-xs text-slate-500">
-                Create exams & host rooms
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                Soạn đề &amp; mở phòng thi
               </span>
             </button>
           </div>
 
           {/* Instructor Secret Verification Key (Only when Instructor is selected) */}
           {role === "instructor" && (
-            <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 transition-all">
+            <div className="mt-3 rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/40 p-4 transition-all">
               <div className="flex items-center gap-2 mb-1.5">
                 <svg
                   className="w-4 h-4 text-blue-600 shrink-0"
@@ -232,8 +239,8 @@ export default function RegisterForm() {
                     d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
                   />
                 </svg>
-                <label className="block text-xs font-bold uppercase tracking-wider text-blue-900">
-                  Instructor Verification Key
+                <label className="block text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                  Mã Xác Thực Giáo Viên
                 </label>
               </div>
               <input
@@ -243,14 +250,12 @@ export default function RegisterForm() {
                   setTeacherSecretCode(e.target.value);
                   if (message) setMessage("");
                 }}
-                placeholder="Enter institutional key (e.g. DTU-INS-XXXXXX)"
+                placeholder="Ví dụ: INSTRUCTOR-KEY-2026"
                 required={role === "instructor"}
-                className="h-11 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-mono font-bold tracking-wider text-slate-800 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 uppercase"
+                className="h-11 w-full rounded-xl border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-800 px-4 text-sm font-mono font-bold tracking-wider text-slate-800 dark:text-white outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 uppercase"
               />
-              <p className="mt-1.5 text-[11px] text-blue-700/80 leading-relaxed">
-                Security notice: Institutional key issued by the Academic
-                Affairs Department or Department Chair is required to create an
-                instructor workspace.
+              <p className="mt-1.5 text-[11px] text-blue-700/80 dark:text-blue-400 leading-relaxed">
+                Lưu ý bảo mật: Nhập mã xác minh do ban quản trị trung tâm cấp để kích hoạt quyền biên soạn đề thi.
               </p>
             </div>
           )}
@@ -258,8 +263,8 @@ export default function RegisterForm() {
 
         {/* Full Name */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-            Full name
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Họ và tên
           </label>
           <input
             type="text"
@@ -269,16 +274,16 @@ export default function RegisterForm() {
               setName(e.target.value);
               if (message) setMessage("");
             }}
-            placeholder="Avery Morgan"
+            placeholder="Nguyễn Văn A"
             required
-            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
         {/* Email */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-            Email address
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Địa chỉ Email
           </label>
           <input
             type="email"
@@ -288,16 +293,16 @@ export default function RegisterForm() {
               setEmail(e.target.value);
               if (message) setMessage("");
             }}
-            placeholder="you@university.edu"
+            placeholder="hocvien@gmail.com"
             required
-            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
         {/* Password */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-            Password
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Mật khẩu
           </label>
           <div className="relative">
             <input
@@ -308,9 +313,9 @@ export default function RegisterForm() {
                 setPassword(e.target.value);
                 if (message) setMessage("");
               }}
-              placeholder="At least 8 characters"
+              placeholder="Tối thiểu 6 ký tự"
               required
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-16 text-sm outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 pr-16 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
 
             <button
@@ -318,18 +323,47 @@ export default function RegisterForm() {
               onClick={() => setShowPassword((v) => !v)}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-blue-600 transition cursor-pointer"
             >
-              {showPassword ? "Hide" : "Show"}
+              {showPassword ? "Ẩn" : "Hiện"}
             </button>
           </div>
           <span className="mt-1 block text-[11px] text-slate-400">
-            Must be at least 8 characters long.
+            Mật khẩu phải chứa ít nhất 6 ký tự để đảm bảo an toàn.
           </span>
+        </div>
+
+        {/* Confirm Password (US 1) */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+            Xác nhận lại mật khẩu
+          </label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (message) setMessage("");
+              }}
+              placeholder="Nhập lại mật khẩu vừa nhập"
+              required
+              className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 pr-16 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((v) => !v)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-blue-600 transition cursor-pointer"
+            >
+              {showConfirmPassword ? "Ẩn" : "Hiện"}
+            </button>
+          </div>
         </div>
 
         {/* Status message */}
         {message && (
           <div
-            className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+            className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm animate-fadeIn ${
               isSuccess
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                 : "border-rose-200 bg-rose-50 text-rose-700"
@@ -368,20 +402,20 @@ export default function RegisterForm() {
         <button
           type="submit"
           disabled={isLoading || isGoogleLoading}
-          className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white shadow-[0_4px_0_#1d4ed8] transition hover:bg-blue-700 active:translate-y-0.5 active:shadow-[0_2px_0_#1d4ed8] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer text-sm"
+          className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer text-sm"
         >
           {isLoading
-            ? "Creating account..."
-            : `Create ${role === "student" ? "Student" : "Instructor"} Account`}
+            ? "Đang tạo tài khoản..."
+            : `Đăng Ký Tài Khoản ${role === "student" ? "Học Viên" : "Giáo Viên"}`}
         </button>
 
         <p className="pt-2 text-center text-sm text-slate-500">
-          Already have an account?{" "}
+          Đã có tài khoản?{" "}
           <Link
             href="/auth/login"
             className="font-bold text-blue-600 hover:underline"
           >
-            Sign in
+            Đăng nhập ngay
           </Link>
         </p>
       </form>

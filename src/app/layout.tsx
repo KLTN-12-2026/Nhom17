@@ -3,32 +3,38 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
-  variable: "--font-inter",
   subsets: ["latin", "vietnamese"],
   display: "swap",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Trắc Nghiệm AI — Nền Tảng Thi Trắc Nghiệm Trực Tuyến Tích Hợp AI | DTU",
-    template: "%s | Trắc Nghiệm AI",
-  },
+  title: "AI-Quizz — Nền Tảng Luyện Thi Trắc Nghiệm Cấp 3 & ĐGNL Tích Hợp AI",
   description:
-    "Hệ thống khảo thí và luyện thi trắc nghiệm thông minh tích hợp Google Gemini AI, giám sát phòng thi trực tuyến thời gian thực và phân tích lộ trình ôn tập cá nhân hóa. Khóa luận tốt nghiệp Đại học Duy Tân - Nhóm 17.",
+    "Hệ thống luyện thi trắc nghiệm THPT Quốc Gia (Lớp 10, 11, 12) & Đánh giá năng lực tích hợp trí tuệ nhân tạo Gemini 1.5. Tự động sinh câu hỏi, giám sát thi trực tuyến và chẩn đoán lỗ hổng kiến thức cho học sinh.",
+  icons: {
+    icon: "/favicon.ico",
+  },
   keywords: [
-    "Thi trắc nghiệm AI",
-    "Trắc Nghiệm AI DTU",
-    "Đại học Duy Tân",
-    "Gemini 1.5 AI Quiz",
-    "Giám sát thi online",
-    "Khóa luận tốt nghiệp Nhóm 17",
+    "luyện thi cấp 3",
+    "ôn thi THPT quốc gia",
+    "thi thử trắc nghiệm online",
+    "đánh giá năng lực",
+    "toán 12",
+    "vật lý 12",
+    "tiếng anh thpt",
+    "trắc nghiệm AI",
   ],
-  authors: [{ name: "Nhóm 17 — Khoa CNTT Trường Đại học Duy Tân" }],
+  authors: [{ name: "AI-Quizz Education" }],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={`${inter.variable} h-full antialiased`}>
+    <html
+      lang="vi"
+      className={`${inter.variable} h-full antialiased scroll-smooth`}
+      data-scroll-behavior="smooth"
+    >
       <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-500/20 selection:text-blue-600">
         {children}
       </body>

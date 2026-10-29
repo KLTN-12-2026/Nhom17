@@ -5,7 +5,7 @@ import { resetPasswordSchema } from "@/lib/validations/auth";
 import Link from "next/link";
 import { useState } from "react";
 
-const invalidLinkMessage = "The password reset link is invalid or has expired.";
+const invalidLinkMessage = "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn sử dụng.";
 
 export default function ResetPasswordForm({ token }: { token: string }) {
   const [password, setPassword] = useState("");
@@ -26,7 +26,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     });
 
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? "Thông tin chưa hợp lệ");
+      setError(result.error.issues[0]?.message ?? "Thông tin mật khẩu chưa hợp lệ");
       return;
     }
 
@@ -44,11 +44,11 @@ export default function ResetPasswordForm({ token }: { token: string }) {
         return;
       }
 
-      setMessage(data.message ?? "Password updated successfully.");
+      setMessage(data.message ?? "Cập nhật mật khẩu mới thành công!");
       setPassword("");
       setConfirmPassword("");
     } catch {
-      setError("Unable to connect to the server. Please try again.");
+      setError("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
     } finally {
       setIsLoading(false);
     }
@@ -57,16 +57,16 @@ export default function ResetPasswordForm({ token }: { token: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-950">
-          Set a New Password
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
+          Thiết Lập Mật Khẩu Mới
         </h1>
-        <p className="mt-3 text-sm text-slate-500">
-          Your password must be at least 8 characters long.
+        <p className="mt-2 text-sm text-slate-500">
+          Mật khẩu mới của bạn phải có độ dài tối thiểu 8 ký tự.
         </p>
       </div>
 
-      <label className="block text-sm font-medium text-slate-700">
-        New Password
+      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+        Mật khẩu mới
         <input
           type="password"
           autoComplete="new-password"
@@ -74,12 +74,13 @@ export default function ResetPasswordForm({ token }: { token: string }) {
           minLength={8}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          placeholder="Nhập mật khẩu mới"
+          className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400 font-normal normal-case"
         />
       </label>
 
-      <label className="block text-sm font-medium text-slate-700">
-        Confirm Password
+      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+        Xác nhận lại mật khẩu
         <input
           type="password"
           autoComplete="new-password"
@@ -87,12 +88,13 @@ export default function ResetPasswordForm({ token }: { token: string }) {
           minLength={8}
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
-          className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          placeholder="Nhập lại mật khẩu mới"
+          className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400 font-normal normal-case"
         />
       </label>
 
       {!token && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-200">
           {invalidLinkMessage}
         </p>
       )}
@@ -100,18 +102,18 @@ export default function ResetPasswordForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={!token || isLoading}
-        className="h-12 w-full rounded-xl bg-blue-600 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white hover:bg-blue-700 shadow-md shadow-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60 text-sm cursor-pointer"
       >
-        {isLoading ? "Updating..." : "Update Password"}
+        {isLoading ? "Đang cập nhật..." : "Cập Nhật Mật Khẩu"}
       </button>
 
       {error && (
-        <p role="alert" className="text-center text-sm text-red-600">
+        <p role="alert" className="text-center text-sm text-rose-600">
           {error}
         </p>
       )}
       {message && (
-        <p role="status" className="text-center text-sm text-green-700">
+        <p role="status" className="text-center text-sm text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-200">
           {message}
         </p>
       )}
@@ -119,9 +121,9 @@ export default function ResetPasswordForm({ token }: { token: string }) {
       <p className="text-center text-sm">
         <Link
           href="/auth/login"
-          className="font-semibold text-blue-600 hover:underline"
+          className="font-bold text-blue-600 hover:underline"
         >
-          Back to Login
+          ← Đăng nhập ngay với mật khẩu mới
         </Link>
       </p>
     </form>

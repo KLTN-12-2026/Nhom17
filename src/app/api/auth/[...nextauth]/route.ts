@@ -110,6 +110,16 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
+  logger: {
+    error(code, metadata) {
+      // Bỏ qua cảnh báo decrypt token cũ/không khớp để không spam console
+      if (code === "JWT_SESSION_ERROR") {
+        return;
+      }
+      console.error(`[next-auth][error][${code}]`, metadata);
+    },
+  },
+
   secret: process.env.NEXTAUTH_SECRET,
 };
 

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 const genericMessage =
-  "If an account exists with this email, password reset instructions will be sent.";
+  "Nếu email tồn tại trên hệ thống, liên kết đặt lại mật khẩu sẽ được gửi đến hòm thư của bạn.";
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -21,7 +21,7 @@ export default function ForgotPasswordForm() {
 
     const result = forgotPasswordSchema.safeParse({ email });
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? "Email không hợp lệ");
+      setError(result.error.issues[0]?.message ?? "Định dạng email không hợp lệ");
       return;
     }
 
@@ -36,14 +36,14 @@ export default function ForgotPasswordForm() {
 
       if (!response.ok) {
         setError(
-          data.message ?? "Unable to process the request. Please try again.",
+          data.message ?? "Không thể xử lý yêu cầu. Vui lòng thử lại sau.",
         );
         return;
       }
 
       setMessage(data.message ?? genericMessage);
     } catch {
-      setError("Unable to connect to the server. Please try again.");
+      setError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại đường truyền.");
     } finally {
       setIsLoading(false);
     }
@@ -52,40 +52,40 @@ export default function ForgotPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-950">Forgot Password?</h1>
-        <p className="mt-3 text-sm text-slate-500">
-          Enter your account email to receive password reset instructions.
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Quên mật khẩu?</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Nhập địa chỉ email tài khoản của bạn để nhận hướng dẫn khôi phục mật khẩu.
         </p>
       </div>
 
-      <label className="block text-sm font-medium text-slate-700">
-        Email
+      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+        Địa chỉ Email
         <input
           type="email"
           autoComplete="email"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
-          className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          placeholder="you@gmail.com"
+          className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400 font-normal normal-case"
         />
       </label>
 
       <button
         type="submit"
         disabled={isLoading}
-        className="h-12 w-full rounded-xl bg-blue-600 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white hover:bg-blue-700 shadow-md shadow-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60 text-sm cursor-pointer"
       >
-        {isLoading ? "Sending..." : "Send Instructions"}
+        {isLoading ? "Đang gửi yêu cầu..." : "Gửi Hướng Dẫn Đặt Lại"}
       </button>
 
       {error && (
-        <p role="alert" className="text-center text-sm text-red-600">
+        <p role="alert" className="text-center text-sm text-rose-600">
           {error}
         </p>
       )}
       {message && (
-        <p role="status" className="text-center text-sm text-green-700">
+        <p role="status" className="text-center text-sm text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-200">
           {message}
         </p>
       )}
@@ -93,9 +93,9 @@ export default function ForgotPasswordForm() {
       <p className="text-center text-sm">
         <Link
           href="/auth/login"
-          className="font-semibold text-blue-600 hover:underline"
+          className="font-bold text-blue-600 hover:underline"
         >
-          Back to Login
+          ← Quay lại trang Đăng nhập
         </Link>
       </p>
     </form>
