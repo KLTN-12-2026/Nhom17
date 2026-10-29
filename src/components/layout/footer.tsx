@@ -63,40 +63,40 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5 text-sm text-slate-600 dark:text-slate-400 font-medium">
               <li>
-                <a
+                <Link
                   href="/#ai-features"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
                 >
                   <span className="text-xs text-blue-500 group-hover:translate-x-0.5 transition-transform">➔</span>
                   Sinh câu hỏi tự động bằng AI
-                </a>
+                </Link>
               </li>
               <li>
-                <a
+                <Link
                   href="/#live-proctoring"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
                 >
                   <span className="text-xs text-blue-500 group-hover:translate-x-0.5 transition-transform">➔</span>
                   Giám sát phòng thi Live
-                </a>
+                </Link>
               </li>
               <li>
-                <a
+                <Link
                   href="/#student-experience"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
                 >
                   <span className="text-xs text-blue-500 group-hover:translate-x-0.5 transition-transform">➔</span>
                   Góc học tập &amp; Luyện thi
-                </a>
+                </Link>
               </li>
               <li>
-                <a
+                <Link
                   href="/#practice-preview"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
                 >
                   <span className="text-xs text-blue-500 group-hover:translate-x-0.5 transition-transform">➔</span>
                   Thư viện đề thi mẫu
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -109,22 +109,22 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5 text-sm text-slate-600 dark:text-slate-400 font-medium">
               <li>
-                <a
+                <Link
                   href="/#live-proctoring"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
                 >
                   <span className="text-xs text-indigo-500 group-hover:translate-x-0.5 transition-transform">➔</span>
                   Quy chế phòng thi trực tuyến
-                </a>
+                </Link>
               </li>
               <li>
-                <a
+                <Link
                   href="/#ai-features"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
                 >
                   <span className="text-xs text-indigo-500 group-hover:translate-x-0.5 transition-transform">➔</span>
                   Hướng dẫn làm bài thi trắc nghiệm
-                </a>
+                </Link>
               </li>
               <li>
                 <Link
@@ -185,19 +185,19 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap items-center gap-5">
-            <a
+            <Link
               href="/#ai-features"
               className="hover:text-blue-600 dark:hover:text-blue-400 transition"
             >
               Giới thiệu
-            </a>
+            </Link>
             <span className="text-slate-300 dark:text-slate-700">•</span>
-            <a
+            <Link
               href="/#live-proctoring"
               className="hover:text-blue-600 dark:hover:text-blue-400 transition"
             >
               Quy chế thi trực tuyến
-            </a>
+            </Link>
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <span className="text-slate-400 dark:text-slate-500">
               Công nghệ Gemini AI
