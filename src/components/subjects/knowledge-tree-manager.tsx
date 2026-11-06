@@ -859,23 +859,52 @@ export default function KnowledgeTreeManager({
         </div>
       </div>
 
-      {/* Main 2-Column Master-Detail Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: SUBJECTS LIST (4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <div>
+      {/* 1. HORIZONTAL SUBJECT SELECTOR / MANAGEMENT BAR */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 Danh Mục Môn Học
               </h2>
-              <p className="text-xs text-slate-500">
-                Chọn môn học để quản lý cây chủ đề
-              </p>
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-bold">
+                {subjects.length} môn
+              </span>
             </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Chọn môn học để xem và điều hành toàn bộ cây cấu trúc kiến thức phân cấp
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {/* Search Subject */}
+            <div className="relative w-48 sm:w-60">
+              <input
+                type="text"
+                value={subjectSearch}
+                onChange={(e) => setSubjectSearch(e.target.value)}
+                placeholder="Tìm tên môn học..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500 transition"
+              />
+              <svg
+                className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+
             <button
               type="button"
               onClick={openCreateSubjectModal}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm shadow-blue-600/20 transition cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm shadow-blue-600/20 transition cursor-pointer shrink-0"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -888,225 +917,213 @@ export default function KnowledgeTreeManager({
               <span>Thêm Môn</span>
             </button>
           </div>
-
-          {/* Search Subject */}
-          <div className="relative">
-            <input
-              type="text"
-              value={subjectSearch}
-              onChange={(e) => setSubjectSearch(e.target.value)}
-              placeholder="Tìm tên môn học..."
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500 transition"
-            />
-            <svg
-              className="w-4 h-4 text-slate-400 absolute left-3 top-2.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-
-          {/* Subjects list */}
-          <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1">
-            {filteredSubjects.length === 0 ? (
-              <div className="text-center py-8 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                <p className="text-xs text-slate-500">
-                  Không tìm thấy môn học nào phù hợp.
-                </p>
-              </div>
-            ) : (
-              filteredSubjects.map((sub) => {
-                const isSelected = sub._id === selectedSubjectId;
-                const canManage = canManageSubject(sub);
-                return (
-                  <div
-                    key={sub._id}
-                    onClick={() => setSelectedSubjectId(sub._id)}
-                    className={`group p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 dark:border-blue-500 shadow-xs"
-                        : "bg-slate-50/60 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${
-                              isSelected ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
-                            }`}
-                          />
-                          <h3
-                            className={`text-sm font-bold truncate ${
-                              isSelected
-                                ? "text-blue-700 dark:text-blue-300"
-                                : "text-slate-800 dark:text-slate-200"
-                            }`}
-                          >
-                            {sub.subject_name}
-                          </h3>
-                        </div>
-                        {sub.description && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 pl-4">
-                            {sub.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {canManage && (
-                        <div
-                          className="flex items-center gap-1 shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => openEditSubjectModal(sub)}
-                            title="Sửa môn học"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition cursor-pointer"
-                          >
-                            <svg
-                              className="w-3.5 h-3.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeletingSubject(sub);
-                              setDeleteSubjectError("");
-                            }}
-                            title="Xóa môn học"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
-                          >
-                            <svg
-                              className="w-3.5 h-3.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-2.5 pl-4 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">
-                          {sub.topicCount || 0} chủ đề
-                        </span>
-                        <span>•</span>
-                        <span>{sub.questionCount || 0} câu hỏi</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 truncate max-w-[110px]">
-                        {getCreatorLabel(sub.created_by)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
         </div>
 
-        {/* RIGHT COLUMN: HIERARCHICAL TOPIC TREE (8 cols) */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs space-y-5">
-          {!selectedSubject ? (
-            <div className="text-center py-16 px-4">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-                Chưa chọn môn học nào
-              </h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                Hãy chọn một môn học ở danh sách bên trái hoặc tạo môn học mới để bắt đầu xây dựng cây chủ đề kiến thức.
+        {/* Subjects Grid Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-80 overflow-y-auto pr-1">
+          {filteredSubjects.length === 0 ? (
+            <div className="col-span-full text-center py-6 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+              <p className="text-xs text-slate-500">
+                Không tìm thấy môn học nào phù hợp với từ khóa &ldquo;{subjectSearch}&rdquo;.
               </p>
             </div>
           ) : (
-            <>
-              {/* Subject Header & Tree Controls */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold">
-                      Môn học
-                    </span>
-                    <h2 className="text-lg font-black text-slate-900 dark:text-white">
-                      {selectedSubject.subject_name}
-                    </h2>
-                    {isRefreshing && (
-                      <span className="text-xs text-blue-600 animate-pulse font-medium">
-                        Đang đồng bộ...
-                      </span>
+            filteredSubjects.map((sub) => {
+              const isSelected = sub._id === selectedSubjectId;
+              const canManage = canManageSubject(sub);
+              return (
+                <div
+                  key={sub._id}
+                  onClick={() => setSelectedSubjectId(sub._id)}
+                  className={`group relative p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                    isSelected
+                      ? "bg-blue-50/90 dark:bg-blue-950/40 border-blue-500 dark:border-blue-500 shadow-xs ring-2 ring-blue-500/20"
+                      : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-800"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                            isSelected
+                              ? "bg-blue-600 ring-4 ring-blue-500/20"
+                              : "bg-slate-300 dark:bg-slate-600"
+                          }`}
+                        />
+                        <h3
+                          className={`text-sm font-bold truncate ${
+                            isSelected
+                              ? "text-blue-700 dark:text-blue-300"
+                              : "text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                          }`}
+                        >
+                          {sub.subject_name}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isSelected && (
+                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-900/50 px-1.5 py-0.5 rounded-md">
+                            Đang chọn
+                          </span>
+                        )}
+
+                        {canManage && (
+                          <div
+                            className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openEditSubjectModal(sub)}
+                              title="Sửa môn học"
+                              className="p-1 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition cursor-pointer"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeletingSubject(sub);
+                                setDeleteSubjectError("");
+                              }}
+                              title="Xóa môn học"
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {sub.description && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 pl-4.5">
+                        {sub.description}
+                      </p>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    {selectedSubject.description ||
-                      "Cây phân cấp chương mục và chủ đề kiến thức phục vụ ngân hàng câu hỏi & AI"}
-                  </p>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <Link
-                    href="/instructor/questions"
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 text-xs font-semibold transition"
-                  >
-                    <span>Ngân Hàng Câu Hỏi</span>
-                    <span>&rarr;</span>
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => openCreateTopicModal(null)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition cursor-pointer"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2.5"
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    <span>Thêm Chương / Chủ Đề Gốc</span>
-                  </button>
+                  <div className="mt-3 pl-4.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200/50 dark:border-slate-800/50 pt-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {sub.topicCount || 0} chủ đề
+                      </span>
+                      <span>•</span>
+                      <span>{sub.questionCount || 0} câu</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 truncate max-w-[80px]">
+                      {getCreatorLabel(sub.created_by)}
+                    </span>
+                  </div>
                 </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* 2. FULL-WIDTH: HIERARCHICAL TOPIC TREE */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs space-y-5">
+        {!selectedSubject ? (
+          <div className="text-center py-16 px-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+              Chưa chọn môn học nào
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              Hãy chọn một môn học ở danh mục phía trên hoặc tạo môn học mới để bắt đầu quản lý cây chủ đề kiến thức.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Subject Header & Tree Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                    Môn học
+                  </span>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                    {selectedSubject.subject_name}
+                  </h2>
+                  {isRefreshing && (
+                    <span className="text-xs text-blue-600 animate-pulse font-medium">
+                      Đang đồng bộ...
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {selectedSubject.description ||
+                    "Cây phân cấp chương mục và chủ đề kiến thức phục vụ ngân hàng câu hỏi & AI"}
+                </p>
               </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <Link
+                  href="/instructor/questions"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 text-xs font-semibold transition"
+                >
+                  <span>Ngân Hàng Câu Hỏi</span>
+                  <span>&rarr;</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => openCreateTopicModal(null)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition cursor-pointer"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.5"
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  <span>Thêm Chương / Chủ Đề Gốc</span>
+                </button>
+              </div>
+            </div>
 
               {/* Filter & Expand/Collapse Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1192,7 +1209,6 @@ export default function KnowledgeTreeManager({
             </>
           )}
         </div>
-      </div>
 
       {/* MODAL: CREATE / EDIT SUBJECT */}
       {subjectModalMode && (
