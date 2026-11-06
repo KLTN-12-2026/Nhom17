@@ -475,18 +475,22 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                         }`}
                     >
                       {/* Name & Avatar */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 text-xs shrink-0">
-                          {u.name?.charAt(0).toUpperCase() || "U"}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5 font-semibold text-sm">
-                            <span>{u.name}</span>
-                            {isCurrentAdmin && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-semibold">Tài khoản hiện tại</span>
-                            )}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3 min-w-[220px]">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-xs">
+                            {u.name?.charAt(0).toUpperCase() || "U"}
                           </div>
-                          <div className="text-[11px] text-slate-400 font-normal tracking-wide" title={`ID: ${u._id}`}>Mã: #{u._id.slice(-6)}</div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 font-semibold text-sm text-slate-900 dark:text-white">
+                              <span>{u.name}</span>
+                              {isCurrentAdmin && (
+                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 whitespace-nowrap shrink-0">
+                                  Bạn
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-normal tracking-wide" title={`ID: ${u._id}`}>Mã: #{u._id.slice(-6)}</div>
+                          </div>
                         </div>
                       </td>
 
@@ -503,9 +507,8 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                       {/* Role */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-semibold whitespace-nowrap ${
-                            roleBadgeStyles[u.role] || roleBadgeStyles.student
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-semibold whitespace-nowrap ${roleBadgeStyles[u.role] || roleBadgeStyles.student
+                            }`}
                         >
                           {roleLabels[u.role] || u.role}
                         </span>
