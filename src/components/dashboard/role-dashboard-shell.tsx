@@ -91,6 +91,15 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
       ),
     },
     {
+      label: "Thông Tin Cá Nhân",
+      href: "/admin/profile",
+      icon: ({ className }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+    },
+    {
       label: "Quản Trị Người Dùng",
       href: "/admin/users",
       icon: ({ className }) => (
@@ -353,7 +362,7 @@ export default function RoleDashboardShell({
 
             {/* Thẻ Tài Khoản Người Dùng (Bấm vào xem Profile) */}
             <Link
-              href={user.role === "admin" ? "/admin/users" : `/${user.role}/profile`}
+              href={`/${user.role}/profile`}
               title="Xem và chỉnh sửa hồ sơ cá nhân"
               className="flex items-center gap-2.5 pl-1.5 pr-2 sm:px-3 py-1 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-850/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 hover:border-slate-300 transition group shadow-2xs"
             >
@@ -365,9 +374,7 @@ export default function RoleDashboardShell({
                 <span className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[130px] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
                   {user.name || "Người dùng"}
                 </span>
-                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[130px]">
-                  {roleConfig.tagLabel}
-                </span>
+                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[130px]">{user.role === "admin" ? "Hồ sơ cá nhân" : roleConfig.tagLabel}</span>
               </div>
             </Link>
 
@@ -436,7 +443,7 @@ export default function RoleDashboardShell({
               {/* Lối tắt Hồ Sơ Cá Nhân (Chuẩn User Story 5) */}
               <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
                 <Link
-                  href={user.role === "admin" ? "/admin/users" : `/${user.role}/profile`}
+                  href={`/${user.role}/profile`}
                   className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 transition group"
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -540,7 +547,7 @@ export default function RoleDashboardShell({
               {/* Thông tin tài khoản ở chân Drawer */}
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
                 <Link
-                  href={user.role === "admin" ? "/admin/users" : `/${user.role}/profile`}
+                  href={`/${user.role}/profile`}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 mb-3 hover:opacity-80 transition"
                 >
