@@ -457,7 +457,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   };
 
                   const roleLabels = {
-                    admin: "admin",
+                    admin: "Admin",
                     instructor: "Giảng viên",
                     student: "Học viên",
                   };
