@@ -158,9 +158,13 @@ ExamSchema.pre("validate", async function () {
     0,
   );
 
-  const questionsToSnapshot = this.isNew
-    ? this.questions
-    : this.questions.filter((question) => !question.question_snapshot);
+  const questionsToSnapshot = this.questions.filter(
+    (question) =>
+      !question.question_snapshot ||
+      !question.question_snapshot.content ||
+      !question.question_snapshot.options ||
+      question.question_snapshot.options.length === 0,
+  );
 
   if (questionsToSnapshot.length === 0) return;
 
