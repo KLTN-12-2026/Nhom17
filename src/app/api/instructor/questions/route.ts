@@ -48,7 +48,34 @@ export async function GET(request: Request) {
   }
 
   if (topicId) {
-    filter.topic_id = topicId;
+    // Bao gồm cả các câu hỏi thuộc nhánh chuyên đề con của topicId (nếu topicId là Chương / chủ đề cha)
+    const rootTopic = await Topic.findById(topicId).select("_id subject_id").lean();
+    if (rootTopic) {
+      const subjectTopics = await Topic.find({ subject_id: rootTopic.subject_id })
+        .select("_id parent_id")
+        .lean();
+      const childrenMap = new Map<string, string[]>();
+      for (const t of subjectTopics) {
+        if (t.parent_id) {
+          const pId = String(t.parent_id);
+          if (!childrenMap.has(pId)) childrenMap.set(pId, []);
+          childrenMap.get(pId)!.push(String(t._id));
+        }
+      }
+      const branchIds: string[] = [String(topicId)];
+      const queue: string[] = [String(topicId)];
+      while (queue.length > 0) {
+        const curr = queue.shift()!;
+        const kids = childrenMap.get(curr) || [];
+        for (const k of kids) {
+          branchIds.push(k);
+          queue.push(k);
+        }
+      }
+      filter.topic_id = { $in: branchIds };
+    } else {
+      filter.topic_id = topicId;
+    }
   } else if (subjectId) {
     // Nếu lọc theo môn học, tìm tất cả topic thuộc môn học đó
     const topics = await Topic.find({ subject_id: subjectId }).select("_id").lean();

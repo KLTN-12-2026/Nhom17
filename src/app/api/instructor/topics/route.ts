@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/instructor/topics
- * Tạo mới một gói chuyên đề trong môn học
+ * Tạo mới một chuyên đề / chủ đề kiến thức trong môn học (hỗ trợ cây phân cấp đệ quy parent_id)
  */
 export async function POST(request: Request) {
   const { user, errorResponse } = await checkApiAuthorization(["instructor", "admin"]);
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { subject_id, topic_name, description, level = 1 } = body;
+    const { subject_id, parent_id = null, topic_name, description, level } = body;
 
     if (!subject_id || typeof subject_id !== "string") {
       return NextResponse.json(
@@ -40,23 +40,49 @@ export async function POST(request: Request) {
       );
     }
 
-    // Kiểm tra trùng tên chuyên đề trong cùng một môn
+    let resolvedParentId: string | null = null;
+    let computedLevel = Number(level) || 1;
+
+    if (parent_id && typeof parent_id === "string" && parent_id.trim()) {
+      const parentTopic = await Topic.findById(parent_id.trim());
+      if (!parentTopic) {
+        return NextResponse.json(
+          { success: false, message: "Không tìm thấy chủ đề cha đã chọn" },
+          { status: 404 }
+        );
+      }
+      if (String(parentTopic.subject_id) !== String(subject_id)) {
+        return NextResponse.json(
+          { success: false, message: "Chủ đề cha không thuộc cùng môn học đã chọn" },
+          { status: 400 }
+        );
+      }
+      resolvedParentId = String(parentTopic._id);
+      computedLevel = (parentTopic.level || 1) + 1;
+    }
+
+    const trimmedName = topic_name.trim();
+    const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Kiểm tra trùng tên chuyên đề cùng cấp trong cùng một môn
     const existing = await Topic.findOne({
       subject_id,
-      topic_name: { $regex: new RegExp(`^${topic_name.trim()}$`, "i") },
+      parent_id: resolvedParentId,
+      topic_name: { $regex: new RegExp(`^${escapedName}$`, "i") },
     });
     if (existing) {
       return NextResponse.json(
-        { success: false, message: "Chuyên đề này đã tồn tại trong môn học" },
+        { success: false, message: "Chuyên đề này đã tồn tại ở cùng cấp trong môn học" },
         { status: 400 }
       );
     }
 
     const newTopic = await Topic.create({
       subject_id,
-      topic_name: topic_name.trim(),
+      parent_id: resolvedParentId,
+      topic_name: trimmedName,
       description: description?.trim() || "",
-      level: Number(level) || 1,
+      level: computedLevel,
       created_by: user?.id,
     });
 

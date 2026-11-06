@@ -60,6 +60,7 @@ interface TopicItem {
   _id: string;
   topic_name: string;
   subject_id: string;
+  parent_id?: string | null;
   description?: string;
   created_by?: string | { _id: string; name?: string; email?: string } | null;
   level: number;
@@ -69,6 +70,19 @@ interface TopicItem {
     easy: number;
     medium: number;
     hard: number;
+    aiCount?: number;
+  };
+}
+
+interface TopicTreeNode extends TopicItem {
+  children: TopicTreeNode[];
+  subtreeQuestionCount: number;
+  subtreeStats: {
+    total: number;
+    easy: number;
+    medium: number;
+    hard: number;
+    aiCount: number;
   };
 }
 
@@ -133,20 +147,6 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
     { option_label: "C", content: "", is_correct: false },
     { option_label: "D", content: "", is_correct: false },
   ]);
-
-  // Add Subject modal state
-  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
-  const [newSubjectName, setNewSubjectName] = useState("");
-  const [newSubjectDesc, setNewSubjectDesc] = useState("");
-  const [isSubjectSubmitting, setIsSubjectSubmitting] = useState(false);
-  const [subjectFormError, setSubjectFormError] = useState("");
-
-  // Add Topic modal state
-  const [isAddTopicModalOpen, setIsAddTopicModalOpen] = useState(false);
-  const [newTopicName, setNewTopicName] = useState("");
-  const [newTopicDesc, setNewTopicDesc] = useState("");
-  const [isTopicSubmitting, setIsTopicSubmitting] = useState(false);
-  const [topicFormError, setTopicFormError] = useState("");
 
   // 1. Reload metadata for user actions
   async function reloadMetadata() {
@@ -255,6 +255,111 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
     if (!selectedSubject) return [];
     return topics.filter((t) => String(t.subject_id) === String(selectedSubject._id));
   }, [topics, selectedSubject]);
+
+  // Xây dựng cây chuyên đề phân cấp (Chương -> Bài -> Dạng) cho môn đang chọn
+  const subjectTopicTree = useMemo(() => {
+    const nodeMap = new Map<string, TopicTreeNode>();
+    for (const t of currentSubjectTopics) {
+      const base = t.stats || {
+        total: t.questionCount || 0,
+        easy: 0,
+        medium: 0,
+        hard: 0,
+        aiCount: 0,
+      };
+      nodeMap.set(String(t._id), {
+        ...t,
+        children: [],
+        subtreeQuestionCount: base.total,
+        subtreeStats: {
+          total: base.total,
+          easy: base.easy,
+          medium: base.medium,
+          hard: base.hard,
+          aiCount: base.aiCount || 0,
+        },
+      });
+    }
+
+    const roots: TopicTreeNode[] = [];
+    for (const node of nodeMap.values()) {
+      const pId = node.parent_id ? String(node.parent_id) : null;
+      if (pId && nodeMap.has(pId) && pId !== String(node._id)) {
+        nodeMap.get(pId)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    function aggregateNode(node: TopicTreeNode) {
+      const agg = {
+        total: node.stats?.total ?? node.questionCount ?? 0,
+        easy: node.stats?.easy ?? 0,
+        medium: node.stats?.medium ?? 0,
+        hard: node.stats?.hard ?? 0,
+        aiCount: node.stats?.aiCount ?? 0,
+      };
+      node.children.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
+      for (const child of node.children) {
+        const cStats = aggregateNode(child);
+        agg.total += cStats.total;
+        agg.easy += cStats.easy;
+        agg.medium += cStats.medium;
+        agg.hard += cStats.hard;
+        agg.aiCount += cStats.aiCount;
+      }
+      node.subtreeQuestionCount = agg.total;
+      node.subtreeStats = agg;
+      return agg;
+    }
+
+    roots.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
+    for (const r of roots) {
+      aggregateNode(r);
+    }
+    return roots;
+  }, [currentSubjectTopics]);
+
+  // Nhóm toàn bộ chuyên đề theo Môn học & Cây phân cấp cho modal Sửa Câu Hỏi
+  const groupedAllTopicOptions = useMemo(() => {
+    return subjects.map((sub) => {
+      const subTopics = topics.filter((t) => String(t.subject_id) === String(sub._id));
+      const childrenMap = new Map<string, TopicItem[]>();
+      const roots: TopicItem[] = [];
+      const idSet = new Set(subTopics.map((t) => String(t._id)));
+
+      for (const t of subTopics) {
+        const pId = t.parent_id ? String(t.parent_id) : null;
+        if (pId && idSet.has(pId) && pId !== String(t._id)) {
+          if (!childrenMap.has(pId)) childrenMap.set(pId, []);
+          childrenMap.get(pId)!.push(t);
+        } else {
+          roots.push(t);
+        }
+      }
+
+      const items: { _id: string; label: string }[] = [];
+      function traverse(list: TopicItem[], depth: number) {
+        list.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
+        for (const item of list) {
+          const indent =
+            depth === 0 ? "📁 " : `${"\u00A0\u00A0\u00A0\u00A0".repeat(depth)}↳ `;
+          items.push({
+            _id: item._id,
+            label: `${indent}${item.topic_name}`,
+          });
+          const kids = childrenMap.get(String(item._id)) || [];
+          if (kids.length > 0) traverse(kids, depth + 1);
+        }
+      }
+      traverse(roots, 0);
+      return {
+        subject_id: sub._id,
+        subject_name: sub.subject_name,
+        items,
+      };
+    });
+  }, [subjects, topics]);
 
   // Overall statistics
   const overallStats = useMemo(() => {
@@ -486,76 +591,6 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
   }
 
 
-  // Create Subject handler
-  async function handleCreateSubject(e: React.FormEvent) {
-    e.preventDefault();
-    setSubjectFormError("");
-    if (!newSubjectName.trim()) {
-      setSubjectFormError("Vui lòng nhập tên môn học");
-      return;
-    }
-    setIsSubjectSubmitting(true);
-    try {
-      const res = await fetch("/api/instructor/subjects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject_name: newSubjectName.trim(),
-          description: newSubjectDesc.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsAddSubjectModalOpen(false);
-        setNewSubjectName("");
-        setNewSubjectDesc("");
-        reloadMetadata();
-      } else {
-        setSubjectFormError(data.message || "Lỗi khi tạo môn học");
-      }
-    } catch {
-      setSubjectFormError("Lỗi kết nối máy chủ");
-    } finally {
-      setIsSubjectSubmitting(false);
-    }
-  }
-
-  // Create Topic handler
-  async function handleCreateTopic(e: React.FormEvent) {
-    e.preventDefault();
-    setTopicFormError("");
-    if (!selectedSubject) return;
-    if (!newTopicName.trim()) {
-      setTopicFormError("Vui lòng nhập tên chuyên đề");
-      return;
-    }
-    setIsTopicSubmitting(true);
-    try {
-      const res = await fetch("/api/instructor/topics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject_id: selectedSubject._id,
-          topic_name: newTopicName.trim(),
-          description: newTopicDesc.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsAddTopicModalOpen(false);
-        setNewTopicName("");
-        setNewTopicDesc("");
-        reloadMetadata();
-      } else {
-        setTopicFormError(data.message || "Lỗi khi tạo chuyên đề");
-      }
-    } catch {
-      setTopicFormError("Lỗi kết nối máy chủ");
-    } finally {
-      setIsTopicSubmitting(false);
-    }
-  }
-
   // Open Unified Add / Import / AI Modal
   function handleOpenAddModal(targetTopicId?: string, defaultTab: "manual" | "file" | "ai" = "manual") {
     const defaultTopic = targetTopicId || selectedTopic?._id || topics[0]?._id || "";
@@ -675,18 +710,6 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   </h3>
                   <span className="text-[11px] text-slate-400 font-medium">Bấm vào môn để xem các chuyên đề bên trong</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSubjectFormError("");
-                    setNewSubjectName("");
-                    setNewSubjectDesc("");
-                    setIsAddSubjectModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition cursor-pointer"
-                >
-                  <span>+</span> Thêm Môn Học Mới
-                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -814,144 +837,141 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                 </p>
               </div>
             </div>
-
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  setTopicFormError("");
-                  setNewTopicName("");
-                  setNewTopicDesc("");
-                  setIsAddTopicModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs hover:shadow transition cursor-pointer whitespace-nowrap"
-              >
-                <span className="text-sm font-bold">+</span>
-                <span>Thêm Chuyên Đề Mới</span>
-              </button>
-            </div>
           </div>
 
-          {/* Grid of Topics inside Subject */}
-          {currentSubjectTopics.length === 0 ? (
+          {/* Hierarchical Tree of Topics inside Subject */}
+          {subjectTopicTree.length === 0 ? (
             <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-6">
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Chưa có gói chuyên đề nào trong môn này.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentSubjectTopics.map((top, tIdx) => (
-                <div
-                  key={top._id}
-                  onClick={() => handleSelectTopic(top)}
-                  className="group bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-purple-500/80 p-5 rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Card Top Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/50">
-                          Chuyên đề {String(tIdx + 1).padStart(2, "0")}
-                        </span>
-                        {top.created_by && (
-                          <span
-                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${
-                              canManageTopic(top)
-                                ? "bg-purple-50/70 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                            }`}
-                          >
-                            {canManageTopic(top) ? "Của tôi" : "Đồng nghiệp"}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            (top.questionCount || 0) > 0
-                              ? "bg-purple-100/70 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300"
-                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                          }`}
+            <div className="space-y-4">
+              {subjectTopicTree.map((rootNode, rIdx) => {
+                function renderTopicBranch(node: TopicTreeNode, depth: number, idxLabel: string) {
+                  const hasKids = node.children.length > 0;
+                  const directCount = node.stats?.total ?? node.questionCount ?? 0;
+
+                  return (
+                    <div key={node._id} className="space-y-2.5">
+                      <div
+                        onClick={() => handleSelectTopic(node)}
+                        className={`group border cursor-pointer transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          depth === 0
+                            ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-500 p-5 rounded-2xl shadow-2xs hover:shadow-md"
+                            : "bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/70 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-purple-500 p-3.5 rounded-xl"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span
+                              className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                                depth === 0
+                                  ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60"
+                                  : depth === 1
+                                  ? "bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/50"
+                                  : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50"
+                              }`}
+                            >
+                              {depth === 0 ? `📁 Chương / Cấp 1 (${idxLabel})` : `↳ Cấp ${node.level}`}
+                            </span>
+
+                            <h4
+                              className={`font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors ${
+                                depth === 0 ? "text-sm sm:text-base" : "text-xs sm:text-sm"
+                              }`}
+                            >
+                              {node.topic_name}
+                            </h4>
+
+                            {hasKids && (
+                              <span className="text-[11px] text-slate-400 font-medium">
+                                ({node.children.length} mục con)
+                              </span>
+                            )}
+                          </div>
+
+                          {node.description && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-2">
+                              {node.description}
+                            </p>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                              {node.subtreeQuestionCount} câu hỏi
+                              {hasKids && directCount !== node.subtreeQuestionCount
+                                ? ` (trực tiếp: ${directCount})`
+                                : ""}
+                            </span>
+                            <span className="text-emerald-600 font-medium">
+                              {node.subtreeStats.easy} Dễ
+                            </span>
+                            <span>•</span>
+                            <span className="text-amber-600 font-medium">
+                              {node.subtreeStats.medium} TB
+                            </span>
+                            <span>•</span>
+                            <span className="text-rose-600 font-medium">
+                              {node.subtreeStats.hard} Khó
+                            </span>
+                          </div>
+                        </div>
+
+                        <div
+                          className="flex flex-wrap items-center gap-2 self-end sm:self-center shrink-0"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {top.questionCount || 0} câu hỏi
-                        </span>
-                        {canManageTopic(top) && (
                           <button
                             type="button"
-                            title="Xóa chuyên đề này"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingTopic(top);
-                              setDeleteTopicError("");
-                            }}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer text-xs"
+                            onClick={() => handleOpenAddModal(node._id, "ai")}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/60 transition cursor-pointer flex items-center gap-1"
+                            title={`AI tự động sinh câu hỏi theo bài "${node.topic_name}"`}
                           >
-                            🗑️
+                            <span>✨</span> AI Sinh Đề
                           </button>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Topic Title */}
-                    <div className="my-2.5">
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors line-clamp-2 min-h-[40px] leading-snug">
-                        {top.topic_name}
-                      </h4>
-                      {top.description && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
-                          {top.description}
-                        </p>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectTopic(node)}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition cursor-pointer"
+                          >
+                            Mở gói →
+                          </button>
+
+                          {canManageTopic(node) && (
+                            <button
+                              type="button"
+                              title="Xóa chuyên đề này"
+                              onClick={() => {
+                                setDeletingTopic({
+                                  ...node,
+                                  questionCount: node.subtreeQuestionCount,
+                                });
+                                setDeleteTopicError("");
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {hasKids && (
+                        <div className="ml-5 sm:ml-8 pl-4 border-l-2 border-indigo-200/80 dark:border-slate-700 space-y-2.5">
+                          {node.children.map((child, cIdx) =>
+                            renderTopicBranch(child, depth + 1, `${idxLabel}.${cIdx + 1}`)
+                          )}
+                        </div>
                       )}
                     </div>
-                  </div>
+                  );
+                }
 
-                  {/* Difficulty Distribution Box & Action Footer */}
-                  <div className="mt-3 space-y-3">
-                    {/* Clean Difficulty Chips Box */}
-                    <div className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                      <span className="text-[11px] text-slate-400 font-medium">Phân bố:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          {top.stats?.easy || 0} Dễ
-                        </span>
-                        <span className="text-slate-300 dark:text-slate-700">•</span>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          {top.stats?.medium || 0} TB
-                        </span>
-                        <span className="text-slate-300 dark:text-slate-700">•</span>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                          {top.stats?.hard || 0} Khó
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action Footer Row */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenAddModal(top._id, "ai");
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/60 dark:border-purple-900/50 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                        title={`Trợ lý AI tự sinh câu hỏi theo bài "${top.topic_name}"`}
-                      >
-                        <span>✨</span>
-                        <span>AI Sinh Đề</span>
-                      </button>
-
-                      <span className="text-xs font-bold text-purple-600 dark:text-purple-400 group-hover:translate-x-1 transition-transform flex items-center gap-1 whitespace-nowrap">
-                        Mở gói
-                        <span className="text-sm">→</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                return renderTopicBranch(rootNode, 0, `${rIdx + 1}`);
+              })}
             </div>
           )}
         </div>
@@ -1286,11 +1306,17 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                     onChange={(e) => setEditTopicId(e.target.value)}
                     className="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
                   >
-                    {topics.map((t) => (
-                      <option key={t._id} value={t._id}>
-                        {t.topic_name}
-                      </option>
-                    ))}
+                    {groupedAllTopicOptions.map((group) =>
+                      group.items.length > 0 ? (
+                        <optgroup key={group.subject_id} label={`📚 Môn: ${group.subject_name}`}>
+                          {group.items.map((item) => (
+                            <option key={item._id} value={item._id}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null
+                    )}
                   </select>
                 </div>
 
@@ -1510,163 +1536,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 5: THÊM MÔN HỌC MỚI */}
-      {/* ========================================================================= */}
-      {isAddSubjectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Tạo Gói Môn Học Mới
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Thêm môn học mới vào kho để bắt đầu quản lý chuyên đề và câu hỏi
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAddSubjectModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubject} className="p-5 space-y-4">
-              {subjectFormError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs">
-                  {subjectFormError}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tên Môn Học <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newSubjectName}
-                  onChange={(e) => setNewSubjectName(e.target.value)}
-                  placeholder="Ví dụ: Hóa Học THPT, Tiếng Anh THPT, Sinh Học THPT..."
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Mô Tả Tóm Tắt
-                </label>
-                <textarea
-                  rows={2}
-                  value={newSubjectDesc}
-                  onChange={(e) => setNewSubjectDesc(e.target.value)}
-                  placeholder="Ví dụ: Chương trình ôn luyện thi tốt nghiệp THPT Quốc Gia (Lớp 10, 11, 12)..."
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddSubjectModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubjectSubmitting}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl cursor-pointer"
-                >
-                  {isSubjectSubmitting ? "Đang tạo..." : "Tạo Môn Học"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL 6: THÊM CHUYÊN ĐỀ MỚI */}
-      {/* ========================================================================= */}
-      {isAddTopicModalOpen && selectedSubject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Thêm Chuyên Đề Mới
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Thêm gói chuyên đề vào môn: <span className="font-semibold text-blue-600">{selectedSubject.subject_name}</span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAddTopicModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateTopic} className="p-5 space-y-4">
-              {topicFormError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs">
-                  {topicFormError}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tên Chuyên Đề / Gói Bài Học <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newTopicName}
-                  onChange={(e) => setNewTopicName(e.target.value)}
-                  placeholder="Ví dụ: Hình Học Không Gian Oxyz, Este - Lipit, Dao Động Cơ..."
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Mô Tả Chuyên Đề
-                </label>
-                <textarea
-                  rows={2}
-                  value={newTopicDesc}
-                  onChange={(e) => setNewTopicDesc(e.target.value)}
-                  placeholder="Ví dụ: Trọng tâm lý thuyết và các dạng bài tập toán thực tế..."
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddTopicModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={isTopicSubmitting}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl cursor-pointer"
-                >
-                  {isTopicSubmitting ? "Đang tạo..." : "Tạo Chuyên Đề"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL 7: XÁC NHẬN XÓA MÔN HỌC */}
+      {/* MODAL: XÁC NHẬN XÓA MÔN HỌC */}
       {/* ========================================================================= */}
       {deletingSubject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">

@@ -13,8 +13,14 @@ export async function GET() {
 
   await connectDB();
 
-  const subjects = await Subject.find({}).sort({ subject_name: 1 }).lean();
-  const topics = await Topic.find({}).sort({ level: 1, topic_name: 1 }).lean();
+  const subjects = await Subject.find({})
+    .populate("created_by", "name email")
+    .sort({ subject_name: 1 })
+    .lean();
+  const topics = await Topic.find({})
+    .populate("created_by", "name email")
+    .sort({ level: 1, topic_name: 1 })
+    .lean();
 
   // Đếm số lượng câu hỏi theo từng topic_id
   const questionCounts = await Question.aggregate([
@@ -25,11 +31,15 @@ export async function GET() {
         easy: { $sum: { $cond: [{ $eq: ["$difficulty_level", "easy"] }, 1, 0] } },
         medium: { $sum: { $cond: [{ $eq: ["$difficulty_level", "medium"] }, 1, 0] } },
         hard: { $sum: { $cond: [{ $eq: ["$difficulty_level", "hard"] }, 1, 0] } },
+        aiCount: { $sum: { $cond: [{ $eq: ["$is_ai_generated", true] }, 1, 0] } },
       },
     },
   ]);
 
-  const countMap = new Map<string, { total: number; easy: number; medium: number; hard: number }>();
+  const countMap = new Map<
+    string,
+    { total: number; easy: number; medium: number; hard: number; aiCount: number }
+  >();
   questionCounts.forEach((c) => {
     if (c._id) {
       countMap.set(String(c._id), {
@@ -37,15 +47,23 @@ export async function GET() {
         easy: c.easy || 0,
         medium: c.medium || 0,
         hard: c.hard || 0,
+        aiCount: c.aiCount || 0,
       });
     }
   });
 
   // Gắn counts vào topics
   const topicsWithCounts = topics.map((t) => {
-    const c = countMap.get(String(t._id)) || { total: 0, easy: 0, medium: 0, hard: 0 };
+    const c = countMap.get(String(t._id)) || {
+      total: 0,
+      easy: 0,
+      medium: 0,
+      hard: 0,
+      aiCount: 0,
+    };
     return {
       ...t,
+      parent_id: t.parent_id ? String(t.parent_id) : null,
       questionCount: c.total,
       stats: c,
     };
@@ -55,10 +73,12 @@ export async function GET() {
   const subjectsWithCounts = subjects.map((s) => {
     const subTopics = topicsWithCounts.filter((t) => String(t.subject_id) === String(s._id));
     const totalQ = subTopics.reduce((sum, t) => sum + (t.questionCount || 0), 0);
+    const totalAiQ = subTopics.reduce((sum, t) => sum + (t.stats?.aiCount || 0), 0);
     return {
       ...s,
       topicCount: subTopics.length,
       questionCount: totalQ,
+      aiQuestionCount: totalAiQ,
     };
   });
 
