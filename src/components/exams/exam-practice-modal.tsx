@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ExamDataToEdit, OptionItem } from "./exam-creator-modal";
 
 interface ExamPracticeModalProps {
@@ -19,64 +19,62 @@ interface PracticeQuestion {
   options: OptionItem[];
 }
 
-export default function ExamPracticeModal({
-  isOpen,
-  onClose,
-  exam,
-}: ExamPracticeModalProps) {
+function buildPracticeQuestions(exam: ExamDataToEdit): PracticeQuestion[] {
+  const rawQuestions = exam.questions || [];
+  let processed: PracticeQuestion[] = rawQuestions.map((q, idx) => {
+    const snap = q.question_snapshot;
+    let opts = snap?.options ? [...snap.options] : [];
+
+    // Xáo trộn đáp án nếu đề thi bật shuffle_options
+    if (exam.shuffle_options) {
+      opts = [...opts].sort(() => Math.random() - 0.5);
+    }
+
+    return {
+      question_id: typeof q.question_id === "object" ? String(q.question_id?._id) : String(q.question_id),
+      original_order: q.question_order || idx + 1,
+      question_score: q.question_score || 1,
+      content: snap?.content || "",
+      difficulty_level: snap?.difficulty_level || "medium",
+      explanation: snap?.explanation,
+      options: opts,
+    };
+  });
+
+  // Xáo trộn câu hỏi nếu đề thi bật shuffle_questions
+  if (exam.shuffle_questions) {
+    processed = [...processed].sort(() => Math.random() - 0.5);
+  }
+
+  return processed;
+}
+
+interface PracticeTestContentProps {
+  exam: ExamDataToEdit;
+  onClose: () => void;
+}
+
+function PracticeTestContent({ exam, onClose }: PracticeTestContentProps) {
   // Trạng thái bài thi thử: "taking" (đang làm) | "submitted" (đã nộp, xem kết quả)
   const [examStatus, setExamStatus] = useState<"taking" | "submitted">("taking");
 
   // Danh sách câu hỏi sau khi đã xử lý xáo trộn (nếu có bật)
-  const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
+  const [questions] = useState<PracticeQuestion[]>(() => buildPracticeQuestions(exam));
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Câu trả lời của giáo viên: Map question_id -> option_id hoặc option_label
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   // Đồng hồ đếm ngược (giây)
-  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [secondsRemaining, setSecondsRemaining] = useState(() => (exam.duration_minutes || 45) * 60);
 
-  // Khởi tạo bài thi khi mở modal
-  useEffect(() => {
-    if (!exam || !isOpen) return;
-
-    const rawQuestions = exam.questions || [];
-    let processed: PracticeQuestion[] = rawQuestions.map((q, idx) => {
-      const snap = q.question_snapshot;
-      let opts = snap?.options ? [...snap.options] : [];
-
-      // Xáo trộn đáp án nếu đề thi bật shuffle_options
-      if (exam.shuffle_options) {
-        opts = [...opts].sort(() => Math.random() - 0.5);
-      }
-
-      return {
-        question_id: typeof q.question_id === "object" ? String(q.question_id?._id) : String(q.question_id),
-        original_order: q.question_order || idx + 1,
-        question_score: q.question_score || 1,
-        content: snap?.content || "",
-        difficulty_level: snap?.difficulty_level || "medium",
-        explanation: snap?.explanation,
-        options: opts,
-      };
-    });
-
-    // Xáo trộn câu hỏi nếu đề thi bật shuffle_questions
-    if (exam.shuffle_questions) {
-      processed = [...processed].sort(() => Math.random() - 0.5);
-    }
-
-    setQuestions(processed);
-    setCurrentIndex(0);
-    setAnswers({});
-    setSecondsRemaining((exam.duration_minutes || 45) * 60);
-    setExamStatus("taking");
-  }, [exam, isOpen]);
+  const handleSubmitTest = useCallback(() => {
+    setExamStatus("submitted");
+  }, []);
 
   // Đồng hồ đếm ngược chạy từng giây
   useEffect(() => {
-    if (examStatus !== "taking" || secondsRemaining <= 0) return;
+    if (examStatus !== "taking") return;
 
     const timer = setInterval(() => {
       setSecondsRemaining((prev) => {
@@ -90,7 +88,7 @@ export default function ExamPracticeModal({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [examStatus, secondsRemaining]);
+  }, [examStatus, handleSubmitTest]);
 
   // Định dạng thời gian MM:SS
   const formattedTime = useMemo(() => {
@@ -118,12 +116,6 @@ export default function ExamPracticeModal({
     });
   }
 
-  function handleSubmitTest() {
-    if (examStatus === "taking") {
-      setExamStatus("submitted");
-    }
-  }
-
   // Chấm điểm kết quả thi thử
   const testResult = useMemo(() => {
     let correctCount = 0;
@@ -145,7 +137,7 @@ export default function ExamPracticeModal({
       }
     });
 
-    const isPassed = earnedScore >= (exam?.pass_score || 5.0);
+    const isPassed = earnedScore >= (exam.pass_score || 5.0);
 
     return {
       correctCount,
@@ -154,9 +146,7 @@ export default function ExamPracticeModal({
       totalScore: parseFloat(totalScore.toFixed(2)),
       isPassed,
     };
-  }, [questions, answers, exam?.pass_score]);
-
-  if (!isOpen || !exam) return null;
+  }, [questions, answers, exam.pass_score]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-xs overflow-y-auto font-sans">
@@ -519,3 +509,14 @@ export default function ExamPracticeModal({
     </div>
   );
 }
+
+export default function ExamPracticeModal({
+  isOpen,
+  onClose,
+  exam,
+}: ExamPracticeModalProps) {
+  if (!isOpen || !exam) return null;
+
+  return <PracticeTestContent key={exam._id} exam={exam} onClose={onClose} />;
+}
+

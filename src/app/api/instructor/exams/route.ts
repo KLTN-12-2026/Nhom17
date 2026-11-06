@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db";
-import { Exam, Subject, Question } from "@/models";
+import { Exam } from "@/models";
 import { checkApiAuthorization } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
 import { z } from "zod";

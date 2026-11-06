@@ -87,14 +87,34 @@ interface ExamCreatorModalProps {
   initialExam?: ExamDataToEdit | null;
 }
 
-export default function ExamCreatorModal({
-  isOpen,
+function formatInitialExamQuestions(initialExam?: ExamDataToEdit | null): ExamQuestionEntry[] {
+  if (initialExam && initialExam.questions && initialExam.questions.length > 0) {
+    return initialExam.questions.map((q, idx) => {
+      const qId = typeof q.question_id === "object" ? q.question_id?._id : q.question_id;
+      const snapshot = q.question_snapshot || {
+        content: typeof q.question_id === "object" ? q.question_id?.content || "" : "",
+        difficulty_level: "medium" as const,
+        explanation: "",
+        options: [],
+      };
+      return {
+        question_id: String(qId),
+        question_order: q.question_order || idx + 1,
+        question_score: q.question_score || 1,
+        question_snapshot: snapshot,
+      };
+    });
+  }
+  return [];
+}
+
+function ExamCreatorContent({
   onClose,
   onSuccess,
   subjects,
   topics,
   initialExam,
-}: ExamCreatorModalProps) {
+}: Omit<ExamCreatorModalProps, "isOpen">) {
   // ==========================================
   // 1. CẤU HÌNH ĐỀ THI
   // ==========================================
@@ -122,7 +142,9 @@ export default function ExamCreatorModal({
   // ==========================================
   // 2. DANH SÁCH CÂU HỎI TRONG ĐỀ THI
   // ==========================================
-  const [examQuestions, setExamQuestions] = useState<ExamQuestionEntry[]>([]);
+  const [examQuestions, setExamQuestions] = useState<ExamQuestionEntry[]>(() =>
+    formatInitialExamQuestions(initialExam),
+  );
 
   // ==========================================
   // 3. TAB ĐIỀU HƯỚNG
@@ -185,29 +207,9 @@ export default function ExamCreatorModal({
     return topics.filter((t) => String(t.subject_id) === String(selectedSubjectId));
   }, [topics, selectedSubjectId]);
 
-  // Khởi tạo câu hỏi nếu là chế độ chỉnh sửa đề thi
-  useEffect(() => {
-    if (initialExam && initialExam.questions && initialExam.questions.length > 0) {
-      const formatted = initialExam.questions.map((q, idx) => {
-        const qId = typeof q.question_id === "object" ? q.question_id?._id : q.question_id;
-        const snapshot = q.question_snapshot || {
-          content: typeof q.question_id === "object" ? q.question_id?.content || "" : "",
-          difficulty_level: "medium" as const,
-          explanation: "",
-          options: [],
-        };
-        return {
-          question_id: String(qId),
-          question_order: q.question_order || idx + 1,
-          question_score: q.question_score || 1,
-          question_snapshot: snapshot,
-        };
-      });
-      setExamQuestions(formatted);
-    }
-  }, [initialExam]);
+  const selectedNewQTopicId = newQTopicId || (availableTopics.length > 0 ? availableTopics[0]._id : "");
 
-  // Tải danh sách câu hỏi ngân hàng khi môn học thay đổi hoặc mở tab chọn thủ công
+  // Tải danh sách câu hỏi ngân hàng khi môn học thay đổi
   useEffect(() => {
     async function fetchBankQuestions() {
       if (!selectedSubjectId) return;
@@ -228,17 +230,10 @@ export default function ExamCreatorModal({
       }
     }
 
-    if (isOpen && selectedSubjectId) {
+    if (selectedSubjectId) {
       fetchBankQuestions();
     }
-  }, [isOpen, selectedSubjectId]);
-
-  // Cập nhật topic mặc định cho form tạo câu hỏi mới
-  useEffect(() => {
-    if (availableTopics.length > 0 && !newQTopicId) {
-      setNewQTopicId(availableTopics[0]._id);
-    }
-  }, [availableTopics, newQTopicId]);
+  }, [selectedSubjectId]);
 
   // Danh sách ID các câu hỏi đã có trong đề thi
   const selectedQuestionIds = useMemo(() => {
@@ -419,7 +414,8 @@ export default function ExamCreatorModal({
   // ============================================================
   async function handleCreateDirectQuestion(e: React.FormEvent) {
     e.preventDefault();
-    if (!newQTopicId) {
+    const targetTopicId = newQTopicId || (availableTopics.length > 0 ? availableTopics[0]._id : "");
+    if (!targetTopicId) {
       alert("Vui lòng chọn chuyên đề cho câu hỏi mới");
       return;
     }
@@ -440,7 +436,7 @@ export default function ExamCreatorModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic_id: newQTopicId,
+          topic_id: targetTopicId,
           content: newQContent.trim(),
           difficulty_level: newQDifficulty,
           explanation: newQExplanation.trim(),
@@ -451,7 +447,7 @@ export default function ExamCreatorModal({
       const data = await res.json();
       if (data.success && data.question) {
         const savedQ = data.question;
-        const topicObj = availableTopics.find((t) => t._id === newQTopicId);
+        const topicObj = availableTopics.find((t) => t._id === targetTopicId);
 
         // Thêm ngay vào danh sách câu hỏi của đề thi
         const newEntry: ExamQuestionEntry = {
@@ -676,8 +672,6 @@ export default function ExamCreatorModal({
       setIsSubmitting(false);
     }
   }
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-xs overflow-y-auto font-sans">
@@ -1292,7 +1286,7 @@ export default function ExamCreatorModal({
                         Chuyên Đề
                       </label>
                       <select
-                        value={newQTopicId}
+                        value={selectedNewQTopicId}
                         onChange={(e) => setNewQTopicId(e.target.value)}
                         className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
                       >
@@ -1734,3 +1728,10 @@ export default function ExamCreatorModal({
     </div>
   );
 }
+
+export default function ExamCreatorModal(props: ExamCreatorModalProps) {
+  if (!props.isOpen) return null;
+
+  return <ExamCreatorContent key={props.initialExam?._id || "new-exam"} {...props} />;
+}
+
