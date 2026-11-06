@@ -59,6 +59,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
 
   // State Modal Xác nhận Xóa
   const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Hiển thị Toast tự tắt sau 3.5 giây
@@ -445,7 +446,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => {
+                filteredUsers.map((u, index) => {
                   const isCurrentAdmin = u._id === currentAdminId;
 
                   const roleBadgeStyles = {
@@ -532,67 +533,138 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                       {/* Created date */}
                       <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 text-xs font-medium whitespace-nowrap">{createdDate}</td>
 
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Nút Sửa / Phân quyền */}
+                      {/* Actions: Menu 3 chấm Dropdown (Phương án 3) */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="relative inline-block text-left">
                           <button
-                            onClick={() => openEditModal(u)}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
-                            title="Chỉnh sửa thông tin & Phân quyền"
+                            type="button"
+                            onClick={() => setOpenMenuId(openMenuId === u._id ? null : u._id)}
+                            className={`p-2 rounded-xl border transition-all duration-150 cursor-pointer ${
+                              openMenuId === u._id
+                                ? "bg-indigo-50 border-indigo-300 text-indigo-600 dark:bg-indigo-950/60 dark:border-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/20"
+                                : "border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                            }`}
+                            title="Thao tác"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                             </svg>
                           </button>
 
-                          {/* Nút Khóa / Mở Khóa */}
-                          <button
-                            onClick={() => handleToggleStatus(u)}
-                            disabled={isCurrentAdmin && u.status === "active"}
-                            className={`p-1.5 rounded-lg border transition ${u.status === "active"
-                              ? isCurrentAdmin
-                                ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
-                                : "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 hover:bg-amber-100"
-                              : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 hover:bg-emerald-100"
-                              }`}
-                            title={
-                              isCurrentAdmin && u.status === "active"
-                                ? "Không thể tự khóa tài khoản của mình"
-                                : u.status === "active"
-                                  ? "Khóa tài khoản vi phạm"
-                                  : "Mở khóa tài khoản"
-                            }
-                          >
-                            {u.status === "active" ? (
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                              </svg>
-                            ) : (
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                              </svg>
-                            )}
-                          </button>
+                          {/* Dropdown Menu */}
+                          {openMenuId === u._id && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-20"
+                                onClick={() => setOpenMenuId(null)}
+                              />
+                              <div
+                                className={`absolute right-0 w-52 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl p-1.5 z-30 animate-fade-in ${
+                                  index >= filteredUsers.length - 2 && filteredUsers.length > 2
+                                    ? "bottom-full mb-2"
+                                    : "top-full mt-2"
+                                }`}
+                              >
+                                {isCurrentAdmin ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        openEditModal(u);
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-left"
+                                    >
+                                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                      <span>Chỉnh sửa thông tin</span>
+                                    </button>
 
-                          {/* Nút Xóa */}
-                          <button
-                            onClick={() => setDeletingUser(u)}
-                            disabled={isCurrentAdmin}
-                            className={`p-1.5 rounded-lg border transition ${isCurrentAdmin
-                              ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
-                              : "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100"
-                              }`}
-                            title={
-                              isCurrentAdmin
-                                ? "Không thể tự xóa tài khoản của mình"
-                                : "Xóa tài khoản"
-                            }
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        router.push("/admin/profile");
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-left"
+                                    >
+                                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                      </svg>
+                                      <span>Xem hồ sơ cá nhân</span>
+                                    </button>
+
+                                    <div className="mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800 px-3 py-1 flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                      <span>Tài khoản được bảo vệ</span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        openEditModal(u);
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-left"
+                                    >
+                                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                      <span>Chỉnh sửa &amp; Phân quyền</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        handleToggleStatus(u);
+                                      }}
+                                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-left ${
+                                        u.status === "active"
+                                          ? "text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                                          : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                      }`}
+                                    >
+                                      {u.status === "active" ? (
+                                        <>
+                                          <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                          </svg>
+                                          <span>Khóa tài khoản</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                                          </svg>
+                                          <span>Mở khóa tài khoản</span>
+                                        </>
+                                      )}
+                                    </button>
+
+                                    <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        setDeletingUser(u);
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer text-left"
+                                    >
+                                      <svg className="w-3.5 h-3.5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                      <span>Xóa tài khoản</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
