@@ -14,6 +14,7 @@ export interface TopicItem {
   _id: string;
   topic_name: string;
   subject_id: string;
+  parent_id?: string | { _id: string } | null;
   level: number;
   questionCount?: number;
   stats?: {
@@ -108,6 +109,27 @@ function formatInitialExamQuestions(initialExam?: ExamDataToEdit | null): ExamQu
   return [];
 }
 
+function getDescendantTopicIds(topicId: string, allTopics: TopicItem[]): Set<string> {
+  const result = new Set<string>([topicId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const t of allTopics) {
+      const pid =
+        typeof t.parent_id === "object" && t.parent_id
+          ? String((t.parent_id as { _id?: string })._id)
+          : t.parent_id
+          ? String(t.parent_id)
+          : null;
+      if (pid && result.has(pid) && !result.has(String(t._id))) {
+        result.add(String(t._id));
+        added = true;
+      }
+    }
+  }
+  return result;
+}
+
 function ExamCreatorContent({
   onClose,
   onSuccess,
@@ -153,18 +175,22 @@ function ExamCreatorContent({
   const [addMode, setAddMode] = useState<"manual" | "random" | "create_new">("manual");
 
   // ==========================================
-  // 4. BỘ LỌC CHỌN THỦ CÔNG
+  // 4. BỘ LỌC CHỌN THỦ CÔNG THEO PHÂN CẤP (Chương -> Bài -> Dạng)
   // ==========================================
   const [bankQuestions, setBankQuestions] = useState<QuestionBankItem[]>([]);
   const [isLoadingBankQuestions, setIsLoadingBankQuestions] = useState(false);
-  const [manualFilterTopic, setManualFilterTopic] = useState("all");
+  const [manualChapterId, setManualChapterId] = useState("all");
+  const [manualLessonId, setManualLessonId] = useState("all");
+  const [manualTypeId, setManualTypeId] = useState("all");
   const [manualFilterDifficulty, setManualFilterDifficulty] = useState("all");
   const [manualSearchQuery, setManualSearchQuery] = useState("");
 
   // ==========================================
-  // 5. BỐC NGẪU NHIÊN THEO MA TRẬN ĐỘ KHÓ
+  // 5. BỐC NGẪU NHIÊN THEO MA TRẬN ĐỘ KHÓ & PHÂN CẤP
   // ==========================================
-  const [randomTopicId, setRandomTopicId] = useState("all");
+  const [randomChapterId, setRandomChapterId] = useState("all");
+  const [randomLessonId, setRandomLessonId] = useState("all");
+  const [randomTypeId, setRandomTypeId] = useState("all");
   const [randomEasyCount, setRandomEasyCount] = useState(0);
   const [randomMediumCount, setRandomMediumCount] = useState(0);
   const [randomHardCount, setRandomHardCount] = useState(0);
@@ -174,7 +200,9 @@ function ExamCreatorContent({
   // ==========================================
   // 6. SOẠN CÂU HỎI MỚI TRỰC TIẾP
   // ==========================================
-  const [newQTopicId, setNewQTopicId] = useState("");
+  const [newQChapterId, setNewQChapterId] = useState("");
+  const [newQLessonId, setNewQLessonId] = useState("");
+  const [newQTypeId, setNewQTypeId] = useState("");
   const [newQContent, setNewQContent] = useState("");
   const [newQDifficulty, setNewQDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [newQExplanation, setNewQExplanation] = useState("");
@@ -207,7 +235,121 @@ function ExamCreatorContent({
     return topics.filter((t) => String(t.subject_id) === String(selectedSubjectId));
   }, [topics, selectedSubjectId]);
 
-  const selectedNewQTopicId = newQTopicId || (availableTopics.length > 0 ? availableTopics[0]._id : "");
+  // Danh sách các Chương (Level 1)
+  const chapters = useMemo(() => {
+    return availableTopics.filter((t) => t.level === 1 || !t.parent_id);
+  }, [availableTopics]);
+
+  // 1. Phân cấp cho Chọn Thủ Công (Bài thuộc chương đang chọn)
+  const manualLessonsInChapter = useMemo(() => {
+    if (manualChapterId === "all") return [];
+    return availableTopics.filter((t) => {
+      const pid =
+        typeof t.parent_id === "object" && t.parent_id
+          ? String((t.parent_id as { _id?: string })._id)
+          : String(t.parent_id || "");
+      return pid === manualChapterId;
+    });
+  }, [availableTopics, manualChapterId]);
+
+  // Phân cấp cho Chọn Thủ Công (Dạng thuộc bài đang chọn)
+  const manualTypesInLesson = useMemo(() => {
+    if (manualLessonId === "all") return [];
+    return availableTopics.filter((t) => {
+      const pid =
+        typeof t.parent_id === "object" && t.parent_id
+          ? String((t.parent_id as { _id?: string })._id)
+          : String(t.parent_id || "");
+      return pid === manualLessonId;
+    });
+  }, [availableTopics, manualLessonId]);
+
+  // Topic ID hiệu lực đang chọn ở mục Chọn thủ công
+  const activeManualTopicId = useMemo(() => {
+    if (manualTypeId !== "all") return manualTypeId;
+    if (manualLessonId !== "all") return manualLessonId;
+    if (manualChapterId !== "all") return manualChapterId;
+    return "all";
+  }, [manualChapterId, manualLessonId, manualTypeId]);
+
+  const activeManualTopicDescendants = useMemo(() => {
+    if (activeManualTopicId === "all") return null;
+    return getDescendantTopicIds(activeManualTopicId, availableTopics);
+  }, [activeManualTopicId, availableTopics]);
+
+  // 2. Phân cấp cho Bốc Ngẫu Nhiên
+  const randomLessonsInChapter = useMemo(() => {
+    if (randomChapterId === "all") return [];
+    return availableTopics.filter((t) => {
+      const pid =
+        typeof t.parent_id === "object" && t.parent_id
+          ? String((t.parent_id as { _id?: string })._id)
+          : String(t.parent_id || "");
+      return pid === randomChapterId;
+    });
+  }, [availableTopics, randomChapterId]);
+
+  const randomTypesInLesson = useMemo(() => {
+    if (randomLessonId === "all") return [];
+    return availableTopics.filter((t) => {
+      const pid =
+        typeof t.parent_id === "object" && t.parent_id
+          ? String((t.parent_id as { _id?: string })._id)
+          : String(t.parent_id || "");
+      return pid === randomLessonId;
+    });
+  }, [availableTopics, randomLessonId]);
+
+  const activeRandomTopicId = useMemo(() => {
+    if (randomTypeId !== "all") return randomTypeId;
+    if (randomLessonId !== "all") return randomLessonId;
+    if (randomChapterId !== "all") return randomChapterId;
+    return "all";
+  }, [randomChapterId, randomLessonId, randomTypeId]);
+
+  const activeRandomTopicDescendants = useMemo(() => {
+    if (activeRandomTopicId === "all") return null;
+    return getDescendantTopicIds(activeRandomTopicId, availableTopics);
+  }, [activeRandomTopicId, availableTopics]);
+
+  const randomActiveScopeName = useMemo(() => {
+    if (randomTypeId !== "all") {
+      const t = availableTopics.find((x) => x._id === randomTypeId);
+      return t ? `Dạng: ${t.topic_name}` : "Dạng đã chọn";
+    }
+    if (randomLessonId !== "all") {
+      const l = availableTopics.find((x) => x._id === randomLessonId);
+      return l ? `Bài: ${l.topic_name}` : "Bài đã chọn";
+    }
+    if (randomChapterId !== "all") {
+      const c = availableTopics.find((x) => x._id === randomChapterId);
+      return c ? `Chương: ${c.topic_name}` : "Chương đã chọn";
+    }
+    return "Toàn bộ môn học";
+  }, [randomChapterId, randomLessonId, randomTypeId, availableTopics]);
+
+  // 3. Phân cấp cho Soạn Câu Mới Trực Tiếp
+  const newQLessonsInChapter = useMemo(() => {
+    if (!newQChapterId) return [];
+    return availableTopics.filter((t) => {
+      const pid =
+        typeof t.parent_id === "object" && t.parent_id
+          ? String((t.parent_id as { _id?: string })._id)
+          : String(t.parent_id || "");
+      return pid === newQChapterId;
+    });
+  }, [availableTopics, newQChapterId]);
+
+  const newQTypesInLesson = useMemo(() => {
+    if (!newQLessonId) return [];
+    return availableTopics.filter((t) => {
+      const pid =
+        typeof t.parent_id === "object" && t.parent_id
+          ? String((t.parent_id as { _id?: string })._id)
+          : String(t.parent_id || "");
+      return pid === newQLessonId;
+    });
+  }, [availableTopics, newQLessonId]);
 
   // Tải danh sách câu hỏi ngân hàng khi môn học thay đổi
   useEffect(() => {
@@ -243,9 +385,9 @@ function ExamCreatorContent({
   // Danh sách câu hỏi hiển thị khi lọc thủ công
   const filteredBankQuestions = useMemo(() => {
     return bankQuestions.filter((q) => {
-      if (manualFilterTopic !== "all") {
-        const topicId = typeof q.topic_id === "object" ? q.topic_id?._id : q.topic_id;
-        if (String(topicId) !== manualFilterTopic) return false;
+      if (activeManualTopicDescendants) {
+        const qTopicId = typeof q.topic_id === "object" ? String(q.topic_id?._id) : String(q.topic_id);
+        if (!activeManualTopicDescendants.has(qTopicId)) return false;
       }
       if (manualFilterDifficulty !== "all" && q.difficulty_level !== manualFilterDifficulty) {
         return false;
@@ -258,15 +400,15 @@ function ExamCreatorContent({
       }
       return true;
     });
-  }, [bankQuestions, manualFilterTopic, manualFilterDifficulty, manualSearchQuery]);
+  }, [bankQuestions, activeManualTopicDescendants, manualFilterDifficulty, manualSearchQuery]);
 
   // Thống kê số lượng câu hỏi hiện có trong chuyên đề đã chọn để bốc ngẫu nhiên
   const randomTopicStats = useMemo(() => {
     const relevant = bankQuestions.filter((q) => {
       if (selectedQuestionIds.has(q._id)) return false; // Không tính câu đã có trong đề
-      if (randomTopicId !== "all") {
-        const topicId = typeof q.topic_id === "object" ? q.topic_id?._id : q.topic_id;
-        if (String(topicId) !== randomTopicId) return false;
+      if (activeRandomTopicDescendants) {
+        const qTopicId = typeof q.topic_id === "object" ? String(q.topic_id?._id) : String(q.topic_id);
+        if (!activeRandomTopicDescendants.has(qTopicId)) return false;
       }
       return true;
     });
@@ -277,7 +419,7 @@ function ExamCreatorContent({
       hard: relevant.filter((q) => q.difficulty_level === "hard").length,
       total: relevant.length,
     };
-  }, [bankQuestions, selectedQuestionIds, randomTopicId]);
+  }, [bankQuestions, selectedQuestionIds, activeRandomTopicDescendants]);
 
   // ============================================================
   // HÀNH ĐỘNG 1: THÊM CÂU HỎI THỦ CÔNG
@@ -361,7 +503,7 @@ function ExamCreatorContent({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject_id: selectedSubjectId,
-          topic_id: randomTopicId !== "all" ? randomTopicId : undefined,
+          topic_id: activeRandomTopicId !== "all" ? activeRandomTopicId : undefined,
           easy_count: randomEasyCount,
           medium_count: randomMediumCount,
           hard_count: randomHardCount,
@@ -414,9 +556,13 @@ function ExamCreatorContent({
   // ============================================================
   async function handleCreateDirectQuestion(e: React.FormEvent) {
     e.preventDefault();
-    const targetTopicId = newQTopicId || (availableTopics.length > 0 ? availableTopics[0]._id : "");
+    const targetTopicId =
+      newQTypeId ||
+      newQLessonId ||
+      newQChapterId ||
+      (chapters.length > 0 ? chapters[0]._id : (availableTopics.length > 0 ? availableTopics[0]._id : ""));
     if (!targetTopicId) {
-      alert("Vui lòng chọn chuyên đề cho câu hỏi mới");
+      alert("Vui lòng chọn chương hoặc chuyên đề cho câu hỏi mới");
       return;
     }
     if (!newQContent.trim()) {
@@ -1009,73 +1155,131 @@ function ExamCreatorContent({
               {/* PHƯƠNG THỨC 1: CHỌN THỦ CÔNG TỪ NGÂN HÀNG */}
               {addMode === "manual" && (
                 <div className="space-y-4">
-                  {/* Thanh lọc câu hỏi */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    {/* 1. Môn học (Ngân hàng môn học - Lấy từ môn học) */}
-                    <div className="sm:col-span-3">
-                      <select
-                        value={selectedSubjectId}
-                        onChange={(e) => {
-                          setSelectedSubjectId(e.target.value);
-                          setManualFilterTopic("all");
-                        }}
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold focus:outline-none"
-                      >
-                        {subjects.map((sub) => (
-                          <option key={sub._id} value={sub._id}>
-                            📚 Môn: {sub.subject_name}
-                          </option>
-                        ))}
-                      </select>
+                  {/* Thanh lọc câu hỏi theo phân cấp chuyên đề */}
+                  <div className="space-y-3">
+                    {/* Hàng 1: Phân cấp Chương -> Bài -> Dạng */}
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 shrink-0">
+                          <span>📂</span>
+                          <span>Chuyên mục:</span>
+                        </span>
+
+                        {/* 1. Chọn Chương */}
+                        <div className="min-w-[220px] flex-1 sm:flex-initial">
+                          <select
+                            value={manualChapterId}
+                            onChange={(e) => {
+                              setManualChapterId(e.target.value);
+                              setManualLessonId("all");
+                              setManualTypeId("all");
+                            }}
+                            className="w-full text-xs py-2 px-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 font-bold focus:outline-none cursor-pointer"
+                          >
+                            <option value="all">📖 Tất cả các chương ({chapters.length})</option>
+                            {chapters.map((c) => (
+                              <option key={c._id} value={c._id}>
+                                {c.topic_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 2. Chọn Bài (Chỉ hiện khi đã chọn 1 chương cụ thể và chương đó có bài con) */}
+                        {manualLessonsInChapter.length > 0 && (
+                          <div className="min-w-[220px] flex-1 sm:flex-initial flex items-center gap-2 animate-fade-in">
+                            <span className="text-slate-400 font-bold hidden sm:inline">➔</span>
+                            <select
+                              value={manualLessonId}
+                              onChange={(e) => {
+                                setManualLessonId(e.target.value);
+                                setManualTypeId("all");
+                              }}
+                              className="w-full text-xs py-2 px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold focus:outline-none cursor-pointer"
+                            >
+                              <option value="all">📝 Tất cả bài trong chương ({manualLessonsInChapter.length})</option>
+                              {manualLessonsInChapter.map((l) => (
+                                <option key={l._id} value={l._id}>
+                                  {l.topic_name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* 3. Chọn Dạng (Chỉ hiện khi đã chọn 1 bài cụ thể và bài đó có dạng con) */}
+                        {manualTypesInLesson.length > 0 && (
+                          <div className="min-w-[220px] flex-1 sm:flex-initial flex items-center gap-2 animate-fade-in">
+                            <span className="text-slate-400 font-bold hidden sm:inline">➔</span>
+                            <select
+                              value={manualTypeId}
+                              onChange={(e) => setManualTypeId(e.target.value)}
+                              className="w-full text-xs py-2 px-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 font-bold focus:outline-none cursor-pointer"
+                            >
+                              <option value="all">🏷️ Tất cả dạng bài ({manualTypesInLesson.length})</option>
+                              {manualTypesInLesson.map((t) => (
+                                <option key={t._id} value={t._id}>
+                                  {t.topic_name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* 2. Chuyên đề thuộc môn học */}
-                    <div className="sm:col-span-3">
-                      <select
-                        value={manualFilterTopic}
-                        onChange={(e) => setManualFilterTopic(e.target.value)}
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                      >
-                        <option value="all">Tất cả chuyên đề ({availableTopics.length})</option>
-                        {availableTopics.map((t) => (
-                          <option key={t._id} value={t._id}>
-                            {t.topic_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {/* Hàng 2: Bộ lọc Môn học, Độ khó, Tìm kiếm & Nút Chọn hết */}
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                      <div className="sm:col-span-3">
+                        <select
+                          value={selectedSubjectId}
+                          onChange={(e) => {
+                            setSelectedSubjectId(e.target.value);
+                            setManualChapterId("all");
+                            setManualLessonId("all");
+                            setManualTypeId("all");
+                          }}
+                          className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
+                        >
+                          {subjects.map((sub) => (
+                            <option key={sub._id} value={sub._id}>
+                              📚 {sub.subject_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                    {/* 3. Độ khó */}
-                    <div className="sm:col-span-2">
-                      <select
-                        value={manualFilterDifficulty}
-                        onChange={(e) => setManualFilterDifficulty(e.target.value)}
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                      >
-                        <option value="all">Mọi độ khó</option>
-                        <option value="easy">🟢 Mức Dễ</option>
-                        <option value="medium">🟡 Mức Vừa</option>
-                        <option value="hard">🔴 Mức Khó</option>
-                      </select>
-                    </div>
+                      <div className="sm:col-span-3">
+                        <select
+                          value={manualFilterDifficulty}
+                          onChange={(e) => setManualFilterDifficulty(e.target.value)}
+                          className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                        >
+                          <option value="all">Mọi mức độ nhận thức</option>
+                          <option value="easy">🟢 Mức Dễ</option>
+                          <option value="medium">🟡 Mức Vừa</option>
+                          <option value="hard">🔴 Mức Khó</option>
+                        </select>
+                      </div>
 
-                    {/* 4. Tìm kiếm nội dung & nút Chọn hết */}
-                    <div className="sm:col-span-4 flex gap-2">
-                      <input
-                        type="text"
-                        value={manualSearchQuery}
-                        onChange={(e) => setManualSearchQuery(e.target.value)}
-                        placeholder="Tìm nội dung câu hỏi..."
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddAllFiltered}
-                        title="Thêm tất cả các câu đang hiển thị vào đề"
-                        className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 transition cursor-pointer"
-                      >
-                        + Chọn hết
-                      </button>
+                      <div className="sm:col-span-6 flex gap-2">
+                        <input
+                          type="text"
+                          value={manualSearchQuery}
+                          onChange={(e) => setManualSearchQuery(e.target.value)}
+                          placeholder="Tìm nội dung câu hỏi..."
+                          className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddAllFiltered}
+                          title="Thêm tất cả các câu đang hiển thị vào đề"
+                          className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>+</span>
+                          <span>Chọn hết ({filteredBankQuestions.length})</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -1201,8 +1405,8 @@ function ExamCreatorContent({
                     </div>
                   )}
 
-                  {/* Chọn môn học & chuyên đề để bốc */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Chọn môn học & phạm vi chuyên đề phân cấp để bốc */}
+                  <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                         Ngân Hàng Môn Học
@@ -1211,9 +1415,11 @@ function ExamCreatorContent({
                         value={selectedSubjectId}
                         onChange={(e) => {
                           setSelectedSubjectId(e.target.value);
-                          setRandomTopicId("all");
+                          setRandomChapterId("all");
+                          setRandomLessonId("all");
+                          setRandomTypeId("all");
                         }}
-                        className="w-full text-xs py-2.5 px-3.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold focus:outline-none"
+                        className="w-full text-xs py-2 px-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold focus:outline-none"
                       >
                         {subjects.map((sub) => (
                           <option key={sub._id} value={sub._id}>
@@ -1223,27 +1429,83 @@ function ExamCreatorContent({
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                        Chuyên Đề Nguồn
-                      </label>
-                      <select
-                        value={randomTopicId}
-                        onChange={(e) => setRandomTopicId(e.target.value)}
-                        className="w-full text-xs py-2.5 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
-                      >
-                        <option value="all">Toàn bộ chuyên đề của môn ({availableTopics.length} chuyên đề)</option>
-                        {availableTopics.map((t) => (
-                          <option key={t._id} value={t._id}>
-                            {t.topic_name}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
+                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Phạm Vi Chuyên Đề Nguồn Để Bốc
+                      </span>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* 1. Chọn Chương */}
+                        <div>
+                          <span className="text-[11px] font-semibold text-slate-500 mb-1 block">1. Chọn Chương</span>
+                          <select
+                            value={randomChapterId}
+                            onChange={(e) => {
+                              setRandomChapterId(e.target.value);
+                              setRandomLessonId("all");
+                              setRandomTypeId("all");
+                            }}
+                            className="w-full text-xs py-2 px-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 font-bold text-blue-700 dark:text-blue-300 focus:outline-none cursor-pointer"
+                          >
+                            <option value="all">📖 Toàn bộ các chương ({chapters.length})</option>
+                            {chapters.map((c) => (
+                              <option key={c._id} value={c._id}>
+                                {c.topic_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 2. Chọn Bài (chỉ active khi chọn chương và chương có bài) */}
+                        <div>
+                          <span className="text-[11px] font-semibold text-slate-500 mb-1 block">2. Chọn Bài (Tùy chọn)</span>
+                          <select
+                            value={randomLessonId}
+                            disabled={randomLessonsInChapter.length === 0}
+                            onChange={(e) => {
+                              setRandomLessonId(e.target.value);
+                              setRandomTypeId("all");
+                            }}
+                            className="w-full text-xs py-2 px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 font-semibold text-indigo-700 dark:text-indigo-300 focus:outline-none disabled:opacity-40 cursor-pointer"
+                          >
+                            <option value="all">
+                              {randomLessonsInChapter.length > 0 ? `📝 Tất cả bài (${randomLessonsInChapter.length})` : "(Chưa chọn chương)"}
+                            </option>
+                            {randomLessonsInChapter.map((l) => (
+                              <option key={l._id} value={l._id}>
+                                {l.topic_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 3. Chọn Dạng (chỉ active khi chọn bài và bài có dạng) */}
+                        <div>
+                          <span className="text-[11px] font-semibold text-slate-500 mb-1 block">3. Chọn Dạng (Tùy chọn)</span>
+                          <select
+                            value={randomTypeId}
+                            disabled={randomTypesInLesson.length === 0}
+                            onChange={(e) => setRandomTypeId(e.target.value)}
+                            className="w-full text-xs py-2 px-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 font-semibold text-emerald-700 dark:text-emerald-300 focus:outline-none disabled:opacity-40 cursor-pointer"
+                          >
+                            <option value="all">
+                              {randomTypesInLesson.length > 0 ? `🏷️ Tất cả dạng (${randomTypesInLesson.length})` : "(Chưa chọn bài)"}
+                            </option>
+                            {randomTypesInLesson.map((t) => (
+                              <option key={t._id} value={t._id}>
+                                {t.topic_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between text-[11px] text-slate-500 gap-2">
+                        <span>Đang bốc trong phạm vi: <strong className="text-blue-600 dark:text-blue-400">{randomActiveScopeName}</strong></span>
+                        <span>Kho khả dụng: <strong className="text-slate-800 dark:text-slate-200">{randomTopicStats.total} câu</strong> (Dễ: {randomTopicStats.easy}, Vừa: {randomTopicStats.medium}, Khó: {randomTopicStats.hard})</span>
+                      </div>
                     </div>
                   </div>
-                  <span className="text-[11px] text-slate-400 mt-1 block">
-                    Kho khả dụng chưa chọn: <strong>{randomTopicStats.total}</strong> câu (Dễ: {randomTopicStats.easy}, Vừa: {randomTopicStats.medium}, Khó: {randomTopicStats.hard})
-                  </span>
 
                   {/* 3 ô nhập số lượng Dễ / Vừa / Khó */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
@@ -1323,7 +1585,7 @@ function ExamCreatorContent({
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Ngân Hàng Môn Học
@@ -1332,13 +1594,15 @@ function ExamCreatorContent({
                         value={selectedSubjectId}
                         onChange={(e) => {
                           setSelectedSubjectId(e.target.value);
-                          setNewQTopicId("");
+                          setNewQChapterId("");
+                          setNewQLessonId("");
+                          setNewQTypeId("");
                         }}
                         className="w-full text-xs py-2 px-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold focus:outline-none"
                       >
                         {subjects.map((sub) => (
                           <option key={sub._id} value={sub._id}>
-                            📚 {sub.subject_name}
+                            📚 Môn: {sub.subject_name}
                           </option>
                         ))}
                       </select>
@@ -1346,34 +1610,86 @@ function ExamCreatorContent({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Chuyên Đề
-                      </label>
-                      <select
-                        value={selectedNewQTopicId}
-                        onChange={(e) => setNewQTopicId(e.target.value)}
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                      >
-                        {availableTopics.map((t) => (
-                          <option key={t._id} value={t._id}>
-                            {t.topic_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Mức Độ
+                        Mức Độ Nhận Thức
                       </label>
                       <select
                         value={newQDifficulty}
                         onChange={(e) => setNewQDifficulty(e.target.value as "easy" | "medium" | "hard")}
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
                       >
                         <option value="easy">🟢 Mức Dễ</option>
                         <option value="medium">🟡 Mức Vừa</option>
                         <option value="hard">🔴 Mức Khó</option>
                       </select>
+                    </div>
+                  </div>
+
+                  {/* Phân cấp chuyên đề gán câu hỏi: Chương -> Bài -> Dạng */}
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <span className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Vị Trí Cây Tri Thức Của Câu Hỏi
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <span className="text-[11px] font-semibold text-slate-500 mb-1 block">1. Chương <span className="text-rose-500">*</span></span>
+                        <select
+                          value={newQChapterId}
+                          onChange={(e) => {
+                            setNewQChapterId(e.target.value);
+                            setNewQLessonId("");
+                            setNewQTypeId("");
+                          }}
+                          className="w-full text-xs py-2 px-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 font-semibold text-blue-700 dark:text-blue-300 focus:outline-none cursor-pointer"
+                        >
+                          <option value="">-- Chọn Chương --</option>
+                          {chapters.map((c) => (
+                            <option key={c._id} value={c._id}>
+                              {c.topic_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] font-semibold text-slate-500 mb-1 block">2. Bài (Tùy chọn)</span>
+                        <select
+                          value={newQLessonId}
+                          disabled={newQLessonsInChapter.length === 0}
+                          onChange={(e) => {
+                            setNewQLessonId(e.target.value);
+                            setNewQTypeId("");
+                          }}
+                          className="w-full text-xs py-2 px-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-800 font-semibold text-indigo-700 dark:text-indigo-300 focus:outline-none disabled:opacity-40 cursor-pointer"
+                        >
+                          <option value="">
+                            {newQLessonsInChapter.length > 0 ? "-- Chọn Bài --" : "(Chương này chưa có bài)"}
+                          </option>
+                          {newQLessonsInChapter.map((l) => (
+                            <option key={l._id} value={l._id}>
+                              {l.topic_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] font-semibold text-slate-500 mb-1 block">3. Dạng (Tùy chọn)</span>
+                        <select
+                          value={newQTypeId}
+                          disabled={newQTypesInLesson.length === 0}
+                          onChange={(e) => setNewQTypeId(e.target.value)}
+                          className="w-full text-xs py-2 px-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-800 font-semibold text-emerald-700 dark:text-emerald-300 focus:outline-none disabled:opacity-40 cursor-pointer"
+                        >
+                          <option value="">
+                            {newQTypesInLesson.length > 0 ? "-- Chọn Dạng --" : "(Bài này chưa có dạng)"}
+                          </option>
+                          {newQTypesInLesson.map((t) => (
+                            <option key={t._id} value={t._id}>
+                              {t.topic_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 

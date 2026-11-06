@@ -43,10 +43,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Xác định danh sách topic_id cần lọc (trong môn học đã chọn)
+    // Xác định danh sách topic_id cần lọc (trong môn học đã chọn, bao gồm cả các chuyên đề con)
     let targetTopicIds: mongoose.Types.ObjectId[] = [];
     if (topic_id && mongoose.Types.ObjectId.isValid(topic_id)) {
-      targetTopicIds = [new mongoose.Types.ObjectId(topic_id)];
+      const allSubjectTopics = await Topic.find({ subject_id }).lean();
+      const descendantIds = new Set<string>([String(topic_id)]);
+      let added = true;
+      while (added) {
+        added = false;
+        for (const t of allSubjectTopics) {
+          const pid = t.parent_id ? String(t.parent_id) : null;
+          if (pid && descendantIds.has(pid) && !descendantIds.has(String(t._id))) {
+            descendantIds.add(String(t._id));
+            added = true;
+          }
+        }
+      }
+      targetTopicIds = Array.from(descendantIds).map((id) => new mongoose.Types.ObjectId(id));
     } else {
       const topics = await Topic.find({ subject_id }).select("_id").lean();
       targetTopicIds = topics.map((t) => t._id as mongoose.Types.ObjectId);
