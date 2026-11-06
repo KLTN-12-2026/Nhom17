@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   parseQuestionsFromText,
   parseQuestionsFromExcel,
@@ -19,6 +19,8 @@ interface TopicItem {
   _id: string;
   topic_name: string;
   subject_id: string;
+  parent_id?: string | null;
+  level?: number;
 }
 
 interface Option {
@@ -59,6 +61,53 @@ export default function QuestionCreationModal({
   const [selectedTopicId, setSelectedTopicId] = useState<string>(
     () => defaultTopicId || topics[0]?._id || ""
   );
+
+  // Sắp xếp danh sách chuyên đề theo cấu trúc Cây phân cấp (Môn học -> Chương cha -> Bài con -> Dạng con)
+  const groupedTopicOptions = useMemo(() => {
+    return subjects.map((sub) => {
+      const subTopics = topics.filter((t) => String(t.subject_id) === String(sub._id));
+      const childrenMap = new Map<string, TopicItem[]>();
+      const roots: TopicItem[] = [];
+      const idSet = new Set(subTopics.map((t) => String(t._id)));
+
+      for (const t of subTopics) {
+        const pId = t.parent_id ? String(t.parent_id) : null;
+        if (pId && idSet.has(pId) && pId !== String(t._id)) {
+          if (!childrenMap.has(pId)) childrenMap.set(pId, []);
+          childrenMap.get(pId)!.push(t);
+        } else {
+          roots.push(t);
+        }
+      }
+
+      const flattened: { _id: string; label: string; depth: number }[] = [];
+      function traverse(list: TopicItem[], depth: number) {
+        list.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
+        for (const item of list) {
+          const indent =
+            depth === 0
+              ? "📁 "
+              : `${"\u00A0\u00A0\u00A0\u00A0".repeat(depth)}↳ `;
+          flattened.push({
+            _id: item._id,
+            label: `${indent}${item.topic_name}`,
+            depth,
+          });
+          const kids = childrenMap.get(String(item._id)) || [];
+          if (kids.length > 0) {
+            traverse(kids, depth + 1);
+          }
+        }
+      }
+
+      traverse(roots, 0);
+      return {
+        subject_id: sub._id,
+        subject_name: sub.subject_name,
+        items: flattened,
+      };
+    });
+  }, [subjects, topics]);
 
   // =========================================================================
   // TAB 1: SOẠN THỦ CÔNG (TẠO TAY)
@@ -497,17 +546,19 @@ export default function QuestionCreationModal({
             <select
               value={selectedTopicId}
               onChange={(e) => setSelectedTopicId(e.target.value)}
-              className="text-xs py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:border-blue-500 max-w-xs"
+              className="text-xs py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:border-blue-500 max-w-md"
             >
-              {topics.map((t) => {
-                const sub = subjects.find((s) => s._id === t.subject_id);
-                return (
-                  <option key={t._id} value={t._id}>
-                    {sub ? `[${sub.subject_name}] ` : ""}
-                    {t.topic_name}
-                  </option>
-                );
-              })}
+              {groupedTopicOptions.map((group) =>
+                group.items.length > 0 ? (
+                  <optgroup key={group.subject_id} label={`📚 Môn: ${group.subject_name}`}>
+                    {group.items.map((item) => (
+                      <option key={item._id} value={item._id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null
+              )}
             </select>
           </div>
 
