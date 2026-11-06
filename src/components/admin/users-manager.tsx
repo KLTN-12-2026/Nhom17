@@ -430,12 +430,12 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs font-semibold border-y border-slate-100 dark:border-slate-800">
               <tr>
-                <th className="py-3 px-4">Tài Khoản / Họ Tên</th>
-                <th className="py-3 px-4">Liên Hệ</th>
+                <th className="py-3 px-4 whitespace-nowrap">Tài Khoản / Họ Tên</th>
+                <th className="py-3 px-4 whitespace-nowrap">Liên Hệ</th>
                 <th className="py-3 px-4 whitespace-nowrap">Vai Trò</th>
                 <th className="py-3 px-4 whitespace-nowrap">Trạng Thái</th>
                 <th className="py-3 px-4 whitespace-nowrap">Ngày Tạo</th>
-                <th className="py-3 px-4 text-right">Thao Tác</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
