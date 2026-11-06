@@ -9,7 +9,7 @@ interface ProfileFormProps {
   phoneNumber: string;
   schoolName: string;
   dateOfBirth: string;
-  role: "student" | "instructor";
+  role: "student" | "instructor" | "admin";
   startDate: string;
 }
 
@@ -29,6 +29,7 @@ interface ProfileResponse {
 const roleLabels = {
   student: "Học viên",
   instructor: "Giảng viên",
+  admin: "Quản trị viên",
 };
 
 const roleStyles = {
@@ -41,6 +42,11 @@ const roleStyles = {
     gradient: "from-blue-800 via-blue-700 to-blue-600",
     badge: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
     avatar: "from-blue-200 to-sky-100 text-blue-800",
+  },
+  admin: {
+    gradient: "from-indigo-800 via-indigo-700 to-violet-700",
+    badge: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300",
+    avatar: "from-indigo-200 to-violet-100 text-indigo-800",
   },
 };
 
@@ -110,7 +116,11 @@ export default function ProfileForm({
 
   const styles = roleStyles[role];
   const startDateLabel =
-    role === "student" ? "Ngày lập tài khoản" : "Ngày bắt đầu giảng dạy";
+    role === "student"
+      ? "Ngày lập tài khoản"
+      : role === "instructor"
+      ? "Ngày bắt đầu giảng dạy"
+      : "Ngày kích hoạt quản trị";
 
   return (
     <div className="space-y-6">

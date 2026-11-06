@@ -36,6 +36,7 @@ export async function PUT(request: Request) {
   const { user, errorResponse } = await checkApiAuthorization([
     "student",
     "instructor",
+    "admin",
   ]);
   if (errorResponse || !user) {
     return errorResponse;

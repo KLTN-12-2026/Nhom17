@@ -51,8 +51,9 @@ export default async function AdminUsersPage() {
         >
           ← Quay lại Tổng quan Quản trị
         </Link>
-        <span className="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-          Dữ liệu trực tiếp từ <strong>MongoDB Atlas</strong>
+        <span className="text-xs px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          Dữ liệu cập nhật theo thời gian thực
         </span>
       </div>
 

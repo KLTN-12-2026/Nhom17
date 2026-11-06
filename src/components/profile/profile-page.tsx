@@ -6,12 +6,13 @@ import { getCurrentUser } from "@/lib/auth-guards";
 import { User } from "@/models/User";
 
 interface ProfilePageProps {
-  role: "student" | "instructor";
+  role: "student" | "instructor" | "admin";
 }
 
 const roleTitles = {
   student: "học viên",
   instructor: "giảng viên",
+  admin: "quản trị viên",
 };
 
 export default async function ProfilePage({ role }: ProfilePageProps) {

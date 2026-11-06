@@ -31,7 +31,7 @@ interface NavItem {
 const roleConfigs = {
   admin: {
     menuTitle: "MENU QUẢN TRỊ",
-    title: "QUẢN TRỊ VIÊN",
+    title: "Admin",
     tagLabel: "Admin",
     roleSubtitle: "Bảng điều khiển & quản lý toàn diện",
     badgeClass: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 font-bold",
@@ -41,7 +41,7 @@ const roleConfigs = {
     sidebarWidget: {
       title: "Trung Tâm Điều Hành",
       metric: "Quản Trị",
-      desc: "Quản lý người dùng, phân quyền bảo mật RBAC và kiểm soát dữ liệu toàn nền tảng.",
+      desc: "Quản lý người dùng, phân quyền bảo mật và kiểm soát dữ liệu toàn nền tảng.",
       badge: "Đang hoạt động",
     },
   },
@@ -62,7 +62,7 @@ const roleConfigs = {
     },
   },
   student: {
-menuTitle: "GÓC HỌC TẬP THPT",
+    menuTitle: "GÓC HỌC TẬP THPT",
     title: "HỌC SINH",
     tagLabel: "Học Sinh Cấp 3",
     roleSubtitle: "Không gian luyện thi & bứt phá điểm số",
@@ -87,6 +87,15 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
       icon: ({ className }) => (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+    },
+    {
+      label: "Thông Tin Cá Nhân",
+      href: "/admin/profile",
+      icon: ({ className }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       ),
     },
@@ -160,7 +169,7 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
     {
       label: "Phòng Thi Trực Tuyến Live",
       href: "/instructor/rooms",
-      badge: "Socket.IO",
+      badge: "Live",
       icon: ({ className }) => (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -197,7 +206,7 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
       ),
     },
     {
-label: "Thông Tin Cá Nhân",
+      label: "Thông Tin Cá Nhân",
       href: "/student/profile",
       icon: ({ className }) => (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -353,7 +362,7 @@ export default function RoleDashboardShell({
 
             {/* Thẻ Tài Khoản Người Dùng (Bấm vào xem Profile) */}
             <Link
-              href={user.role === "admin" ? "/admin/users" : `/${user.role}/profile`}
+              href={`/${user.role}/profile`}
               title="Xem và chỉnh sửa hồ sơ cá nhân"
               className="flex items-center gap-2.5 pl-1.5 pr-2 sm:px-3 py-1 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-850/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 hover:border-slate-300 transition group shadow-2xs"
             >
@@ -365,9 +374,7 @@ export default function RoleDashboardShell({
                 <span className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[130px] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
                   {user.name || "Người dùng"}
                 </span>
-                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[130px]">
-                  {roleConfig.tagLabel}
-                </span>
+                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[130px]">{user.role === "admin" ? "Hồ sơ cá nhân" : roleConfig.tagLabel}</span>
               </div>
             </Link>
 
@@ -436,7 +443,7 @@ export default function RoleDashboardShell({
               {/* Lối tắt Hồ Sơ Cá Nhân (Chuẩn User Story 5) */}
               <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
                 <Link
-                  href={user.role === "admin" ? "/admin/users" : `/${user.role}/profile`}
+                  href={`/${user.role}/profile`}
                   className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 transition group"
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -540,7 +547,7 @@ export default function RoleDashboardShell({
               {/* Thông tin tài khoản ở chân Drawer */}
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
                 <Link
-                  href={user.role === "admin" ? "/admin/users" : `/${user.role}/profile`}
+                  href={`/${user.role}/profile`}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 mb-3 hover:opacity-80 transition"
                 >
@@ -564,10 +571,6 @@ export default function RoleDashboardShell({
           <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${roleConfig.badgeClass}`}>
-                  {roleConfig.tagLabel}
-                </span>
-                <span className="text-slate-300 dark:text-slate-700">•</span>
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{roleConfig.roleSubtitle}</span>
               </div>
 

@@ -281,17 +281,17 @@ export default async function AdminDashboardPage() {
                     };
 
                     const roleLabels = {
-                      admin: "Quản trị viên",
+                      admin: "Admin",
                       instructor: "Giáo viên",
                       student: "Học sinh",
                     };
 
                     const createdDate = u.createdAt
                       ? new Date(u.createdAt).toLocaleDateString("vi-VN", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        })
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })
                       : "Mới đây";
 
                     return (
@@ -313,9 +313,8 @@ export default async function AdminDashboardPage() {
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
                           <span
-                            className={`inline-block px-2.5 py-0.5 rounded-full border text-xs font-semibold ${
-                              roleStyles[u.role as keyof typeof roleStyles] || roleStyles.student
-                            }`}
+                            className={`inline-block px-2.5 py-0.5 rounded-full border text-xs font-semibold ${roleStyles[u.role as keyof typeof roleStyles] || roleStyles.student
+                              }`}
                           >
                             {roleLabels[u.role as keyof typeof roleLabels] || u.role}
                           </span>
