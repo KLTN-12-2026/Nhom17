@@ -161,6 +161,15 @@ function ExamCreatorContent({
       : true,
   );
 
+  // Khóa cuộn trang nền khi mở modal để tránh lỗi thanh cuộn kép
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   // ==========================================
   // 2. DANH SÁCH CÂU HỎI TRONG ĐỀ THI
   // ==========================================
@@ -820,23 +829,23 @@ function ExamCreatorContent({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-xs overflow-y-auto font-sans">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden animate-fade-in my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-xs font-sans overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border-0 sm:border border-slate-200 dark:border-slate-800 w-full max-w-5xl h-full sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] rounded-none sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in">
         {/* ========================================================================= */}
         {/* HEADER MODAL */}
         {/* ========================================================================= */}
-        <div className="px-6 py-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/70 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xs shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
               </svg>
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate sm:whitespace-normal">
                 {initialExam ? "Chỉnh Sửa & Cập Nhật Đề Thi" : "Tạo Đề Thi & Cấu Hình Đề Thi Mới"}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1 sm:line-clamp-none">
                 Thiết lập ngân hàng môn, thời gian, câu hỏi thủ công, bốc ngẫu nhiên ma trận và chia điểm
               </p>
             </div>
@@ -845,7 +854,7 @@ function ExamCreatorContent({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer"
+            className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer shrink-0 ml-2"
           >
             ✕
           </button>
@@ -854,12 +863,12 @@ function ExamCreatorContent({
         {/* ========================================================================= */}
         {/* TAB NAVIGATION BAR */}
         {/* ========================================================================= */}
-        <div className="px-6 pt-3 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div className="px-3 sm:px-6 pt-2 sm:pt-3 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth">
             <button
               type="button"
               onClick={() => setActiveTab("config")}
-              className={`pb-3 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer shrink-0 ${
+              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "config"
                   ? "border-blue-600 text-blue-600 dark:text-blue-400"
                   : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -872,7 +881,7 @@ function ExamCreatorContent({
             <button
               type="button"
               onClick={() => setActiveTab("add_questions")}
-              className={`pb-3 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer shrink-0 ${
+              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "add_questions"
                   ? "border-blue-600 text-blue-600 dark:text-blue-400"
                   : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -880,7 +889,7 @@ function ExamCreatorContent({
             >
               <span>➕</span>
               <span>2. Thêm Câu Hỏi Vào Đề</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
                 Kho {bankQuestions.length}
               </span>
             </button>
@@ -888,7 +897,7 @@ function ExamCreatorContent({
             <button
               type="button"
               onClick={() => setActiveTab("review")}
-              className={`pb-3 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer shrink-0 ${
+              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "review"
                   ? "border-blue-600 text-blue-600 dark:text-blue-400"
                   : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -897,7 +906,7 @@ function ExamCreatorContent({
               <span>📝</span>
               <span>3. Câu Hỏi Đã Chọn & Sửa Đề</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                examQuestions.length > 0 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"
+                examQuestions.length > 0 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
               }`}>
                 {examQuestions.length} câu
               </span>
@@ -907,22 +916,22 @@ function ExamCreatorContent({
 
         {/* THÔNG BÁO LỖI NẾU CÓ */}
         {formError && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2 shrink-0">
+          <div className="mx-4 sm:mx-6 mt-3 sm:mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2 shrink-0">
             <span>⚠️</span>
-            <span>{formError}</span>
+            <span className="flex-1 break-words">{formError}</span>
           </div>
         )}
 
         {/* ========================================================================= */}
         {/* BODY TỪNG TAB */}
         {/* ========================================================================= */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-5 sm:space-y-6 overscroll-contain">
           {/* TAB 1: CẤU HÌNH ĐỀ THI */}
           {activeTab === "config" && (
-            <div className="space-y-6 max-w-3xl mx-auto">
+            <div className="space-y-5 sm:space-y-6 max-w-3xl mx-auto w-full">
               {/* Tên đề thi & Ngân hàng môn học */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-8">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
+                <div className="md:col-span-7 lg:col-span-8">
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Tên Bài Thi / Tiêu Đề Đề Thi <span className="text-rose-500">*</span>
                   </label>
@@ -931,11 +940,11 @@ function ExamCreatorContent({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Ví dụ: Đề kiểm tra Giữa kỳ 1 - Khảo sát đồ thị hàm số..."
-                    className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                   />
                 </div>
 
-                <div className="md:col-span-4">
+                <div className="md:col-span-5 lg:col-span-4">
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Ngân Hàng Môn Học <span className="text-rose-500">*</span>
                   </label>
@@ -950,7 +959,7 @@ function ExamCreatorContent({
                       }
                       setSelectedSubjectId(e.target.value);
                     }}
-                    className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-blue-600 dark:text-blue-400 focus:outline-none focus:border-blue-500"
+                    className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-blue-600 dark:text-blue-400 focus:outline-none focus:border-blue-500 transition"
                   >
                     {subjects.map((sub) => (
                       <option key={sub._id} value={sub._id}>
@@ -962,7 +971,7 @@ function ExamCreatorContent({
               </div>
 
               {/* Thời gian làm bài & Thang điểm */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Thời Gian Làm Bài (Phút) <span className="text-rose-500">*</span>
@@ -975,7 +984,7 @@ function ExamCreatorContent({
                     onChange={(e) => setDurationMinutes(Math.max(1, parseInt(e.target.value, 10) || 1))}
                     className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 font-bold"
                   />
-                  <div className="flex gap-1.5 mt-2">
+                  <div className="flex flex-wrap gap-1.5 mt-2">
                     {[15, 45, 60, 90].map((mins) => (
                       <button
                         key={mins}
@@ -983,8 +992,8 @@ function ExamCreatorContent({
                         onClick={() => setDurationMinutes(mins)}
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg border transition cursor-pointer ${
                           durationMinutes === mins
-                            ? "bg-blue-50 border-blue-300 text-blue-600 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400"
-                            : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-800"
+                            ? "bg-blue-50 border-blue-300 text-blue-600 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400 font-bold"
+                            : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400"
                         }`}
                       >
                         {mins}p
@@ -1008,7 +1017,7 @@ function ExamCreatorContent({
                   <span className="text-[11px] text-slate-400 mt-1 block">Mặc định: thang 10 điểm</span>
                 </div>
 
-                <div>
+                <div className="sm:col-span-2 md:col-span-1">
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Điểm Đạt Chuẩn (Pass)
                   </label>
@@ -1026,20 +1035,20 @@ function ExamCreatorContent({
               </div>
 
               {/* Các thiết lập xáo đề, đảo đáp án, xem kết quả */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-4">
+              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 sm:p-5 space-y-3.5">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <span>🛡️</span>
                   <span>Cấu Hình Đề Thi Thông Minh & Chống Gian Lận</span>
                 </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                   {/* Switch 1: Xáo trộn câu hỏi */}
                   <label className="flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer hover:border-blue-400 transition">
                     <input
                       type="checkbox"
                       checked={shuffleQuestions}
                       onChange={(e) => setShuffleQuestions(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 text-blue-600 rounded"
+                      className="mt-0.5 w-4 h-4 text-blue-600 rounded shrink-0"
                     />
                     <div>
                       <span className="text-xs font-bold text-slate-900 dark:text-white block">
@@ -1057,7 +1066,7 @@ function ExamCreatorContent({
                       type="checkbox"
                       checked={shuffleOptions}
                       onChange={(e) => setShuffleOptions(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 text-blue-600 rounded"
+                      className="mt-0.5 w-4 h-4 text-blue-600 rounded shrink-0"
                     />
                     <div>
                       <span className="text-xs font-bold text-slate-900 dark:text-white block">
@@ -1075,7 +1084,7 @@ function ExamCreatorContent({
                       type="checkbox"
                       checked={allowViewResult}
                       onChange={(e) => setAllowViewResult(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 text-blue-600 rounded"
+                      className="mt-0.5 w-4 h-4 text-blue-600 rounded shrink-0"
                     />
                     <div>
                       <span className="text-xs font-bold text-slate-900 dark:text-white block">
@@ -1094,7 +1103,7 @@ function ExamCreatorContent({
                 <button
                   type="button"
                   onClick={() => setActiveTab("add_questions")}
-                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition"
                 >
                   <span>Tiếp tục: Thêm câu hỏi vào đề</span>
                   <span>➔</span>
@@ -1105,49 +1114,49 @@ function ExamCreatorContent({
 
           {/* TAB 2: THÊM CÂU HỎI VÀO ĐỀ */}
           {activeTab === "add_questions" && (
-            <div className="space-y-6">
+            <div className="space-y-5 sm:space-y-6">
               {/* Phân vùng chọn cách thêm câu hỏi */}
-              <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Phương thức chọn:</span>
-                  <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-xl gap-1">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">Phương thức chọn:</span>
+                  <div className="grid grid-cols-3 sm:flex bg-slate-200 dark:bg-slate-700 p-1 rounded-xl gap-1">
                     <button
                       type="button"
                       onClick={() => setAddMode("manual")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer text-center ${
                         addMode === "manual"
                           ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
                           : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
                       }`}
                     >
-                      🎯 Chọn Thủ Công ({filteredBankQuestions.length})
+                      🎯 <span className="hidden sm:inline">Chọn Thủ Công</span><span className="sm:hidden">Thủ công</span> ({filteredBankQuestions.length})
                     </button>
                     <button
                       type="button"
                       onClick={() => setAddMode("random")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer text-center ${
                         addMode === "random"
                           ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
                           : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
                       }`}
                     >
-                      ⚡ Bốc Ngẫu Nhiên Ma Trận
+                      ⚡ <span className="hidden sm:inline">Ngẫu Nhiên</span><span className="sm:hidden">Ngẫu nhiên</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setAddMode("create_new")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer text-center ${
                         addMode === "create_new"
                           ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
                           : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
                       }`}
                     >
-                      ✍️ Soạn Câu Mới
+                      ✍️ <span className="hidden sm:inline">Soạn Câu Mới</span><span className="sm:hidden">Soạn mới</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 text-right sm:text-left shrink-0">
                   Đã đưa vào đề: <strong className="text-blue-600 dark:text-blue-400">{examQuestions.length}</strong> câu
                 </div>
               </div>
@@ -1159,14 +1168,14 @@ function ExamCreatorContent({
                   <div className="space-y-3">
                     {/* Hàng 1: Phân cấp Chương -> Bài -> Dạng */}
                     <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
-                      <div className="flex flex-wrap items-center gap-2.5">
+                      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 shrink-0">
                           <span>📂</span>
                           <span>Chuyên mục:</span>
                         </span>
 
                         {/* 1. Chọn Chương */}
-                        <div className="min-w-[220px] flex-1 sm:flex-initial">
+                        <div className="min-w-0 w-full sm:w-auto sm:min-w-[200px] flex-1">
                           <select
                             value={manualChapterId}
                             onChange={(e) => {
@@ -1187,7 +1196,7 @@ function ExamCreatorContent({
 
                         {/* 2. Chọn Bài (Chỉ hiện khi đã chọn 1 chương cụ thể và chương đó có bài con) */}
                         {manualLessonsInChapter.length > 0 && (
-                          <div className="min-w-[220px] flex-1 sm:flex-initial flex items-center gap-2 animate-fade-in">
+                          <div className="min-w-0 w-full sm:w-auto sm:min-w-[200px] flex-1 flex items-center gap-2 animate-fade-in">
                             <span className="text-slate-400 font-bold hidden sm:inline">➔</span>
                             <select
                               value={manualLessonId}
@@ -1209,7 +1218,7 @@ function ExamCreatorContent({
 
                         {/* 3. Chọn Dạng (Chỉ hiện khi đã chọn 1 bài cụ thể và bài đó có dạng con) */}
                         {manualTypesInLesson.length > 0 && (
-                          <div className="min-w-[220px] flex-1 sm:flex-initial flex items-center gap-2 animate-fade-in">
+                          <div className="min-w-0 w-full sm:w-auto sm:min-w-[200px] flex-1 flex items-center gap-2 animate-fade-in">
                             <span className="text-slate-400 font-bold hidden sm:inline">➔</span>
                             <select
                               value={manualTypeId}
@@ -1229,8 +1238,8 @@ function ExamCreatorContent({
                     </div>
 
                     {/* Hàng 2: Bộ lọc Môn học, Độ khó, Tìm kiếm & Nút Chọn hết */}
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                      <div className="sm:col-span-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 sm:gap-3">
+                      <div className="sm:col-span-1 lg:col-span-3">
                         <select
                           value={selectedSubjectId}
                           onChange={(e) => {
@@ -1239,7 +1248,7 @@ function ExamCreatorContent({
                             setManualLessonId("all");
                             setManualTypeId("all");
                           }}
-                          className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
+                          className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold truncate"
                         >
                           {subjects.map((sub) => (
                             <option key={sub._id} value={sub._id}>
@@ -1249,11 +1258,11 @@ function ExamCreatorContent({
                         </select>
                       </div>
 
-                      <div className="sm:col-span-3">
+                      <div className="sm:col-span-1 lg:col-span-3">
                         <select
                           value={manualFilterDifficulty}
                           onChange={(e) => setManualFilterDifficulty(e.target.value)}
-                          className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                          className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
                         >
                           <option value="all">Mọi mức độ nhận thức</option>
                           <option value="easy">🟢 Mức Dễ</option>
@@ -1262,7 +1271,7 @@ function ExamCreatorContent({
                         </select>
                       </div>
 
-                      <div className="sm:col-span-6 flex gap-2">
+                      <div className="sm:col-span-2 lg:col-span-6 flex flex-col sm:flex-row gap-2">
                         <input
                           type="text"
                           value={manualSearchQuery}
@@ -1274,7 +1283,7 @@ function ExamCreatorContent({
                           type="button"
                           onClick={handleAddAllFiltered}
                           title="Thêm tất cả các câu đang hiển thị vào đề"
-                          className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 transition cursor-pointer flex items-center gap-1.5"
+                          className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 transition cursor-pointer flex items-center justify-center gap-1.5"
                         >
                           <span>+</span>
                           <span>Chọn hết ({filteredBankQuestions.length})</span>
@@ -1283,7 +1292,7 @@ function ExamCreatorContent({
                     </div>
                   </div>
 
-                  {/* Danh sách câu hỏi ngân hàng */}
+                  {/* Danh sách câu hỏi ngân hàng - Cuộn trực tiếp trong thân modal để tránh 2 thanh cuộn lồng nhau */}
                   {isLoadingBankQuestions ? (
                     <div className="py-12 text-center text-xs text-slate-500">
                       Đang tải câu hỏi từ ngân hàng...
@@ -1293,22 +1302,22 @@ function ExamCreatorContent({
                       Không tìm thấy câu hỏi phù hợp trong ngân hàng môn học này.
                     </div>
                   ) : (
-                    <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    <div className="space-y-3">
                       {filteredBankQuestions.map((q, idx) => {
                         const isAdded = selectedQuestionIds.has(q._id);
                         return (
                           <div
                             key={q._id}
-                            className={`p-4 rounded-2xl border transition-all ${
+                            className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
                               isAdded
                                 ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800"
                                 : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-slate-300"
                             }`}
                           >
-                            <div className="flex items-start justify-between gap-3 mb-2">
-                              <div className="flex items-center gap-2">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 mb-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 truncate max-w-[200px]">
                                   {typeof q.topic_id === "object" ? q.topic_id?.topic_name : "Chuyên đề"}
                                 </span>
                                 <span
@@ -1331,7 +1340,7 @@ function ExamCreatorContent({
                               <button
                                 type="button"
                                 onClick={() => handleToggleManualQuestion(q)}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                className={`w-full sm:w-auto px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                                   isAdded
                                     ? "bg-emerald-600 text-white shadow-xs"
                                     : "bg-blue-600 text-white hover:bg-blue-700"
@@ -1349,7 +1358,7 @@ function ExamCreatorContent({
                               </button>
                             </div>
 
-                            <div className="text-xs font-medium text-slate-800 dark:text-slate-100 mb-3">
+                            <div className="text-xs font-medium text-slate-800 dark:text-slate-100 mb-3 break-words">
                               {q.content}
                             </div>
 
@@ -1358,7 +1367,7 @@ function ExamCreatorContent({
                               {q.options.map((opt, oIdx) => (
                                 <div
                                   key={oIdx}
-                                  className={`p-2 rounded-lg border flex items-center gap-2 ${
+                                  className={`p-2 rounded-lg border flex items-center gap-2 min-w-0 ${
                                     opt.is_correct
                                       ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold"
                                       : "border-slate-200/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-400"
@@ -1367,8 +1376,8 @@ function ExamCreatorContent({
                                   <span className="w-5 h-5 rounded flex items-center justify-center font-bold text-[10px] bg-slate-200 dark:bg-slate-700 shrink-0">
                                     {opt.option_label}
                                   </span>
-                                  <span className="truncate">{opt.content}</span>
-                                  {opt.is_correct && <span className="ml-auto text-emerald-600 text-[10px]">✓ Đúng</span>}
+                                  <span className="truncate flex-1">{opt.content}</span>
+                                  {opt.is_correct && <span className="ml-auto text-emerald-600 text-[10px] shrink-0">✓ Đúng</span>}
                                 </div>
                               ))}
                             </div>
@@ -1382,7 +1391,7 @@ function ExamCreatorContent({
 
               {/* PHƯƠNG THỨC 2: BỐC NGẪU NHIÊN MA TRẬN */}
               {addMode === "random" && (
-                <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-6 rounded-3xl space-y-5 max-w-2xl mx-auto">
+                <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl space-y-4 sm:space-y-5 max-w-2xl mx-auto w-full">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       <span>⚡</span>
@@ -1500,7 +1509,7 @@ function ExamCreatorContent({
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between text-[11px] text-slate-500 gap-2">
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 gap-1.5 sm:gap-2">
                         <span>Đang bốc trong phạm vi: <strong className="text-blue-600 dark:text-blue-400">{randomActiveScopeName}</strong></span>
                         <span>Kho khả dụng: <strong className="text-slate-800 dark:text-slate-200">{randomTopicStats.total} câu</strong> (Dễ: {randomTopicStats.easy}, Vừa: {randomTopicStats.medium}, Khó: {randomTopicStats.hard})</span>
                       </div>
@@ -1508,7 +1517,7 @@ function ExamCreatorContent({
                   </div>
 
                   {/* 3 ô nhập số lượng Dễ / Vừa / Khó */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
                     <div className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">🟢 Mức Dễ</span>
@@ -1555,8 +1564,8 @@ function ExamCreatorContent({
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-600">
+                  <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <span className="text-xs font-semibold text-slate-600 text-center sm:text-left">
                       Tổng số câu sẽ bốc: <strong>{randomEasyCount + randomMediumCount + randomHardCount}</strong> câu
                     </span>
 
@@ -1564,7 +1573,7 @@ function ExamCreatorContent({
                       type="button"
                       disabled={isRandomPicking || randomEasyCount + randomMediumCount + randomHardCount === 0}
                       onClick={handleRandomPick}
-                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer transition"
                     >
                       {isRandomPicking ? "Đang bốc..." : "⚡ Bốc Ngẫu Nhiên Vào Đề"}
                     </button>
@@ -1574,7 +1583,7 @@ function ExamCreatorContent({
 
               {/* PHƯƠNG THỨC 3: SOẠN CÂU HỎI MỚI TRỰC TIẾP */}
               {addMode === "create_new" && (
-                <form onSubmit={handleCreateDirectQuestion} className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-6 rounded-3xl space-y-4 max-w-2xl mx-auto">
+                <form onSubmit={handleCreateDirectQuestion} className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl space-y-4 max-w-2xl mx-auto w-full">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       <span>✍️</span>
@@ -1728,7 +1737,7 @@ function ExamCreatorContent({
                             });
                           }}
                           placeholder={`Nội dung phương án ${opt.option_label}...`}
-                          className="flex-1 text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                          className="flex-1 min-w-0 text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
                         />
                         <button
                           type="button"
@@ -1766,7 +1775,7 @@ function ExamCreatorContent({
                     <button
                       type="submit"
                       disabled={isCreatingNewQuestion}
-                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer transition"
                     >
                       {isCreatingNewQuestion ? "Đang lưu..." : "Lưu & Thêm Vào Đề Thi"}
                     </button>
@@ -1780,17 +1789,17 @@ function ExamCreatorContent({
           {activeTab === "review" && (
             <div className="space-y-4">
               {/* Thống kê & Nút chia đều điểm */}
-              <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-2xl">
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
                     Cơ cấu câu hỏi đề thi ({currentExamStats.total} câu)
                   </h4>
-                  <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 mt-1">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-600 dark:text-slate-400 mt-1">
                     <span>🟢 Dễ: <strong>{currentExamStats.easy}</strong></span>
                     <span>🟡 Vừa: <strong>{currentExamStats.medium}</strong></span>
                     <span>🔴 Khó: <strong>{currentExamStats.hard}</strong></span>
-                    <span className="text-slate-300">•</span>
-                    <span>Tổng điểm tích lũy: <strong className="text-blue-600 font-bold">{currentExamStats.totalScore} / {maxScore}</strong> điểm</span>
+                    <span className="text-slate-300 hidden sm:inline">•</span>
+                    <span>Tổng điểm: <strong className="text-blue-600 font-bold">{currentExamStats.totalScore} / {maxScore}</strong> đ</span>
                   </div>
                 </div>
 
@@ -1799,7 +1808,7 @@ function ExamCreatorContent({
                     type="button"
                     onClick={handleDistributeScoresEvenly}
                     title="Tự động chia đều điểm các câu theo thang điểm tối đa"
-                    className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold text-xs shadow-2xs hover:bg-blue-50 transition cursor-pointer flex items-center gap-1.5"
+                    className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold text-xs shadow-2xs hover:bg-blue-50 transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <span>⚖️</span>
                     <span>Chia đều điểm (Thang {maxScore})</span>
@@ -1818,15 +1827,15 @@ function ExamCreatorContent({
                   {examQuestions.map((q, idx) => (
                     <div
                       key={`${q.question_id}-${idx}`}
-                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs hover:border-slate-300 transition"
+                      className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs hover:border-slate-300 transition"
                     >
                       {/* Header hàng câu hỏi */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
                             {idx + 1}
                           </span>
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 truncate max-w-[180px]">
                             {q.topic_name || "Chuyên đề"}
                           </span>
                           <span
@@ -1852,7 +1861,7 @@ function ExamCreatorContent({
                         </div>
 
                         {/* Thao tác: chỉnh điểm, sửa câu, đổi thứ tự, xóa */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 justify-end">
                           {/* Điểm của câu */}
                           <div className="flex items-center gap-1 text-xs">
                             <span className="text-slate-400 font-medium">Điểm:</span>
@@ -1872,7 +1881,7 @@ function ExamCreatorContent({
                               type="button"
                               disabled={idx === 0}
                               onClick={() => handleMoveQuestion(idx, "up")}
-                              className="px-1.5 py-1 text-xs text-slate-500 hover:bg-slate-100 disabled:opacity-30 cursor-pointer"
+                              className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 disabled:opacity-30 cursor-pointer"
                               title="Chuyển lên"
                             >
                               ▲
@@ -1881,7 +1890,7 @@ function ExamCreatorContent({
                               type="button"
                               disabled={idx === examQuestions.length - 1}
                               onClick={() => handleMoveQuestion(idx, "down")}
-                              className="px-1.5 py-1 text-xs text-slate-500 hover:bg-slate-100 disabled:opacity-30 cursor-pointer"
+                              className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 disabled:opacity-30 cursor-pointer"
                               title="Chuyển xuống"
                             >
                               ▼
@@ -1910,7 +1919,7 @@ function ExamCreatorContent({
                       </div>
 
                       {/* Nội dung câu hỏi */}
-                      <p className="text-xs font-medium text-slate-800 dark:text-slate-100 mb-2.5">
+                      <p className="text-xs font-medium text-slate-800 dark:text-slate-100 mb-2.5 break-words">
                         {q.question_snapshot.content}
                       </p>
 
@@ -1919,22 +1928,22 @@ function ExamCreatorContent({
                         {q.question_snapshot.options.map((opt, oIdx) => (
                           <div
                             key={oIdx}
-                            className={`p-1.5 px-2.5 rounded-lg border flex items-center gap-2 ${
+                            className={`p-1.5 px-2.5 rounded-lg border flex items-center gap-2 min-w-0 ${
                               opt.is_correct
                                 ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold"
                                 : "border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400"
                             }`}
                           >
-                            <span className="font-bold text-[10px] w-4">{opt.option_label}.</span>
-                            <span className="truncate">{opt.content}</span>
-                            {opt.is_correct && <span className="ml-auto text-emerald-600 text-[10px]">✓</span>}
+                            <span className="font-bold text-[10px] w-4 shrink-0">{opt.option_label}.</span>
+                            <span className="truncate flex-1">{opt.content}</span>
+                            {opt.is_correct && <span className="ml-auto text-emerald-600 text-[10px] shrink-0">✓</span>}
                           </div>
                         ))}
                       </div>
 
                       {/* Lời giải thích nếu có */}
                       {q.question_snapshot.explanation && (
-                        <div className="mt-2 text-[11px] text-slate-500 italic bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg">
+                        <div className="mt-2 text-[11px] text-slate-500 italic bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg break-words">
                           💡 <strong>Lời giải:</strong> {q.question_snapshot.explanation}
                         </div>
                       )}
@@ -1949,17 +1958,21 @@ function ExamCreatorContent({
         {/* ========================================================================= */}
         {/* FOOTER MODAL - ACTIONS */}
         {/* ========================================================================= */}
-        <div className="px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="text-xs text-slate-500">
-            Tổng cộng: <strong className="text-slate-800 dark:text-slate-200">{examQuestions.length} câu</strong> | Thang điểm: <strong>{currentExamStats.totalScore} / {maxScore}</strong> | Thời lượng: <strong>{durationMinutes} phút</strong>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 text-center sm:text-left flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-1.5">
+            <span>Tổng cộng: <strong className="text-slate-800 dark:text-slate-200">{examQuestions.length} câu</strong></span>
+            <span>|</span>
+            <span>Thang điểm: <strong>{currentExamStats.totalScore} / {maxScore}</strong></span>
+            <span>|</span>
+            <span>Thời lượng: <strong>{durationMinutes} phút</strong></span>
           </div>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="col-span-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-center"
             >
               Hủy
             </button>
@@ -1968,7 +1981,7 @@ function ExamCreatorContent({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleSaveExam(false)}
-              className="px-4 py-2.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-950/40 font-bold text-xs transition cursor-pointer"
+              className="col-span-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-950/40 font-bold text-xs transition cursor-pointer text-center"
             >
               {isSubmitting ? "Đang lưu..." : "💾 Lưu Bản Nháp"}
             </button>
@@ -1977,7 +1990,7 @@ function ExamCreatorContent({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleSaveExam(true)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition cursor-pointer"
+              className="col-span-2 sm:col-span-1 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition cursor-pointer text-center"
             >
               {isSubmitting ? "Đang lưu..." : "🚀 Lưu & Xuất Bản Đề Thi"}
             </button>
@@ -1988,9 +2001,9 @@ function ExamCreatorContent({
         {/* POPUP SỬA CÂU HỎI & SỬA ĐÁP ÁN TRONG ĐỀ */}
         {/* ========================================================================= */}
         {editingIndex !== null && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between border-b pb-3">
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl flex flex-col max-h-[90dvh] overflow-hidden animate-fade-in">
+              <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-slate-900/70">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                   <span>✏️</span>
                   <span>Sửa Câu Hỏi #{editingIndex + 1} Trong Đề Thi</span>
@@ -1998,104 +2011,106 @@ function ExamCreatorContent({
                 <button
                   type="button"
                   onClick={() => setEditingIndex(null)}
-                  className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer"
+                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-sm cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Độ Khó
-                </label>
-                <select
-                  value={editQDifficulty}
-                  onChange={(e) => setEditQDifficulty(e.target.value as "easy" | "medium" | "hard")}
-                  className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                >
-                  <option value="easy">🟢 Mức Dễ</option>
-                  <option value="medium">🟡 Mức Trung bình</option>
-                  <option value="hard">🔴 Mức Khó</option>
-                </select>
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 min-h-0 space-y-4 overscroll-contain">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Độ Khó
+                  </label>
+                  <select
+                    value={editQDifficulty}
+                    onChange={(e) => setEditQDifficulty(e.target.value as "easy" | "medium" | "hard")}
+                    className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
+                  >
+                    <option value="easy">🟢 Mức Dễ</option>
+                    <option value="medium">🟡 Mức Trung bình</option>
+                    <option value="hard">🔴 Mức Khó</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nội Dung Câu Hỏi
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editQContent}
+                    onChange={(e) => setEditQContent(e.target.value)}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    4 Phương Án Trả Lời (Đánh dấu phương án đúng)
+                  </label>
+                  {editQOptions.map((opt, oIdx) => (
+                    <div key={oIdx} className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                        {opt.option_label}
+                      </span>
+                      <input
+                        type="text"
+                        value={opt.content}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditQOptions((prev) => {
+                            const updated = [...prev];
+                            updated[oIdx] = { ...updated[oIdx], content: val };
+                            return updated;
+                          });
+                        }}
+                        className="flex-1 min-w-0 text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditQOptions((prev) =>
+                            prev.map((o, idx) => ({ ...o, is_correct: idx === oIdx })),
+                          );
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                          opt.is_correct
+                            ? "bg-emerald-600 text-white"
+                            : "border border-slate-200 text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {opt.is_correct ? "✓ Đúng" : "Chọn"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Lời Giải Thích Chi Tiết
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editQExplanation}
+                    onChange={(e) => setEditQExplanation(e.target.value)}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Nội Dung Câu Hỏi
-                </label>
-                <textarea
-                  rows={3}
-                  value={editQContent}
-                  onChange={(e) => setEditQContent(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  4 Phương Án Trả Lời (Đánh dấu phương án đúng)
-                </label>
-                {editQOptions.map((opt, oIdx) => (
-                  <div key={oIdx} className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
-                      {opt.option_label}
-                    </span>
-                    <input
-                      type="text"
-                      value={opt.content}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditQOptions((prev) => {
-                          const updated = [...prev];
-                          updated[oIdx] = { ...updated[oIdx], content: val };
-                          return updated;
-                        });
-                      }}
-                      className="flex-1 text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditQOptions((prev) =>
-                          prev.map((o, idx) => ({ ...o, is_correct: idx === oIdx })),
-                        );
-                      }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
-                        opt.is_correct
-                          ? "bg-emerald-600 text-white"
-                          : "border border-slate-200 text-slate-500 hover:bg-slate-100"
-                      }`}
-                    >
-                      {opt.is_correct ? "✓ Đúng" : "Chọn"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Lời Giải Thích Chi Tiết
-                </label>
-                <textarea
-                  rows={2}
-                  value={editQExplanation}
-                  onChange={(e) => setEditQExplanation(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t">
+              <div className="px-4 sm:px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 shrink-0 bg-slate-50/70 dark:bg-slate-900/70">
                 <button
                   type="button"
                   onClick={() => setEditingIndex(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold hover:bg-slate-100 transition cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveEditedQuestion}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
                 >
                   Lưu Sửa Đổi
                 </button>

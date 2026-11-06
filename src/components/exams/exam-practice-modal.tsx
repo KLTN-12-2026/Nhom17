@@ -72,6 +72,15 @@ function PracticeTestContent({ exam, onClose }: PracticeTestContentProps) {
     setExamStatus("submitted");
   }, []);
 
+  // Khóa cuộn trang nền khi mở modal thi thử
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   // Đồng hồ đếm ngược chạy từng giây
   useEffect(() => {
     if (examStatus !== "taking") return;
@@ -149,30 +158,30 @@ function PracticeTestContent({ exam, onClose }: PracticeTestContentProps) {
   }, [questions, answers, exam.pass_score]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-xs overflow-y-auto font-sans">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[94vh] overflow-hidden animate-fade-in my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-xs font-sans overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border-0 sm:border border-slate-200 dark:border-slate-800 w-full max-w-5xl h-full sm:h-auto max-h-[100dvh] sm:max-h-[94dvh] rounded-none sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in">
         {/* ========================================================================= */}
         {/* TOP BAR: THÔNG TIN BÀI THI & ĐỒNG HỒ */}
         {/* ========================================================================= */}
-        <div className="px-6 py-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/70 shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xs shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <span className="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider shrink-0">
               Chế Độ Thi Thử
             </span>
-            <div>
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate sm:whitespace-normal">
                 {exam.title}
               </h2>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-slate-500 line-clamp-1 sm:line-clamp-none">
                 Mô phỏng trải nghiệm thực tế của học viên khi làm bài
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 shrink-0 ml-2">
             {examStatus === "taking" && (
               <div
-                className={`px-3.5 py-1.5 rounded-xl border flex items-center gap-2 font-mono text-sm font-black shadow-xs ${
+                className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 font-mono text-xs sm:text-sm font-black shadow-xs ${
                   secondsRemaining < 300
                     ? "bg-rose-50 border-rose-300 text-rose-600 animate-pulse"
                     : "bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400"
@@ -197,7 +206,7 @@ function PracticeTestContent({ exam, onClose }: PracticeTestContentProps) {
         {/* BODY: MÀN HÌNH LÀM BÀI HOẶC BẢNG KẾT QUẢ */}
         {/* ========================================================================= */}
         {examStatus === "taking" ? (
-          <div className="p-6 overflow-y-auto flex-1 flex flex-col md:flex-row gap-6">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 flex flex-col md:flex-row gap-5 sm:gap-6 overscroll-contain">
             {/* Cột trái: Nội dung câu hỏi đang làm */}
             <div className="flex-1 space-y-5">
               {currentQ ? (
@@ -310,7 +319,7 @@ function PracticeTestContent({ exam, onClose }: PracticeTestContentProps) {
               </div>
 
               {/* Lưới các nút câu hỏi 1..N */}
-              <div className="grid grid-cols-5 gap-2 max-h-60 overflow-y-auto pr-1">
+              <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-5 gap-2 max-h-60 overflow-y-auto pr-1">
                 {questions.map((q, idx) => {
                   const isAnswered = !!answers[q.question_id];
                   const isCurrent = idx === currentIndex;
@@ -369,7 +378,7 @@ function PracticeTestContent({ exam, onClose }: PracticeTestContentProps) {
           /* ========================================================================= */
           /* MÀN HÌNH BÁO CÁO KẾT QUẢ SAU KHI NỘP BÀI */
           /* ========================================================================= */
-          <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-5 sm:space-y-6 overscroll-contain">
             {/* Hộp điểm số tổng quan */}
             <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-950 text-white text-center relative overflow-hidden shadow-xl">
               <div className="relative z-10 max-w-md mx-auto space-y-3">
@@ -492,15 +501,15 @@ function PracticeTestContent({ exam, onClose }: PracticeTestContentProps) {
         {/* ========================================================================= */}
         {/* FOOTER */}
         {/* ========================================================================= */}
-        <div className="px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 flex items-center justify-between shrink-0">
-          <span className="text-xs text-slate-500">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+          <span className="text-xs text-slate-500 text-center sm:text-left">
             Học phần: <strong>{exam.title}</strong>
           </span>
 
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-bold text-xs shadow-xs transition cursor-pointer text-center"
           >
             Đóng Bài Thi Thử
           </button>
