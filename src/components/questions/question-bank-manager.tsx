@@ -1272,14 +1272,38 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
 
               {/* Content */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Đề Bài Câu Hỏi
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Đề Bài Câu Hỏi <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {editContent.includes("\n") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditContent((prev) =>
+                            prev
+                              .split("\n")
+                              .map((l) => l.trim())
+                              .filter(Boolean)
+                              .join(" ")
+                          );
+                        }}
+                        className="text-[11px] text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 px-2 py-0.5 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
+                        title="Gộp các dòng bị ngắt rời rạc (do copy từ PDF/Word) thành một dòng liền mạch"
+                      >
+                        <span>🧹 Gộp dòng thừa</span>
+                      </button>
+                    )}
+                    <span className="text-[11px] text-slate-400">Có thể kéo giãn góc dưới</span>
+                  </div>
+                </div>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
+                  placeholder="Nhập nội dung đề bài câu hỏi trắc nghiệm, bài toán, công thức..."
+                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 leading-relaxed min-h-[110px] resize-y"
                 />
               </div>
 
@@ -1338,14 +1362,38 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
 
               {/* Explanation */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Lời Giải Thích Chi Tiết
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Lời Giải Thích Chi Tiết
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {editExplanation.includes("\n") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditExplanation((prev) =>
+                            prev
+                              .split("\n")
+                              .map((l) => l.trim())
+                              .filter(Boolean)
+                              .join(" ")
+                          );
+                        }}
+                        className="text-[11px] text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 px-2 py-0.5 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
+                        title="Gộp các dòng bị ngắt rời rạc thành một đoạn liền mạch"
+                      >
+                        <span>🧹 Gộp dòng thừa</span>
+                      </button>
+                    )}
+                    <span className="text-[11px] text-slate-400">Không bắt buộc • Có thể kéo giãn</span>
+                  </div>
+                </div>
                 <textarea
-                  rows={2}
+                  rows={4}
                   value={editExplanation}
                   onChange={(e) => setEditExplanation(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
+                  placeholder="Nhập các bước giải chi tiết hoặc lưu ý phương pháp giải..."
+                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 leading-relaxed min-h-[100px] resize-y"
                 />
               </div>
 

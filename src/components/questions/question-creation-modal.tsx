@@ -577,26 +577,46 @@ export default function QuestionCreationModal({
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Nội Dung Đề Bài Câu Hỏi <span className="text-rose-500">*</span>
                 </label>
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-slate-500">Mức độ:</span>
-                  <select
-                    value={manualDifficulty}
-                    onChange={(e) => setManualDifficulty(e.target.value as "easy" | "medium" | "hard")}
-                    className="py-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
-                  >
-                    <option value="easy">Dễ (Nhận biết)</option>
-                    <option value="medium">Trung bình (Thông hiểu)</option>
-                    <option value="hard">Khó (Vận dụng cao)</option>
-                  </select>
+                <div className="flex items-center gap-2">
+                  {manualContent.includes("\n") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualContent((prev) =>
+                          prev
+                            .split("\n")
+                            .map((l) => l.trim())
+                            .filter(Boolean)
+                            .join(" ")
+                        );
+                      }}
+                      className="text-[11px] text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 px-2 py-0.5 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
+                      title="Gộp các dòng bị ngắt rời rạc (do copy từ PDF/Word) thành một dòng liền mạch"
+                    >
+                      <span>🧹 Gộp dòng thừa</span>
+                    </button>
+                  )}
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-slate-500">Mức độ:</span>
+                    <select
+                      value={manualDifficulty}
+                      onChange={(e) => setManualDifficulty(e.target.value as "easy" | "medium" | "hard")}
+                      className="py-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                    >
+                      <option value="easy">Dễ (Nhận biết)</option>
+                      <option value="medium">Trung bình (Thông hiểu)</option>
+                      <option value="hard">Khó (Vận dụng cao)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
               <textarea
-                rows={3}
+                rows={4}
                 value={manualContent}
                 onChange={(e) => setManualContent(e.target.value)}
                 placeholder="Nhập câu hỏi trắc nghiệm, bài toán, công thức..."
-                className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 leading-relaxed min-h-[85px] resize-y"
+                className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 leading-relaxed min-h-[110px] resize-y"
               />
 
               {/* 4 Options Grid */}
@@ -650,7 +670,27 @@ export default function QuestionCreationModal({
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Phương Pháp Giải &amp; Lời Giải Chi Tiết
                   </label>
-                  <span className="text-[11px] text-slate-400">Không bắt buộc</span>
+                  <div className="flex items-center gap-2">
+                    {manualExplanation.includes("\n") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualExplanation((prev) =>
+                            prev
+                              .split("\n")
+                              .map((l) => l.trim())
+                              .filter(Boolean)
+                              .join(" ")
+                          );
+                        }}
+                        className="text-[11px] text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 px-2 py-0.5 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
+                        title="Gộp các dòng bị ngắt rời rạc thành một đoạn liền mạch"
+                      >
+                        <span>🧹 Gộp dòng thừa</span>
+                      </button>
+                    )}
+                    <span className="text-[11px] text-slate-400">Không bắt buộc</span>
+                  </div>
                 </div>
                 <textarea
                   rows={4}
