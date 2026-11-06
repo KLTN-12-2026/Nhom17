@@ -144,6 +144,20 @@ const CURRICULUM_KNOWLEDGE_BASE: Record<string, SeedQuestion[]> = {
       distractors: ["2", "3", "7"],
     },
     {
+      content: "Tìm tất cả các giá trị thực của tham số m để hàm số y = (x - 2) / (x - m) đồng biến trên khoảng (-∞; 3).",
+      difficulty: "hard",
+      explanation: "Tập xác định D = R \\ {m}. Đạo hàm y' = (-m + 2) / (x - m)^2. Hàm số đồng biến trên (-∞; 3) khi và chỉ khi: y' > 0 với mọi x < 3 và m không thuộc (-∞; 3) <=> -m + 2 > 0 và m >= 3 <=> m < 2 và m >= 3 (vô nghiệm). Vậy không có giá trị m nào thỏa mãn.",
+      correctAnswer: "Không có giá trị m nào thỏa mãn",
+      distractors: ["m < 2", "m >= 3", "m > 2"],
+    },
+    {
+      content: "Cho hàm số f(x) có đạo hàm f'(x) = x(x - 1)(x + 2)^3 với mọi x thuộc R. Số điểm cực trị của hàm số đã cho là bao nhiêu?",
+      difficulty: "hard",
+      explanation: "Điểm cực trị là điểm mà tại đó đạo hàm f'(x) đổi dấu. Phương trình f'(x) = 0 có các nghiệm: x = 0 (bội 1), x = 1 (bội 1), x = -2 (bội 3 - số mũ lẻ nên vẫn đổi dấu). Cả 3 nghiệm đều làm đạo hàm đổi dấu khi đi qua, do đó hàm số có đúng 3 điểm cực trị.",
+      correctAnswer: "3 điểm cực trị",
+      distractors: ["1 điểm cực trị", "2 điểm cực trị", "4 điểm cực trị"],
+    },
+    {
       content: "Cho hàm số f(x) có bảng biến thiên và f'(x) đổi dấu từ dương sang âm khi qua điểm x0. Khi đó x0 được gọi là gì?",
       difficulty: "easy",
       explanation: "Khi đạo hàm đổi dấu từ dương sang âm tại x0, hàm số chuyển từ đồng biến sang nghịch biến, nên x0 là điểm cực đại của hàm số.",
@@ -254,6 +268,39 @@ const CURRICULUM_KNOWLEDGE_BASE: Record<string, SeedQuestion[]> = {
 };
 
 /**
+ * Phân bổ số lượng câu hỏi chính xác theo ma trận đề thi khảo thí (Bloom's Taxonomy)
+ * Chuẩn ma trận Bộ GD&ĐT: ~40% Dễ (Nhận biết), ~40% Trung bình (Thông hiểu & Vận dụng), ~20% Khó (Vận dụng cao)
+ */
+function calculateDifficultyQuotas(count: number, difficulty: string): { easy: number; medium: number; hard: number } {
+  if (difficulty === "easy") return { easy: count, medium: 0, hard: 0 };
+  if (difficulty === "medium") return { easy: 0, medium: count, hard: 0 };
+  if (difficulty === "hard") return { easy: 0, medium: 0, hard: count };
+
+  // difficulty === "mixed" (Phân bổ đều chuẩn ma trận đề thi)
+  if (count <= 1) return { easy: 0, medium: 1, hard: 0 };
+  if (count === 2) return { easy: 1, medium: 1, hard: 0 };
+  if (count === 3) return { easy: 1, medium: 1, hard: 1 };
+  if (count === 4) return { easy: 2, medium: 1, hard: 1 };
+  if (count === 5) return { easy: 2, medium: 2, hard: 1 };
+
+  // count >= 6
+  const hard = Math.max(1, Math.floor(count * 0.25));
+  const remaining = count - hard;
+  const easy = Math.floor(remaining * 0.5);
+  const medium = count - hard - easy;
+  return { easy, medium, hard };
+}
+
+function getTargetLevels(count: number, difficulty: string): ("easy" | "medium" | "hard")[] {
+  const quotas = calculateDifficultyQuotas(count, difficulty);
+  const levels: ("easy" | "medium" | "hard")[] = [];
+  for (let i = 0; i < quotas.easy; i++) levels.push("easy");
+  for (let i = 0; i < quotas.medium; i++) levels.push("medium");
+  for (let i = 0; i < quotas.hard; i++) levels.push("hard");
+  return levels;
+}
+
+/**
  * Trình sinh câu hỏi dự phòng thông minh (Domain-aware Smart Fallback)
  * Đảm bảo hệ thống luôn tạo được câu hỏi trắc nghiệm chất lượng ngay cả khi chưa có GEMINI_API_KEY
  */
@@ -265,7 +312,7 @@ function generateFallbackQuestions(
   count: number,
   preferredDifficulty: string
 ): GeneratedQuestion[] {
-  const diffs: ("easy" | "medium" | "hard")[] = ["easy", "medium", "hard"];
+  const targetLevels = getTargetLevels(count, preferredDifficulty);
   const lowerSearch = `${topicName} ${subjectName} ${promptText}`.toLowerCase();
 
   // Tìm seed questions phù hợp trong tri thức chương trình SGK
@@ -289,16 +336,27 @@ function generateFallbackQuestions(
   const results: GeneratedQuestion[] = [];
   const labels = ["A", "B", "C", "D"];
 
-  // Nếu có seed thực tế theo môn/bài, lấy tối đa từ seed
+  // Nếu có seed thực tế theo môn/bài, lấy tối đa từ seed bám sát targetLevels
   if (matchedSeeds.length > 0) {
+    const usedSeedIndices = new Set<number>();
     for (let i = 0; i < count; i++) {
-      const seed = matchedSeeds[i % matchedSeeds.length];
-      const diff = preferredDifficulty === "mixed" 
-        ? seed.difficulty 
-        : (["easy", "medium", "hard"].includes(preferredDifficulty) ? (preferredDifficulty as "easy" | "medium" | "hard") : seed.difficulty);
+      const targetDiff = targetLevels[i] || "medium";
+      // Tìm câu hỏi có độ khó tương ứng chưa sử dụng
+      let foundIdx = matchedSeeds.findIndex((s, sIdx) => s.difficulty === targetDiff && !usedSeedIndices.has(sIdx));
+      if (foundIdx === -1) {
+        // Nếu không có câu chưa dùng đúng độ khó, tìm bất kỳ câu đúng độ khó
+        foundIdx = matchedSeeds.findIndex((s) => s.difficulty === targetDiff);
+      }
+      if (foundIdx === -1) {
+        // Fallback lấy vòng lặp
+        foundIdx = i % matchedSeeds.length;
+      }
+      usedSeedIndices.add(foundIdx);
+      const seed = matchedSeeds[foundIdx];
+      const diff = targetDiff;
 
       // Tạo 4 đáp án với 1 đáp án đúng tại vị trí ngẫu nhiên
-      const correctIdx = i % 4;
+      const correctIdx = (i + 1) % 4;
       const opts: { option_label: string; content: string; is_correct: boolean }[] = [];
       let distractorIdx = 0;
 
@@ -366,7 +424,7 @@ function generateFallbackQuestions(
       ],
     },
     {
-      titleSuffix: "Trong đề thi, sai lầm hoặc 'bẫy' lý thuyết học sinh hay mắc phải nhất ở chuyên đề",
+      titleSuffix: "Trong đề thi, sai lầm hoặc 'bẫy' nhận thức học sinh hay mắc phải nhất ở chuyên đề",
       explanation: `Học sinh thường quên xét điều kiện biên hoặc nhầm lẫn giữa các khái niệm tương đương của ${cleanTitle}. Cần đọc kỹ đề bài để tránh mất điểm.`,
       correct: `Quên xét điều kiện xác định hoặc bỏ sót các trường hợp đặc biệt tại điểm biên.`,
       wrong: [
@@ -376,22 +434,23 @@ function generateFallbackQuestions(
       ],
     },
     {
-      titleSuffix: "Ứng dụng thực tiễn hoặc ý nghĩa khoa học lớn nhất của bài học",
-      explanation: `Kiến thức về ${cleanTitle} giúp giải thích các hiện tượng thực tế và làm nền tảng cho các bài học nâng cao tiếp theo.`,
-      correct: `Giải thích bản chất hiện tượng thực tế và phục vụ giải quyết các bài toán vận dụng cao.`,
+      titleSuffix: "Vận dụng cao: Nhận định mang tính phân tích, đánh giá chuyên sâu hoặc liên hệ thực tế về",
+      explanation: `Kiến thức về ${cleanTitle} đòi hỏi liên kết đa biến, giải quyết tình huống phức hợp và phân tích điều kiện ràng buộc nâng cao.`,
+      correct: `Phân tích toàn diện mối quan hệ biện luận, đánh giá điều kiện biên và tối ưu hóa giải pháp.`,
       wrong: [
         `Chỉ mang tính chất hàn lâm lý thuyết, không có ý nghĩa thực tiễn.`,
-        `Chỉ dùng để minh họa mà không xuất hiện trong ma trận đề thi.`,
+        `Chỉ dùng để minh họa mà không xuất hiện trong ma trận đề thi phân loại.`,
         `Bị thay thế hoàn toàn bởi các phương pháp định tính sơ khai.`,
       ],
     },
   ];
 
   for (let i = 0; i < count; i++) {
-    const template = genericPedagogicalTemplates[i % genericPedagogicalTemplates.length];
-    const diff = preferredDifficulty === "mixed" 
-      ? diffs[i % 3] 
-      : (["easy", "medium", "hard"].includes(preferredDifficulty) ? (preferredDifficulty as "easy" | "medium" | "hard") : "medium");
+    const targetDiff = targetLevels[i] || "medium";
+    // Chọn template tương ứng với độ khó
+    const templateIndex = targetDiff === "easy" ? (i % 2) : (targetDiff === "medium" ? (2 + (i % 2)) : 4);
+    const template = genericPedagogicalTemplates[templateIndex % genericPedagogicalTemplates.length];
+    const diff = targetDiff;
 
     const correctIdx = (i + 1) % 4;
     const opts: { option_label: string; content: string; is_correct: boolean }[] = [];
@@ -484,6 +543,13 @@ export async function POST(request: Request) {
           comprehensive: "Cân đối toàn diện: 40% nhận biết lý thuyết, 40% thông hiểu/vận dụng, 20% câu hỏi phân loại.",
         };
         const focusInstruction = focusGuides[questionFocus] || focusGuides.comprehensive;
+        const quotas = calculateDifficultyQuotas(requestedCount, validDifficulty);
+        const difficultyDistributionGuide = validDifficulty === "mixed"
+          ? `BẮT BUỘC PHÂN BỔ CHÍNH XÁC SỐ LƯỢNG THEO MA TRẬN ĐỀ THI:
+  - Đúng ${quotas.easy} câu có "difficulty_level": "easy" (Mức Dễ - Nhận biết)
+  - Đúng ${quotas.medium} câu có "difficulty_level": "medium" (Mức Trung bình - Thông hiểu & Vận dụng)
+  - Đúng ${quotas.hard} câu có "difficulty_level": "hard" (Mức Khó - Vận dụng cao)`
+          : `BẮT BUỘC toàn bộ ${requestedCount} câu đều có "difficulty_level": "${validDifficulty}" (${validDifficulty === "easy" ? "Mức Dễ" : validDifficulty === "medium" ? "Mức Trung bình" : "Mức Khó - Vận dụng cao"})`;
 
         const systemPrompt = `
 Bạn là một chuyên gia sư phạm và khảo thí giàu kinh nghiệm biên soạn đề thi Tốt nghiệp THPT Quốc Gia ${subjectName ? `môn ${subjectName}` : ""}.
@@ -497,13 +563,33 @@ THÔNG TIN BÀI HỌC:
 - Định hướng ra đề: ${focusInstruction}
 ${promptText.trim() ? `- YÊU CẦU HOẶC TÀI LIỆU BỔ SUNG TỪ GIÁO VIÊN:\n"""\n${promptText.trim()}\n"""` : `- YÊU CẦU TỰ ĐỘNG: Phân tích kiến thức chuẩn SGK của bài học "${topicName}" để biên soạn câu hỏi thực tế sát với đề thi tốt nghiệp.`}
 
-YÊU CẦU BẮT BUỘC:
+YÊU CẦU PHÂN BỔ ĐỘ KHÓ (THEO MA TRẬN KHẢO THÍ CHUẨN):
+${difficultyDistributionGuide}
+
+TIÊU CHUẨN ĐỘ KHÓ THEO THANG NHẬN THỨC BLOOM (ÁP DỤNG ĐA CHUYÊN ĐỀ & MỌI MÔN HỌC):
+1. Mức DỄ ("easy" - Cấp độ Nhận biết / Recall):
+   - Nhận diện hoặc tái hiện thông tin, định nghĩa, công thức, quy tắc, tác giả, tác phẩm, thuật ngữ, sự kiện, mốc thời gian, số liệu có sẵn trong SGK.
+   - Đọc dữ liệu trực tiếp từ bảng số liệu, bảng biến thiên, đồ thị hoặc văn bản mà KHÔNG đòi hỏi suy luận hay tính toán phức tạp.
+
+2. Mức TRUNG BÌNH ("medium" - Cấp độ Thông hiểu & Vận dụng / Comprehension & Application):
+   - Hiểu bản chất và áp dụng kiến thức vào một tình huống đơn lẻ hoặc bài toán 1-2 bước quen thuộc.
+   - Giải thích nguyên nhân - kết quả, phân tích cấu trúc, áp dụng công thức tính toán trực diện, nhận diện quy luật thông thường.
+
+3. Mức KHÓ ("hard" - Cấp độ Vận dụng cao / Analysis & Evaluation - PHÂN LOẠI ĐIỂM 8.5 ĐẾN 10):
+   BẮT BUỘC phải là câu hỏi có độ sâu tư duy thực sự, phân loại học sinh khá giỏi:
+   - Với môn Toán học (mọi chuyên đề: Khảo sát hàm số, Hình Oxyz, Tích phân, Mũ - Logarit, Số phức, Xác suất...) và các môn KHTN (Lý, Hóa, Sinh):
+     + Đòi hỏi 3-4 bước tư duy liên kết, kết hợp nhiều đơn vị kiến thức.
+     + Chứa tham số cần biện luận điều kiện (ví dụ: tìm tham số m để hàm số/phương trình thỏa mãn tính chất), bài toán hàm hợp f(u(x)), đồ thị phức hợp, cực trị hình học, hoặc bài toán mô hình hóa thực tế tối ưu.
+   - Với môn Ngữ văn, Ngoại ngữ & KHXH (Ngữ văn, Tiếng Anh, Lịch sử, Địa lý...):
+     + Đòi hỏi suy luận dụng ý sâu xa (reading inference / ngụ ý nghệ thuật), so sánh đối chiếu đa chiều giữa các tác phẩm/giai đoạn, đánh giá tác động chiến lược, phản biện xã hội, hoặc thành ngữ/ngữ cảnh phức hợp.
+   - TUYỆT ĐỐI KHÔNG được tạo câu hỏi lý thuyết đơn giản hay tính toán 1 bước rồi gán nhãn "hard". Câu "hard" phải thực sự mang tính phân loại cao.
+
+YÊU CẦU BẮT BUỘC VỀ ĐÁP ÁN:
 1. Số lượng câu hỏi: Đúng ${requestedCount} câu.
-2. Mức độ khó: ${validDifficulty === "mixed" ? "Phân bổ đều từ Dễ (Nhận biết), Trung bình (Thông hiểu), đến Khó (Vận dụng cao)" : validDifficulty}.
-3. Mỗi câu hỏi BẮT BUỘC có ĐÚNG 4 phương án lựa chọn được gán nhãn A, B, C, D.
-4. BẮT BUỘC có ĐÚNG 1 phương án có is_correct: true, 3 phương án còn lại có is_correct: false (phương án nhiễu hợp lý, không ngây ngô).
-5. Mỗi câu hỏi phải có phần "explanation" giải thích chi tiết phương pháp giải từng bước theo chuẩn sư phạm.
-6. Hỗ trợ biểu thức toán học hoặc công thức hóa học rõ ràng, dễ đọc.
+2. Mỗi câu hỏi BẮT BUỘC có ĐÚNG 4 phương án lựa chọn được gán nhãn A, B, C, D.
+3. BẮT BUỘC có ĐÚNG 1 phương án có is_correct: true, 3 phương án còn lại có is_correct: false (phương án nhiễu hợp lý, không ngây ngô).
+4. Mỗi câu hỏi phải có phần "explanation" giải thích chi tiết phương pháp giải từng bước theo chuẩn sư phạm.
+5. Hỗ trợ biểu thức toán học hoặc công thức hóa học rõ ràng, dễ đọc.
 
 ĐỊNH DẠNG TRẢ VỀ:
 CHỈ TRẢ VỀ DUY NHẤT một mảng JSON thuần túy (Array of objects), KHÔNG kèm markdown code block (không dùng \`\`\`json), định dạng như sau:
@@ -536,6 +622,7 @@ CHỈ TRẢ VỀ DUY NHẤT một mảng JSON thuần túy (Array of objects), K
         const parsedQuestions = JSON.parse(cleanedJson);
 
         if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+          const targetLevels = getTargetLevels(requestedCount, validDifficulty);
           const validated = parsedQuestions.map((q: GeneratedQuestion, idx: number) => {
             const labels = ["A", "B", "C", "D"];
             let options = Array.isArray(q.options) ? q.options : [];
@@ -553,9 +640,14 @@ CHỈ TRẢ VỀ DUY NHẤT một mảng JSON thuần túy (Array of objects), K
               options[0].is_correct = true;
             }
 
+            // Đảm bảo mức độ khó chuẩn xác theo ma trận
+            const assignedDifficulty = ["easy", "medium", "hard"].includes(q.difficulty_level)
+              ? q.difficulty_level
+              : (targetLevels[idx] || "medium");
+
             return {
               content: q.content || `Câu hỏi trắc nghiệm ${idx + 1} về ${topicName}`,
-              difficulty_level: ["easy", "medium", "hard"].includes(q.difficulty_level) ? q.difficulty_level : "medium",
+              difficulty_level: assignedDifficulty,
               explanation: q.explanation || `Lời giải chi tiết bài học ${topicName}.`,
               options: options.map((opt, oIdx) => ({
                 option_label: opt.option_label || labels[oIdx],
@@ -564,6 +656,12 @@ CHỈ TRẢ VỀ DUY NHẤT một mảng JSON thuần túy (Array of objects), K
               })),
             };
           });
+
+          // Nếu là chế độ mixed, sắp xếp câu hỏi theo tiến trình sư phạm: Dễ -> Trung bình -> Khó
+          if (validDifficulty === "mixed") {
+            const orderMap: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
+            validated.sort((a: GeneratedQuestion, b: GeneratedQuestion) => (orderMap[a.difficulty_level] || 2) - (orderMap[b.difficulty_level] || 2));
+          }
 
           return NextResponse.json({
             success: true,

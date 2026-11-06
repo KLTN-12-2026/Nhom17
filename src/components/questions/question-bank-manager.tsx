@@ -60,6 +60,7 @@ interface TopicItem {
   _id: string;
   topic_name: string;
   subject_id: string;
+  description?: string;
   created_by?: string | { _id: string; name?: string; email?: string } | null;
   level: number;
   questionCount?: number;
@@ -774,20 +775,26 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
         <div className="space-y-6">
           {/* Header with back button */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3.5">
               <button
                 type="button"
                 onClick={handleBackToSubjects}
-                className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
-                title="Quay lại danh mục môn"
+                className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-base font-bold transition-colors cursor-pointer shrink-0"
+                title="Quay lại danh mục môn học"
               >
                 ←
               </button>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5 flex-wrap">
                   <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>📐</span> Môn: {selectedSubject.subject_name}
+                    <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm font-bold shrink-0">
+                      📐
+                    </span>
+                    <span>Môn: {selectedSubject.subject_name}</span>
                   </h3>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/50">
+                    {currentSubjectTopics.length} chuyên đề
+                  </span>
                   {canManageSubject(selectedSubject) && (
                     <button
                       type="button"
@@ -795,16 +802,15 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                         setDeletingSubject(selectedSubject);
                         setDeleteSubjectError("");
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700 hover:border-rose-200 transition cursor-pointer whitespace-nowrap ml-1"
+                      className="text-xs font-medium text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-2 py-0.5 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer"
                       title="Xóa môn học này (chỉ khi không còn câu hỏi)"
                     >
-                      <span>🗑️</span>
-                      <span>Xóa môn</span>
+                      Xóa môn
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Chọn một gói chuyên đề dưới đây để &ldquo;mở tung&rdquo; và xem toàn bộ câu hỏi trắc nghiệm bên trong.
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Chọn chuyên đề bài học để xem kho câu hỏi hoặc sử dụng Trợ lý AI để tự động tạo đề thi bám sát chương trình.
                 </p>
               </div>
             </div>
@@ -818,9 +824,10 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   setNewTopicDesc("");
                   setIsAddTopicModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs hover:shadow transition cursor-pointer whitespace-nowrap"
               >
-                <span>+</span> Thêm Chuyên Đề Mới
+                <span className="text-sm font-bold">+</span>
+                <span>Thêm Chuyên Đề Mới</span>
               </button>
             </div>
           </div>
@@ -838,19 +845,20 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                 <div
                   key={top._id}
                   onClick={() => handleSelectTopic(top)}
-                  className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-purple-500 p-5 rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between"
+                  className="group bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-purple-500/80 p-5 rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between"
                 >
                   <div>
+                    {/* Card Top Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/50">
-                          Chuyên đề {tIdx + 1}
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/50">
+                          Chuyên đề {String(tIdx + 1).padStart(2, "0")}
                         </span>
                         {top.created_by && (
                           <span
                             className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${
                               canManageTopic(top)
-                                ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300"
+                                ? "bg-purple-50/70 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400"
                                 : "bg-slate-100 dark:bg-slate-800 text-slate-500"
                             }`}
                           >
@@ -858,8 +866,14 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            (top.questionCount || 0) > 0
+                              ? "bg-purple-100/70 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300"
+                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                          }`}
+                        >
                           {top.questionCount || 0} câu hỏi
                         </span>
                         {canManageTopic(top) && (
@@ -871,7 +885,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                               setDeletingTopic(top);
                               setDeleteTopicError("");
                             }}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer text-xs"
                           >
                             🗑️
                           </button>
@@ -879,34 +893,60 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                       </div>
                     </div>
 
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-600 transition-colors line-clamp-2">
-                      {top.topic_name}
-                    </h4>
+                    {/* Topic Title */}
+                    <div className="my-2.5">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors line-clamp-2 min-h-[40px] leading-snug">
+                        {top.topic_name}
+                      </h4>
+                      {top.description && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
+                          {top.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Difficulty Distribution Pill & Action */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
-                    <div className="flex items-center gap-1.5 text-slate-500">
-                      <span className="text-emerald-600 font-medium">{top.stats?.easy || 0} Dễ</span>
-                      <span>•</span>
-                      <span className="text-amber-600 font-medium">{top.stats?.medium || 0} TB</span>
-                      <span>•</span>
-                      <span className="text-rose-600 font-medium">{top.stats?.hard || 0} Khó</span>
+                  {/* Difficulty Distribution Box & Action Footer */}
+                  <div className="mt-3 space-y-3">
+                    {/* Clean Difficulty Chips Box */}
+                    <div className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-[11px] text-slate-400 font-medium">Phân bố:</span>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          {top.stats?.easy || 0} Dễ
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                          {top.stats?.medium || 0} TB
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                          {top.stats?.hard || 0} Khó
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    {/* Action Footer Row */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenAddModal(top._id, "ai");
                         }}
-                        className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/60 transition cursor-pointer flex items-center gap-1"
-                        title={`AI tự động sinh câu hỏi theo bài "${top.topic_name}"`}
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/60 dark:border-purple-900/50 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                        title={`Trợ lý AI tự sinh câu hỏi theo bài "${top.topic_name}"`}
                       >
-                        <span>✨</span> AI Sinh Đề
+                        <span>✨</span>
+                        <span>AI Sinh Đề</span>
                       </button>
-                      <span className="font-bold text-purple-600 group-hover:underline flex items-center gap-0.5">
-                        Mở gói →
+
+                      <span className="text-xs font-bold text-purple-600 dark:text-purple-400 group-hover:translate-x-1 transition-transform flex items-center gap-1 whitespace-nowrap">
+                        Mở gói
+                        <span className="text-sm">→</span>
                       </span>
                     </div>
                   </div>
