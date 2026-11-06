@@ -1011,7 +1011,26 @@ function ExamCreatorContent({
                 <div className="space-y-4">
                   {/* Thanh lọc câu hỏi */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    <div className="sm:col-span-4">
+                    {/* 1. Môn học (Ngân hàng môn học - Lấy từ môn học) */}
+                    <div className="sm:col-span-3">
+                      <select
+                        value={selectedSubjectId}
+                        onChange={(e) => {
+                          setSelectedSubjectId(e.target.value);
+                          setManualFilterTopic("all");
+                        }}
+                        className="w-full text-xs py-2 px-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold focus:outline-none"
+                      >
+                        {subjects.map((sub) => (
+                          <option key={sub._id} value={sub._id}>
+                            📚 Môn: {sub.subject_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* 2. Chuyên đề thuộc môn học */}
+                    <div className="sm:col-span-3">
                       <select
                         value={manualFilterTopic}
                         onChange={(e) => setManualFilterTopic(e.target.value)}
@@ -1026,7 +1045,8 @@ function ExamCreatorContent({
                       </select>
                     </div>
 
-                    <div className="sm:col-span-3">
+                    {/* 3. Độ khó */}
+                    <div className="sm:col-span-2">
                       <select
                         value={manualFilterDifficulty}
                         onChange={(e) => setManualFilterDifficulty(e.target.value)}
@@ -1034,24 +1054,25 @@ function ExamCreatorContent({
                       >
                         <option value="all">Mọi độ khó</option>
                         <option value="easy">🟢 Mức Dễ</option>
-                        <option value="medium">🟡 Mức Trung bình</option>
+                        <option value="medium">🟡 Mức Vừa</option>
                         <option value="hard">🔴 Mức Khó</option>
                       </select>
                     </div>
 
-                    <div className="sm:col-span-5 flex gap-2">
+                    {/* 4. Tìm kiếm nội dung & nút Chọn hết */}
+                    <div className="sm:col-span-4 flex gap-2">
                       <input
                         type="text"
                         value={manualSearchQuery}
                         onChange={(e) => setManualSearchQuery(e.target.value)}
-                        placeholder="Tìm kiếm nội dung câu hỏi..."
+                        placeholder="Tìm nội dung câu hỏi..."
                         className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
                       />
                       <button
                         type="button"
                         onClick={handleAddAllFiltered}
                         title="Thêm tất cả các câu đang hiển thị vào đề"
-                        className="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold text-xs shrink-0 hover:bg-blue-100 transition cursor-pointer"
+                        className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 transition cursor-pointer"
                       >
                         + Chọn hết
                       </button>
@@ -1180,27 +1201,49 @@ function ExamCreatorContent({
                     </div>
                   )}
 
-                  {/* Chọn chuyên đề để bốc */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                      Chuyên Đề Nguồn
-                    </label>
-                    <select
-                      value={randomTopicId}
-                      onChange={(e) => setRandomTopicId(e.target.value)}
-                      className="w-full text-xs py-2.5 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
-                    >
-                      <option value="all">Toàn bộ chuyên đề của môn ({availableTopics.length} chuyên đề)</option>
-                      {availableTopics.map((t) => (
-                        <option key={t._id} value={t._id}>
-                          {t.topic_name}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-[11px] text-slate-400 mt-1 block">
-                      Kho khả dụng chưa chọn: <strong>{randomTopicStats.total}</strong> câu (Dễ: {randomTopicStats.easy}, Vừa: {randomTopicStats.medium}, Khó: {randomTopicStats.hard})
-                    </span>
+                  {/* Chọn môn học & chuyên đề để bốc */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Ngân Hàng Môn Học
+                      </label>
+                      <select
+                        value={selectedSubjectId}
+                        onChange={(e) => {
+                          setSelectedSubjectId(e.target.value);
+                          setRandomTopicId("all");
+                        }}
+                        className="w-full text-xs py-2.5 px-3.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold focus:outline-none"
+                      >
+                        {subjects.map((sub) => (
+                          <option key={sub._id} value={sub._id}>
+                            📚 Môn: {sub.subject_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Chuyên Đề Nguồn
+                      </label>
+                      <select
+                        value={randomTopicId}
+                        onChange={(e) => setRandomTopicId(e.target.value)}
+                        className="w-full text-xs py-2.5 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
+                      >
+                        <option value="all">Toàn bộ chuyên đề của môn ({availableTopics.length} chuyên đề)</option>
+                        {availableTopics.map((t) => (
+                          <option key={t._id} value={t._id}>
+                            {t.topic_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
+                  <span className="text-[11px] text-slate-400 mt-1 block">
+                    Kho khả dụng chưa chọn: <strong>{randomTopicStats.total}</strong> câu (Dễ: {randomTopicStats.easy}, Vừa: {randomTopicStats.medium}, Khó: {randomTopicStats.hard})
+                  </span>
 
                   {/* 3 ô nhập số lượng Dễ / Vừa / Khó */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
@@ -1280,7 +1323,27 @@ function ExamCreatorContent({
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Ngân Hàng Môn Học
+                      </label>
+                      <select
+                        value={selectedSubjectId}
+                        onChange={(e) => {
+                          setSelectedSubjectId(e.target.value);
+                          setNewQTopicId("");
+                        }}
+                        className="w-full text-xs py-2 px-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold focus:outline-none"
+                      >
+                        {subjects.map((sub) => (
+                          <option key={sub._id} value={sub._id}>
+                            📚 {sub.subject_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Chuyên Đề
@@ -1308,7 +1371,7 @@ function ExamCreatorContent({
                         className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
                       >
                         <option value="easy">🟢 Mức Dễ</option>
-                        <option value="medium">🟡 Mức Trung bình</option>
+                        <option value="medium">🟡 Mức Vừa</option>
                         <option value="hard">🔴 Mức Khó</option>
                       </select>
                     </div>
