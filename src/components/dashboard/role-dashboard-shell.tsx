@@ -31,7 +31,7 @@ interface NavItem {
 const roleConfigs = {
   admin: {
     menuTitle: "MENU QUẢN TRỊ",
-    title: "QUẢN TRỊ VIÊN",
+    title: "Admin",
     tagLabel: "Admin",
     roleSubtitle: "Bảng điều khiển & quản lý toàn diện",
     badgeClass: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 font-bold",
@@ -41,7 +41,7 @@ const roleConfigs = {
     sidebarWidget: {
       title: "Trung Tâm Điều Hành",
       metric: "Quản Trị",
-      desc: "Quản lý người dùng, phân quyền bảo mật RBAC và kiểm soát dữ liệu toàn nền tảng.",
+      desc: "Quản lý người dùng, phân quyền bảo mật và kiểm soát dữ liệu toàn nền tảng.",
       badge: "Đang hoạt động",
     },
   },
@@ -62,7 +62,7 @@ const roleConfigs = {
     },
   },
   student: {
-menuTitle: "GÓC HỌC TẬP THPT",
+    menuTitle: "GÓC HỌC TẬP THPT",
     title: "HỌC SINH",
     tagLabel: "Học Sinh Cấp 3",
     roleSubtitle: "Không gian luyện thi & bứt phá điểm số",
@@ -160,7 +160,7 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
     {
       label: "Phòng Thi Trực Tuyến Live",
       href: "/instructor/rooms",
-      badge: "Socket.IO",
+      badge: "Live",
       icon: ({ className }) => (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -197,7 +197,7 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
       ),
     },
     {
-label: "Thông Tin Cá Nhân",
+      label: "Thông Tin Cá Nhân",
       href: "/student/profile",
       icon: ({ className }) => (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -564,10 +564,6 @@ export default function RoleDashboardShell({
           <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${roleConfig.badgeClass}`}>
-                  {roleConfig.tagLabel}
-                </span>
-                <span className="text-slate-300 dark:text-slate-700">•</span>
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{roleConfig.roleSubtitle}</span>
               </div>
 

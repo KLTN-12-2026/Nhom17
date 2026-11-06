@@ -268,8 +268,8 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl text-xs font-bold text-white transition-all transform animate-bounce">
           <div
             className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${toast.type === "success"
-                ? "bg-emerald-600 border border-emerald-400"
-                : "bg-rose-600 border border-rose-400"
+              ? "bg-emerald-600 border border-emerald-400"
+              : "bg-rose-600 border border-rose-400"
               }`}
           >
             <span>{toast.type === "success" ? "✓" : "⚠"}</span>
@@ -283,13 +283,13 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
         <button
           onClick={() => setRoleFilter(roleFilter === "student" ? "all" : "student")}
           className={`p-4 rounded-2xl border text-left transition-all duration-150 shadow-xs hover:shadow-md cursor-pointer ${roleFilter === "student"
-              ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20"
-              : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
+            ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20"
+            : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
             }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Học Viên (Student)
+              HỌC VIÊN
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -307,13 +307,13 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
         <button
           onClick={() => setRoleFilter(roleFilter === "instructor" ? "all" : "instructor")}
           className={`p-4 rounded-2xl border text-left transition-all duration-150 shadow-xs hover:shadow-md cursor-pointer ${roleFilter === "instructor"
-              ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/20"
-              : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
+            ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/20"
+            : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
             }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Giảng Viên (Instructor)
+              GIẢNG VIÊN
             </span>
             <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -331,13 +331,13 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
         <button
           onClick={() => setRoleFilter(roleFilter === "admin" ? "all" : "admin")}
           className={`p-4 rounded-2xl border text-left transition-all duration-150 shadow-xs hover:shadow-md cursor-pointer ${roleFilter === "admin"
-              ? "bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 ring-2 ring-indigo-500/20"
-              : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
+            ? "bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 ring-2 ring-indigo-500/20"
+            : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300"
             }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Quản Trị Viên (Admin)
+              Admin
             </span>
             <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -457,7 +457,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   };
 
                   const roleLabels = {
-                    admin: "Quản trị viên",
+                    admin: "admin",
                     instructor: "Giảng viên",
                     student: "Học viên",
                   };
@@ -551,10 +551,10 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                             onClick={() => handleToggleStatus(u)}
                             disabled={isCurrentAdmin && u.status === "active"}
                             className={`p-1.5 rounded-lg border transition ${u.status === "active"
-                                ? isCurrentAdmin
-                                  ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
-                                  : "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 hover:bg-amber-100"
-                                : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 hover:bg-emerald-100"
+                              ? isCurrentAdmin
+                                ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
+                                : "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 hover:bg-amber-100"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 hover:bg-emerald-100"
                               }`}
                             title={
                               isCurrentAdmin && u.status === "active"
@@ -580,8 +580,8 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                             onClick={() => setDeletingUser(u)}
                             disabled={isCurrentAdmin}
                             className={`p-1.5 rounded-lg border transition ${isCurrentAdmin
-                                ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
-                                : "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100"
+                              ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
+                              : "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100"
                               }`}
                             title={
                               isCurrentAdmin
@@ -706,7 +706,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   >
                     <option value="student">🎓 Học viên</option>
                     <option value="instructor">👨‍🏫 Giảng viên</option>
-                    <option value="admin">👑 Quản trị viên</option>
+                    <option value="admin">👑 Admin</option>
                   </select>
                 </div>
 
@@ -821,7 +821,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                   >
                     <option value="student">🎓 Học viên</option>
                     <option value="instructor">👨‍🏫 Giảng viên</option>
-                    <option value="admin">👑 Quản trị viên</option>
+                    <option value="admin">👑 Admin</option>
                   </select>
                 </div>
 

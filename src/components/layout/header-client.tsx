@@ -24,7 +24,7 @@ export default function HeaderClient({ user }: HeaderClientProps) {
 
   const roleBadgeConfig = {
     admin: {
-      label: "Quản trị viên",
+      label: "Admin",
       badgeClass:
         "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800",
       dotClass: "bg-rose-500",
@@ -50,11 +50,10 @@ export default function HeaderClient({ user }: HeaderClientProps) {
 
   return (
     <header
-      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-md shadow-slate-900/5"
-          : "bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50"
-      }`}
+      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled
+        ? "bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-md shadow-slate-900/5"
+        : "bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50"
+        }`}
     >
       {/* Thanh viền gradient trang trí trên cùng */}
       <div className="h-[2.5px] w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500" />
