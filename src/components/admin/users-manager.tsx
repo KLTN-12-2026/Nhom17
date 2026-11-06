@@ -336,9 +336,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
             }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Admin
-            </span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">QUẢN TRỊ VIÊN</span>
             <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -433,9 +431,9 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
               <tr>
                 <th className="py-3 px-4">Tài Khoản / Họ Tên</th>
                 <th className="py-3 px-4">Liên Hệ</th>
-                <th className="py-3 px-4">Vai Trò</th>
-                <th className="py-3 px-4">Trạng Thái</th>
-                <th className="py-3 px-4">Ngày Tạo</th>
+                <th className="py-3 px-4 whitespace-nowrap">Vai Trò</th>
+                <th className="py-3 px-4 whitespace-nowrap">Trạng Thái</th>
+                <th className="py-3 px-4 whitespace-nowrap">Ngày Tạo</th>
                 <th className="py-3 px-4 text-right">Thao Tác</th>
               </tr>
             </thead>
@@ -485,12 +483,10 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                           <div className="flex items-center gap-1.5 font-semibold text-sm">
                             <span>{u.name}</span>
                             {isCurrentAdmin && (
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-medium uppercase">
-                                Bạn
-                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-semibold">Tài khoản hiện tại</span>
                             )}
                           </div>
-                          <div className="text-xs text-slate-400 font-normal">ID: {u._id}</div>
+                          <div className="text-[11px] text-slate-400 font-normal tracking-wide" title={`ID: ${u._id}`}>Mã: #{u._id.slice(-6)}</div>
                         </div>
                       </td>
 
@@ -500,29 +496,30 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                         {u.phone_number ? (
                           <div className="text-xs text-slate-500 font-normal">{u.phone_number}</div>
                         ) : (
-                          <span className="text-xs text-slate-400 italic font-normal">Chưa có SĐT</span>
+                          <span className="text-xs text-slate-400 font-normal">Chưa cập nhật SĐT</span>
                         )}
                       </td>
 
                       {/* Role */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full border text-xs font-medium ${roleBadgeStyles[u.role] || roleBadgeStyles.student
-                            }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-semibold whitespace-nowrap ${
+                            roleBadgeStyles[u.role] || roleBadgeStyles.student
+                          }`}
                         >
                           {roleLabels[u.role] || u.role}
                         </span>
                       </td>
 
                       {/* Status */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         {u.status === "active" ? (
-                          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium text-xs">
+                          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium text-xs whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             Hoạt động
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium text-xs">
+                          <span className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium text-xs whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                             Đã bị khóa
                           </span>
@@ -530,7 +527,7 @@ export default function UsersManager({ initialUsers, currentAdminId }: UsersMana
                       </td>
 
                       {/* Created date */}
-                      <td className="py-3.5 px-4 text-slate-500 text-xs font-normal">{createdDate}</td>
+                      <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 text-xs font-medium whitespace-nowrap">{createdDate}</td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
