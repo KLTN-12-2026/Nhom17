@@ -596,7 +596,7 @@ export default function QuestionCreationModal({
                 value={manualContent}
                 onChange={(e) => setManualContent(e.target.value)}
                 placeholder="Nhập câu hỏi trắc nghiệm, bài toán, công thức..."
-                className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 leading-relaxed"
+                className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 leading-relaxed min-h-[85px] resize-y"
               />
 
               {/* 4 Options Grid */}
@@ -644,18 +644,24 @@ export default function QuestionCreationModal({
                 </div>
               </div>
 
-              {/* Explanation */}
+                            {/* Explanation */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Phương Pháp Giải & Lời Giải Chi Tiết
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Phương Pháp Giải &amp; Lời Giải Chi Tiết
+                  </label>
+                  <span className="text-[11px] text-slate-400">Không bắt buộc</span>
+                </div>
                 <textarea
-                  rows={2}
+                  rows={4}
                   value={manualExplanation}
                   onChange={(e) => setManualExplanation(e.target.value)}
-                  placeholder="Nhập giải thích từng bước giúp học sinh hiểu bài..."
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
+                  placeholder="Nhập lời giải hoặc các bước giải chi tiết (Ví dụ: Bước 1: Tính đạo hàm y' = 3x^2 - 6x, Bước 2: Cho y' = 0 <=> x = 0 hoặc x = 2...)"
+                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 leading-relaxed min-h-[100px] resize-y"
                 />
+                <p className="mt-1 text-[11px] text-slate-400 leading-normal">
+                  Học sinh sẽ xem được phần giải thích này sau khi hoàn thành bài thi để đối chiếu phương pháp giải.
+                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
