@@ -12,7 +12,7 @@ interface ProfilePageProps {
 const roleTitles = {
   student: "học viên",
   instructor: "giảng viên",
-  admin: "quản trị viên",
+  admin: "Admin",
 };
 
 export default async function ProfilePage({ role }: ProfilePageProps) {

@@ -29,7 +29,7 @@ interface ProfileResponse {
 const roleLabels = {
   student: "Học viên",
   instructor: "Giảng viên",
-  admin: "Quản trị viên",
+  admin: "Admin",
 };
 
 const roleStyles = {
@@ -119,8 +119,8 @@ export default function ProfileForm({
     role === "student"
       ? "Ngày lập tài khoản"
       : role === "instructor"
-      ? "Ngày bắt đầu giảng dạy"
-      : "Ngày kích hoạt quản trị";
+        ? "Ngày bắt đầu giảng dạy"
+        : "Ngày kích hoạt quản trị";
 
   return (
     <div className="space-y-6">
