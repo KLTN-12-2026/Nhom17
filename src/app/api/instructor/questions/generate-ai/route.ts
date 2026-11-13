@@ -551,17 +551,19 @@ export async function POST(request: Request) {
   - Đúng ${quotas.hard} câu có "difficulty_level": "hard" (Mức Khó - Vận dụng cao)`
           : `BẮT BUỘC toàn bộ ${requestedCount} câu đều có "difficulty_level": "${validDifficulty}" (${validDifficulty === "easy" ? "Mức Dễ" : validDifficulty === "medium" ? "Mức Trung bình" : "Mức Khó - Vận dụng cao"})`;
 
+        const isDgnl = grade && (grade.includes("ĐGNL") || grade.includes("Năng Lực") || grade.includes("Tư Duy"));
         const systemPrompt = `
-Bạn là một chuyên gia sư phạm và khảo thí giàu kinh nghiệm biên soạn đề thi Tốt nghiệp THPT Quốc Gia ${subjectName ? `môn ${subjectName}` : ""}.
-Nhiệm vụ của bạn là bám sát chương trình Giáo Dục Phổ Thông mới (sách giáo khoa Kết Nối Tri Thức / Cánh Diều / Chân Trời Sáng Tạo) và ma trận đề thi chuẩn của Bộ Giáo Dục & Đào Tạo đối với bài học: "${topicName}" ${subjectName ? `(Môn: ${subjectName})` : ""} - Khối: ${grade || "THPT"}.
+Bạn là một chuyên gia sư phạm và khảo thí giàu kinh nghiệm biên soạn đề thi Tuyển sinh & Tốt nghiệp THPT Quốc Gia ${subjectName ? `môn ${subjectName}` : ""}.
+Nhiệm vụ của bạn là bám sát chương trình Giáo Dục Phổ Thông mới (sách giáo khoa Kết Nối Tri Thức / Cánh Diều / Chân Trời Sáng Tạo) và ma trận đề thi chuẩn của Bộ Giáo Dục & Đào Tạo đối với bài học: "${topicName}" ${subjectName ? `(Môn: ${subjectName})` : ""} - Trọng tâm: ${grade || "Ôn thi THPT Quốc Gia"}.
 Biên soạn đúng ${requestedCount} câu hỏi trắc nghiệm chất lượng cao.
 
-THÔNG TIN BÀI HỌC:
+THÔNG TIN BÀI HỌC & MỤC TIÊU KHẢO THÍ:
 - Môn học: ${subjectName || "THPT Quốc Gia"}
 - Tên bài học / Chuyên đề: "${topicName}"
-- Khối lớp: ${grade || "Lớp 12 (Trọng tâm ôn thi)"}
+- Mục tiêu & Trọng tâm khảo thí: ${grade || "Ôn thi Tốt nghiệp THPT Quốc Gia"}
+${isDgnl ? "- LƯU Ý ĐẶC THÙ ĐỀ THI ĐÁNH GIÁ NĂNG LỰC (ĐGNL / ĐGTD): Ưu tiên câu hỏi đánh giá tư duy logic, khả năng đọc hiểu dữ liệu, phân tích đồ thị/bảng số liệu và giải quyết tình huống thực tiễn gắn liền với chuyên đề này." : ""}
 - Định hướng ra đề: ${focusInstruction}
-${promptText.trim() ? `- YÊU CẦU HOẶC TÀI LIỆU BỔ SUNG TỪ GIÁO VIÊN:\n"""\n${promptText.trim()}\n"""` : `- YÊU CẦU TỰ ĐỘNG: Phân tích kiến thức chuẩn SGK của bài học "${topicName}" để biên soạn câu hỏi thực tế sát với đề thi tốt nghiệp.`}
+${promptText.trim() ? `- YÊU CẦU HOẶC TÀI LIỆU BỔ SUNG TỪ GIÁO VIÊN:\n"""\n${promptText.trim()}\n"""` : `- YÊU CẦU TỰ ĐỘNG: Phân tích kiến thức chuẩn SGK của bài học "${topicName}" để biên soạn câu hỏi thực tế sát với đề thi tuyển sinh.`}
 
 YÊU CẦU PHÂN BỔ ĐỘ KHÓ (THEO MA TRẬN KHẢO THÍ CHUẨN):
 ${difficultyDistributionGuide}

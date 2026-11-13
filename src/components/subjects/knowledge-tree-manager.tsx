@@ -279,7 +279,6 @@ export default function KnowledgeTreeManager({
     const excludedIds = new Set<string>();
     if (topicModalMode === "edit" && editingTopic) {
       excludedIds.add(String(editingTopic._id));
-      // Collect descendants
       const queue = [String(editingTopic._id)];
       while (queue.length > 0) {
         const curr = queue.shift()!;
@@ -299,7 +298,7 @@ export default function KnowledgeTreeManager({
         const prefix = depth > 0 ? `${"── ".repeat(depth)}` : "";
         result.push({
           _id: n._id,
-          label: `${prefix}${n.topic_name} (Cấp ${n.level})`,
+          label: `${prefix}${n.topic_name}`,
           level: n.level,
         });
         if (n.children.length > 0) {
@@ -517,219 +516,327 @@ export default function KnowledgeTreeManager({
     }
   }
 
-  // Recursive Topic Tree Node Renderer
+  // Recursive Topic Tree Node Renderer - Notion / Linear Structured Hierarchy
   function renderTopicNode(node: TopicTreeNode, depth = 0) {
     const hasChildren = node.children.length > 0;
     const isCollapsed = !!collapsedNodes[node._id] && !topicSearch.trim();
     const canManage = canManageTopic(node);
-    const directTotal = node.stats?.total ?? node.questionCount ?? 0;
     const easyCount = node.subtreeStats.easy;
     const mediumCount = node.subtreeStats.medium;
     const hardCount = node.subtreeStats.hard;
     const aiCount = node.subtreeStats.aiCount || 0;
 
-    return (
-      <div key={node._id} className="select-none">
+    // ROOT CHAPTER NODE (Level 1 / depth === 0)
+    if (depth === 0) {
+      return (
         <div
-          className={`group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all ${
-            depth === 0
-              ? "bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-2xs hover:border-blue-300 dark:hover:border-blue-800"
-              : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800/70 hover:bg-white dark:hover:bg-slate-800/80 hover:border-blue-300 dark:hover:border-blue-800"
-          }`}
+          key={node._id}
+          className="border-b border-slate-200/80 dark:border-slate-800 last:border-b-0 transition-colors"
         >
-          {/* Left: Expand toggle, Icon, Name & Meta */}
-          <div className="flex items-start gap-2.5 min-w-0 flex-1">
-            {hasChildren ? (
+          {/* Chapter Header Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-100/60 dark:hover:bg-slate-800/70 transition group">
+            <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+              {/* Expand / Collapse toggle */}
               <button
                 type="button"
                 onClick={() => toggleCollapse(node._id)}
-                title={isCollapsed ? "Mở rộng nhánh con" : "Thu gọn nhánh con"}
-                className="mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer shrink-0"
+                title={isCollapsed ? "Mở rộng chương" : "Thu gọn chương"}
+                className="mt-0.5 sm:mt-0 w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700 transition cursor-pointer shrink-0"
               >
                 <svg
-                  className={`w-4 h-4 transition-transform duration-200 ${
+                  className={`w-3.5 h-3.5 transition-transform duration-150 ${
                     isCollapsed ? "-rotate-90" : "rotate-0"
                   }`}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.5"
-                    d="M19 9l-7 7-7-7"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-            ) : (
-              <span className="mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center text-slate-300 dark:text-slate-600 shrink-0">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </span>
-            )}
 
-            {/* Folder / Node Icon */}
-            <div
-              className={`mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                depth === 0
-                  ? "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400"
-                  : depth === 1
-                  ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400"
-                  : "bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-400"
-              }`}
-            >
-              {hasChildren ? (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                  />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                  />
-                </svg>
-              )}
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-sm text-slate-900 dark:text-slate-100 break-words">
-                  {node.topic_name}
-                </span>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                    node.level === 1
-                      ? "bg-blue-100/80 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                      : node.level === 2
-                      ? "bg-indigo-100/80 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-                      : "bg-violet-100/80 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                  }`}
-                >
-                  Cấp {node.level}
-                </span>
-                {hasChildren && (
-                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                    ({node.children.length} nhánh con)
-                  </span>
-                )}
-              </div>
-
-              {node.description && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                  {node.description}
-                </p>
-              )}
-
-              {/* Question breakdown badges */}
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                  Tổng: {node.subtreeQuestionCount} câu
-                  {hasChildren && directTotal !== node.subtreeQuestionCount
-                    ? ` (Trực tiếp: ${directTotal})`
-                    : ""}
-                </span>
-
-                {node.subtreeQuestionCount > 0 && (
-                  <>
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-medium">
-                      Dễ: {easyCount}
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-medium">
-                      Vừa: {mediumCount}
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 font-medium">
-                      Khó: {hardCount}
-                    </span>
-                  </>
-                )}
-
-                {aiCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 font-semibold">
-                    ✨ {aiCount} AI
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Action buttons */}
-          <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-            <button
-              type="button"
-              onClick={() => openCreateTopicModal(node._id)}
-              title="Thêm chuyên đề con vào nhánh này"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-400 transition cursor-pointer"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {/* Folder Icon */}
+              <svg
+                className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5 sm:mt-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M12 4v16m8-8H4"
+                  strokeWidth="1.75"
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                 />
               </svg>
-              <span>Nhánh con</span>
-            </button>
 
-            {canManage && (
-              <>
+              {/* Chapter Name & Tags */}
+              <div className="min-w-0 flex-1 flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                  {node.topic_name}
+                </span>
+                {hasChildren && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    ({node.children.length} chuyên đề)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Chapter Meta & Actions */}
+            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pl-7 sm:pl-0">
+              {/* Question Count Pills */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-medium text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded bg-slate-200/60 dark:bg-slate-700/60">
+                  {node.subtreeQuestionCount} câu hỏi
+                </span>
+                {node.subtreeQuestionCount > 0 && (
+                  <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                      {easyCount} dễ
+                    </span>
+                    <span>•</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">
+                      {mediumCount} vừa
+                    </span>
+                    <span>•</span>
+                    <span className="text-rose-600 dark:text-rose-400 font-medium">
+                      {hardCount} khó
+                    </span>
+                  </div>
+                )}
+                {aiCount > 0 && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                    {aiCount} AI
+                  </span>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => openEditTopicModal(node)}
-                  title="Chỉnh sửa chuyên đề"
-                  className="p-1.5 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition cursor-pointer"
+                  onClick={() => openCreateTopicModal(node._id)}
+                  title="Thêm chuyên đề hoặc bài học con vào chương này"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
                   </svg>
+                  <span>Nhánh con</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeletingTopic(node);
-                    setDeleteTopicError("");
-                  }}
-                  title="Xóa chuyên đề"
-                  className="p-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                {canManage && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openEditTopicModal(node)}
+                      title="Chỉnh sửa chương"
+                      className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700 transition cursor-pointer"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeletingTopic(node);
+                        setDeleteTopicError("");
+                      }}
+                      title="Xóa chương"
+                      className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Chapter description if present */}
+          {node.description && (
+            <div className="px-4 py-1.5 bg-slate-50/40 dark:bg-slate-800/20 text-xs text-slate-500 dark:text-slate-400 pl-11 border-t border-slate-100 dark:border-slate-800/60">
+              {node.description}
+            </div>
+          )}
+
+          {/* Children List */}
+          {hasChildren && !isCollapsed && (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 bg-white dark:bg-slate-900">
+              {node.children.map((child) => renderTopicNode(child, depth + 1))}
+            </div>
+          )}
+
+          {/* Empty state for chapter without children */}
+          {!hasChildren && !isCollapsed && (
+            <div className="px-11 py-3 text-xs text-slate-400 bg-white dark:bg-slate-900 flex items-center justify-between">
+              <span>Chưa có bài học hoặc chuyên đề con trong chương này.</span>
+              <button
+                type="button"
+                onClick={() => openCreateTopicModal(node._id)}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                + Thêm bài học đầu tiên
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // SUBTOPIC NODE (Level 2, 3... / depth > 0)
+    const paddingLeftPx = Math.min(depth * 28 + 16, 120);
+
+    return (
+      <div key={node._id} className="transition-colors">
+        <div
+          className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2.5 pr-4 hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition border-b border-slate-100 dark:border-slate-800/60 last:border-b-0"
+          style={{ paddingLeft: `${paddingLeftPx}px` }}
+        >
+          {/* Left item info */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {hasChildren ? (
+              <button
+                type="button"
+                onClick={() => toggleCollapse(node._id)}
+                className="w-4 h-4 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer shrink-0"
+              >
+                <svg
+                  className={`w-3 h-3 transition-transform duration-150 ${
+                    isCollapsed ? "-rotate-90" : "rotate-0"
+                  }`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            ) : (
+              <span className="w-4 h-4 flex items-center justify-center text-slate-300 dark:text-slate-600 shrink-0">
+                •
+              </span>
             )}
+
+            {/* Subtopic Document/Tag Icon */}
+            <svg
+              className="w-3.5 h-3.5 text-slate-400 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.75"
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+              />
+            </svg>
+
+            {/* Subtopic Name */}
+            <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+              {node.topic_name}
+            </span>
+
+            {node.description && (
+              <span className="text-[11px] text-slate-400 truncate max-w-md hidden lg:inline">
+                — {node.description}
+              </span>
+            )}
+          </div>
+
+          {/* Right item stats & actions */}
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pl-6 sm:pl-0">
+            {/* Question count */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="font-medium text-slate-700 dark:text-slate-300">
+                {node.subtreeQuestionCount} câu
+              </span>
+              {node.subtreeQuestionCount > 0 && (
+                <span className="text-[11px] text-slate-400 hidden sm:inline">
+                  ({easyCount}D · {mediumCount}V · {hardCount}K)
+                </span>
+              )}
+              {aiCount > 0 && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {aiCount} AI
+                </span>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-0.5 opacity-90 group-hover:opacity-100 transition">
+              <button
+                type="button"
+                onClick={() => openCreateTopicModal(node._id)}
+                title="Thêm chuyên đề con"
+                className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700 transition cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+
+              {canManage && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => openEditTopicModal(node)}
+                    title="Chỉnh sửa chuyên đề"
+                    className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700 transition cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeletingTopic(node);
+                      setDeleteTopicError("");
+                    }}
+                    title="Xóa chuyên đề"
+                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Recursive Children */}
+        {/* Recursive Sub-children */}
         {hasChildren && !isCollapsed && (
-          <div className="ml-5 sm:ml-8 mt-2 pl-3.5 border-l-2 border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
             {node.children.map((child) => renderTopicNode(child, depth + 1))}
           </div>
         )}
@@ -742,137 +849,121 @@ export default function KnowledgeTreeManager({
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-semibold transition-all ${
+          className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-lg border text-xs font-medium shadow-lg transition-all ${
             toast.type === "success"
-              ? "bg-emerald-600 text-white border-emerald-500"
-              : "bg-rose-600 text-white border-rose-500"
+              ? "bg-slate-900 text-white border-slate-800 dark:bg-white dark:text-slate-900"
+              : "bg-rose-900 text-white border-rose-800"
           }`}
         >
-          <span>{toast.type === "success" ? "✓" : "⚠"}</span>
+          {toast.type === "success" ? (
+            <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 text-rose-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          )}
           <span>{toast.text}</span>
           <button
             type="button"
             onClick={() => setToast(null)}
-            className="ml-2 text-white/80 hover:text-white cursor-pointer"
+            className="ml-2 text-slate-400 hover:text-white cursor-pointer"
           >
-            ✕
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
       )}
 
-      {/* 4 KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Tổng Số Môn Học
-            </span>
-            <span className="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                />
-              </svg>
-            </span>
+      {/* 1. TOP METRIC RIBBON (4 COLUMNS - SAAS STYLE) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-slate-800 shadow-2xs">
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-medium">Tổng số môn học</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.75"
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+              />
+            </svg>
           </div>
-          <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+          <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
             {kpiStats.totalSubjects}
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Danh mục môn đào tạo trên hệ thống
-          </p>
+          <p className="mt-1 text-xs text-slate-500">Môn giảng dạy trên hệ thống</p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Tổng Chủ Đề Kiến Thức
-            </span>
-            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                />
-              </svg>
-            </span>
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-medium">Chủ đề kiến thức</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.75"
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+              />
+            </svg>
           </div>
-          <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+          <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
             {kpiStats.totalTopics}
           </div>
-          <p className="mt-1 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-            {kpiStats.rootTopics} chương gốc • {kpiStats.subTopics} nhánh con
+          <p className="mt-1 text-xs text-slate-500">
+            <span className="font-medium text-slate-700 dark:text-slate-300">{kpiStats.rootTopics}</span> chương gốc •{" "}
+            <span className="font-medium text-slate-700 dark:text-slate-300">{kpiStats.subTopics}</span> nhánh con
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Câu Hỏi Đã Phân Loại
-            </span>
-            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </span>
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-medium">Câu hỏi phân loại</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.75"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
+            </svg>
           </div>
-          <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+          <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
             {kpiStats.totalQuestions}
           </div>
-          <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-            Bảo vệ chống xóa nhầm chuyên đề
-          </p>
+          <p className="mt-1 text-xs text-slate-500">Gắn kết chặt chẽ vào cây bài học</p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Câu Hỏi Sinh Bởi AI
-            </span>
-            <span className="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            </span>
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-medium">Câu hỏi sinh bởi AI</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
-          <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+          <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
             {kpiStats.totalAiQuestions}
           </div>
-          <p className="mt-1 text-xs text-purple-600 dark:text-purple-400 font-medium">
-            Tự động gắn nhãn theo cây chủ đề
-          </p>
+          <p className="mt-1 text-xs text-slate-500">Tự động gắn nhãn theo chuyên đề</p>
         </div>
       </div>
 
-      {/* 1. HORIZONTAL SUBJECT SELECTOR / MANAGEMENT BAR */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs space-y-4">
+      {/* 2. SUBJECT MANAGEMENT BAR */}
+      <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Danh Mục Môn Học
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium">
                 {subjects.length} môn
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Chọn môn học để xem và điều hành toàn bộ cây cấu trúc kiến thức phân cấp
+              Chọn môn học để xem và điều hành cây cấu trúc phân cấp kiến thức
             </p>
           </div>
 
@@ -884,7 +975,7 @@ export default function KnowledgeTreeManager({
                 value={subjectSearch}
                 onChange={(e) => setSubjectSearch(e.target.value)}
                 placeholder="Tìm tên môn học..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500 transition"
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400 dark:focus:border-slate-600 transition"
               />
               <svg
                 className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"
@@ -892,37 +983,27 @@ export default function KnowledgeTreeManager({
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
 
             <button
               type="button"
               onClick={openCreateSubjectModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm shadow-blue-600/20 transition cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-medium transition cursor-pointer shrink-0"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M12 4v16m8-8H4"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
               </svg>
-              <span>Thêm Môn</span>
+              <span>Thêm Môn Mới</span>
             </button>
           </div>
         </div>
 
-        {/* Subjects Grid Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-80 overflow-y-auto pr-1">
+        {/* Subjects Horizontal Wrap List (No artificial truncation!) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredSubjects.length === 0 ? (
-            <div className="col-span-full text-center py-6 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+            <div className="col-span-full text-center py-6 px-4 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
               <p className="text-xs text-slate-500">
                 Không tìm thấy môn học nào phù hợp với từ khóa &ldquo;{subjectSearch}&rdquo;.
               </p>
@@ -935,36 +1016,30 @@ export default function KnowledgeTreeManager({
                 <div
                   key={sub._id}
                   onClick={() => setSelectedSubjectId(sub._id)}
-                  className={`group relative p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`group relative p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                     isSelected
-                      ? "bg-blue-50/90 dark:bg-blue-950/40 border-blue-500 dark:border-blue-500 shadow-xs ring-2 ring-blue-500/20"
-                      : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-800"
+                      ? "border-slate-900 dark:border-slate-300 bg-slate-50/80 dark:bg-slate-800/60 ring-1 ring-slate-900/10 dark:ring-white/20"
+                      : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700"
                   }`}
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span
-                          className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                          className={`w-2 h-2 rounded-full shrink-0 ${
                             isSelected
-                              ? "bg-blue-600 ring-4 ring-blue-500/20"
+                              ? "bg-slate-900 dark:bg-white"
                               : "bg-slate-300 dark:bg-slate-600"
                           }`}
                         />
-                        <h3
-                          className={`text-sm font-bold truncate ${
-                            isSelected
-                              ? "text-blue-700 dark:text-blue-300"
-                              : "text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400"
-                          }`}
-                        >
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
                           {sub.subject_name}
                         </h3>
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
                         {isSelected && (
-                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-900/50 px-1.5 py-0.5 rounded-md">
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-900 text-white dark:bg-white dark:text-slate-900">
                             Đang chọn
                           </span>
                         )}
@@ -978,14 +1053,9 @@ export default function KnowledgeTreeManager({
                               type="button"
                               onClick={() => openEditSubjectModal(sub)}
                               title="Sửa môn học"
-                              className="p-1 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition cursor-pointer"
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                             >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
@@ -1001,14 +1071,9 @@ export default function KnowledgeTreeManager({
                                 setDeleteSubjectError("");
                               }}
                               title="Xóa môn học"
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                              className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
                             >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
@@ -1023,21 +1088,21 @@ export default function KnowledgeTreeManager({
                     </div>
 
                     {sub.description && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 pl-4.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 pl-4">
                         {sub.description}
                       </p>
                     )}
                   </div>
 
-                  <div className="mt-3 pl-4.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200/50 dark:border-slate-800/50 pt-2">
+                  <div className="mt-3 pl-4 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
                         {sub.topicCount || 0} chủ đề
                       </span>
                       <span>•</span>
                       <span>{sub.questionCount || 0} câu</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 truncate max-w-[80px]">
+                    <span className="text-[10px] text-slate-400 truncate max-w-[100px]">
                       {getCreatorLabel(sub.created_by)}
                     </span>
                   </div>
@@ -1048,12 +1113,12 @@ export default function KnowledgeTreeManager({
         </div>
       </div>
 
-      {/* 2. FULL-WIDTH: HIERARCHICAL TOPIC TREE */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs space-y-5">
+      {/* 3. NOTION / LINEAR HIERARCHICAL TOPIC TREE */}
+      <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
         {!selectedSubject ? (
           <div className="text-center py-16 px-4">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -1062,7 +1127,7 @@ export default function KnowledgeTreeManager({
                 />
               </svg>
             </div>
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               Chưa chọn môn học nào
             </h3>
             <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
@@ -1070,73 +1135,66 @@ export default function KnowledgeTreeManager({
             </p>
           </div>
         ) : (
-          <>
-            {/* Subject Header & Tree Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold">
-                    Môn học
-                  </span>
-                  <h2 className="text-lg font-black text-slate-900 dark:text-white">
-                    {selectedSubject.subject_name}
-                  </h2>
-                  {isRefreshing && (
-                    <span className="text-xs text-blue-600 animate-pulse font-medium">
-                      Đang đồng bộ...
+          <div>
+            {/* Subject Toolbar Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      Môn học
                     </span>
-                  )}
+                    <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+                      {selectedSubject.subject_name}
+                    </h2>
+                    {isRefreshing && (
+                      <span className="text-xs text-slate-500 animate-pulse font-medium">
+                        Đang đồng bộ...
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {selectedSubject.description ||
+                      "Cây phân cấp chương mục và chủ đề kiến thức phục vụ ngân hàng câu hỏi & AI"}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {selectedSubject.description ||
-                    "Cây phân cấp chương mục và chủ đề kiến thức phục vụ ngân hàng câu hỏi & AI"}
-                </p>
-              </div>
 
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <Link
-                  href="/instructor/questions"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 text-xs font-semibold transition"
-                >
-                  <span>Ngân Hàng Câu Hỏi</span>
-                  <span>&rarr;</span>
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() => openCreateTopicModal(null)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition cursor-pointer"
-                >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <Link
+                    href="/instructor/questions"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-medium transition"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <span>Thêm Chương / Chủ Đề Gốc</span>
-                </button>
+                    <span>Ngân Hàng Câu Hỏi</span>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => openCreateTopicModal(null)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-medium transition cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Thêm Chương Gốc</span>
+                  </button>
+                </div>
               </div>
-            </div>
 
               {/* Filter & Expand/Collapse Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
                 <div className="relative flex-1">
                   <input
                     type="text"
                     value={topicSearch}
                     onChange={(e) => setTopicSearch(e.target.value)}
-                    placeholder="Lọc nhanh tên chương hoặc chủ đề con trong môn này..."
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500 transition"
+                    placeholder="Lọc nhanh tên chương hoặc chuyên đề con..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400 dark:focus:border-slate-600 transition"
                   />
                   <svg
-                    className="w-4 h-4 text-slate-400 absolute left-3 top-2.5"
+                    className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -1154,90 +1212,91 @@ export default function KnowledgeTreeManager({
                   <button
                     type="button"
                     onClick={expandAll}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium transition cursor-pointer"
                   >
                     Mở rộng tất cả
                   </button>
                   <button
                     type="button"
                     onClick={collapseAll}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium transition cursor-pointer"
                   >
                     Thu gọn tất cả
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* Tree View Content */}
-              {topicTree.length === 0 ? (
-                <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center mx-auto mb-2.5">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                    {topicSearch.trim()
-                      ? "Không tìm thấy chủ đề khớp từ khóa"
-                      : "Môn học này chưa có chủ đề kiến thức nào"}
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                    {topicSearch.trim()
-                      ? "Hãy thử từ khóa khác hoặc xóa bộ lọc tìm kiếm."
-                      : "Hãy khởi tạo Chương / Chủ đề cấp 1 đầu tiên, sau đó bạn có thể phân nhánh thành các bài học hoặc chủ đề con đa cấp."}
-                  </p>
-                  {!topicSearch.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => openCreateTopicModal(null)}
-                      className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer"
-                    >
-                      + Tạo Chủ Đề Cấp 1 Đầu Tiên
-                    </button>
-                  )}
+            {/* Tree View Content */}
+            {topicTree.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center mx-auto mb-2.5">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                    />
+                  </svg>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {topicTree.map((rootNode) => renderTopicNode(rootNode, 0))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  {topicSearch.trim()
+                    ? "Không tìm thấy chuyên đề khớp từ khóa"
+                    : "Môn học này chưa có chủ đề kiến thức nào"}
+                </h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  {topicSearch.trim()
+                    ? "Hãy thử từ khóa khác hoặc xóa bộ lọc tìm kiếm."
+                    : "Hãy khởi tạo Chương / Chủ đề cấp 1 đầu tiên, sau đó bạn có thể phân nhánh thành các bài học hoặc chủ đề con đa cấp."}
+                </p>
+                {!topicSearch.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => openCreateTopicModal(null)}
+                    className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-medium transition cursor-pointer"
+                  >
+                    + Tạo Chương Gốc Đầu Tiên
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div>
+                {topicTree.map((rootNode) => renderTopicNode(rootNode, 0))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* MODAL: CREATE / EDIT SUBJECT */}
       {subjectModalMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-md w-full p-5 sm:p-6 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">
-                {subjectModalMode === "create"
-                  ? "Thêm Môn Học Mới"
-                  : "Cập Nhật Thông Tin Môn Học"}
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                {subjectModalMode === "create" ? "Thêm Môn Học Mới" : "Cập Nhật Thông Tin Môn Học"}
               </h3>
               <button
                 type="button"
                 onClick={() => setSubjectModalMode(null)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
             <form onSubmit={handleSaveSubject} className="mt-4 space-y-4">
               {subjectError && (
-                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-600 dark:text-rose-300">
+                <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-600 dark:text-rose-300">
                   {subjectError}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Tên môn học <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -1245,13 +1304,13 @@ export default function KnowledgeTreeManager({
                   required
                   value={subjectNameInput}
                   onChange={(e) => setSubjectNameInput(e.target.value)}
-                  placeholder="Ví dụ: Toán Cao Cấp A1, Lập Trình Web..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                  placeholder="Ví dụ: Toán Cao Cấp A1, Vật Lý Đại Cương..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:border-slate-400 dark:focus:border-slate-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Mô tả môn học
                 </label>
                 <textarea
@@ -1259,22 +1318,22 @@ export default function KnowledgeTreeManager({
                   value={subjectDescInput}
                   onChange={(e) => setSubjectDescInput(e.target.value)}
                   placeholder="Mô tả mục tiêu, phạm vi kiến thức của môn học..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:border-slate-400 dark:focus:border-slate-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setSubjectModalMode(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isSubjectSaving}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 disabled:opacity-50 text-xs font-medium transition cursor-pointer"
                 >
                   {isSubjectSaving
                     ? "Đang lưu..."
@@ -1290,9 +1349,9 @@ export default function KnowledgeTreeManager({
 
       {/* MODAL: DELETE SUBJECT */}
       {deletingSubject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-black text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-md w-full p-5 sm:p-6 shadow-xl space-y-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
               Xác Nhận Xóa Môn Học
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -1304,23 +1363,23 @@ export default function KnowledgeTreeManager({
             </p>
 
             {(deletingSubject.questionCount || 0) > 0 && (
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
-                ⚠ Môn học này đang chứa{" "}
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
+                Lưu ý: Môn học này đang chứa{" "}
                 <strong>{deletingSubject.questionCount} câu hỏi</strong>. Hệ thống sẽ chặn xóa để bảo vệ ngân hàng câu hỏi.
               </div>
             )}
 
             {deleteSubjectError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-300">
+              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-300">
                 {deleteSubjectError}
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setDeletingSubject(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
               >
                 Đóng
               </button>
@@ -1328,7 +1387,7 @@ export default function KnowledgeTreeManager({
                 type="button"
                 disabled={isSubjectDeleting}
                 onClick={handleConfirmDeleteSubject}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-medium transition cursor-pointer"
               >
                 {isSubjectDeleting ? "Đang xóa..." : "Xác Nhận Xóa"}
               </button>
@@ -1339,74 +1398,76 @@ export default function KnowledgeTreeManager({
 
       {/* MODAL: CREATE / EDIT TOPIC */}
       {topicModalMode && selectedSubject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-lg w-full p-5 sm:p-6 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                   {topicModalMode === "create"
-                    ? "Thêm Chủ Đề / Chuyên Đề Kiến Thức"
-                    : "Chỉnh Sửa Chủ Đề Kiến Thức"}
+                    ? "Thêm Chuyên Đề Mới"
+                    : "Chỉnh Sửa Chuyên Đề"}
                 </h3>
-                <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
                   Môn học: {selectedSubject.subject_name}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setTopicModalMode(null)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
             <form onSubmit={handleSaveTopic} className="mt-4 space-y-4">
               {topicError && (
-                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-600 dark:text-rose-300">
+                <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-600 dark:text-rose-300">
                   {topicError}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Thuộc nhánh chủ đề cha (Phân cấp cây kiến thức)
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Vị trí trong cây kiến thức
                 </label>
                 <select
                   value={topicParentIdInput}
                   onChange={(e) => setTopicParentIdInput(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:border-slate-400 dark:focus:border-slate-500"
                 >
                   <option value="">
-                    📁 Chủ đề Gốc (Cấp 1 — Chương lớn / Học phần)
+                    Tạo thành Chương gốc mới
                   </option>
                   {parentTopicOptions.map((opt) => (
                     <option key={opt._id} value={opt._id}>
-                      {opt.label}
+                      Thuộc chương: {opt.label}
                     </option>
                   ))}
                 </select>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Để trống nếu đây là Chương lớn (Cấp 1), hoặc chọn một chủ đề cha để tạo nhánh con (Cấp 2, 3...).
+                  Để trống để tạo thành một chương lớn mới, hoặc chọn chương cha để tạo bài học con trực thuộc.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Tên chủ đề / chuyên đề <span className="text-rose-500">*</span>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Tên chuyên đề / bài học <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={topicNameInput}
                   onChange={(e) => setTopicNameInput(e.target.value)}
-                  placeholder="Ví dụ: Chương 1: Hàm số và Giới hạn, Bài 1.1: Khảo sát cực trị..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                  placeholder="Ví dụ: Chương 1: Hàm số và Đồ thị, hoặc Bài 1.1: Khảo sát cực trị..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:border-slate-400 dark:focus:border-slate-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Mô tả phạm vi kiến thức / Chuẩn đầu ra
                 </label>
                 <textarea
@@ -1414,27 +1475,27 @@ export default function KnowledgeTreeManager({
                   value={topicDescInput}
                   onChange={(e) => setTopicDescInput(e.target.value)}
                   placeholder="Ghi chú nội dung trọng tâm để AI nhận diện ngữ cảnh sinh câu hỏi chính xác hơn..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:border-slate-400 dark:focus:border-slate-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setTopicModalMode(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isTopicSaving}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 disabled:opacity-50 text-xs font-medium transition cursor-pointer"
                 >
                   {isTopicSaving
                     ? "Đang lưu..."
                     : topicModalMode === "create"
-                    ? "Tạo Chủ Đề"
+                    ? "Thêm Chuyên Đề"
                     : "Lưu Thay Đổi"}
                 </button>
               </div>
@@ -1445,9 +1506,9 @@ export default function KnowledgeTreeManager({
 
       {/* MODAL: DELETE TOPIC */}
       {deletingTopic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-black text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-md w-full p-5 sm:p-6 shadow-xl space-y-4">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
               Xác Nhận Xóa Chủ Đề Kiến Thức
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -1462,23 +1523,23 @@ export default function KnowledgeTreeManager({
             </p>
 
             {deletingTopic.subtreeQuestionCount > 0 && (
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
-                ⚠ Nhánh chủ đề này đang chứa{" "}
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
+                Lưu ý: Nhánh chủ đề này đang chứa{" "}
                 <strong>{deletingTopic.subtreeQuestionCount} câu hỏi</strong>. Hệ thống sẽ chặn xóa để tránh làm mất câu hỏi trong ngân hàng.
               </div>
             )}
 
             {deleteTopicError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-300">
+              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-300">
                 {deleteTopicError}
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setDeletingTopic(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
               >
                 Đóng
               </button>
@@ -1486,7 +1547,7 @@ export default function KnowledgeTreeManager({
                 type="button"
                 disabled={isTopicDeleting}
                 onClick={handleConfirmDeleteTopic}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-medium transition cursor-pointer"
               >
                 {isTopicDeleting ? "Đang xóa..." : "Xác Nhận Xóa"}
               </button>
@@ -1497,4 +1558,3 @@ export default function KnowledgeTreeManager({
     </div>
   );
 }
-

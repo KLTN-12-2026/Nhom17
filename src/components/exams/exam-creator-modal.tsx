@@ -834,16 +834,16 @@ function ExamCreatorContent({
         {/* ========================================================================= */}
         {/* HEADER MODAL */}
         {/* ========================================================================= */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xs shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate sm:whitespace-normal">
-                {initialExam ? "Chỉnh Sửa & Cập Nhật Đề Thi" : "Tạo Đề Thi & Cấu Hình Đề Thi Mới"}
+              <h2 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white leading-tight truncate sm:whitespace-normal">
+                {initialExam ? "Chỉnh Sửa & Cập Nhật Đề Thi" : "Tạo Đề Thi Mới"}
               </h2>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1 sm:line-clamp-none">
                 Thiết lập ngân hàng môn, thời gian, câu hỏi thủ công, bốc ngẫu nhiên ma trận và chia điểm
@@ -854,7 +854,7 @@ function ExamCreatorContent({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer shrink-0 ml-2"
+            className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition cursor-pointer shrink-0 ml-2"
           >
             ✕
           </button>
@@ -863,33 +863,38 @@ function ExamCreatorContent({
         {/* ========================================================================= */}
         {/* TAB NAVIGATION BAR */}
         {/* ========================================================================= */}
-        <div className="px-3 sm:px-6 pt-2 sm:pt-3 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        <div className="px-3 sm:px-6 pt-2 border-b border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth">
             <button
               type="button"
               onClick={() => setActiveTab("config")}
-              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+              className={`pb-2.5 px-2.5 sm:px-3 text-xs font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "config"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  ? "border-slate-900 dark:border-white text-slate-900 dark:text-white font-semibold"
                   : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
-              <span>⚙️</span>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
               <span>1. Cấu Hình Đề Thi</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("add_questions")}
-              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+              className={`pb-2.5 px-2.5 sm:px-3 text-xs font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "add_questions"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  ? "border-slate-900 dark:border-white text-slate-900 dark:text-white font-semibold"
                   : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
-              <span>➕</span>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
               <span>2. Thêm Câu Hỏi Vào Đề</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
                 Kho {bankQuestions.length}
               </span>
             </button>
@@ -897,16 +902,18 @@ function ExamCreatorContent({
             <button
               type="button"
               onClick={() => setActiveTab("review")}
-              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+              className={`pb-2.5 px-2.5 sm:px-3 text-xs font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "review"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  ? "border-slate-900 dark:border-white text-slate-900 dark:text-white font-semibold"
                   : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
-              <span>📝</span>
-              <span>3. Câu Hỏi Đã Chọn & Sửa Đề</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                examQuestions.length > 0 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              <span>3. Câu Hỏi Đã Chọn &amp; Sắp Xếp</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                examQuestions.length > 0 ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
               }`}>
                 {examQuestions.length} câu
               </span>
@@ -916,8 +923,10 @@ function ExamCreatorContent({
 
         {/* THÔNG BÁO LỖI NẾU CÓ */}
         {formError && (
-          <div className="mx-4 sm:mx-6 mt-3 sm:mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2 shrink-0">
-            <span>⚠️</span>
+          <div className="mx-4 sm:mx-6 mt-3 sm:mt-4 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2 shrink-0">
+            <svg className="w-4 h-4 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
             <span className="flex-1 break-words">{formError}</span>
           </div>
         )}
@@ -1118,40 +1127,40 @@ function ExamCreatorContent({
               {/* Phân vùng chọn cách thêm câu hỏi */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">Phương thức chọn:</span>
-                  <div className="grid grid-cols-3 sm:flex bg-slate-200 dark:bg-slate-700 p-1 rounded-xl gap-1">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300 shrink-0">Phương thức:</span>
+                  <div className="grid grid-cols-3 sm:flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
                     <button
                       type="button"
                       onClick={() => setAddMode("manual")}
-                      className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer text-center ${
+                      className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium transition cursor-pointer text-center ${
                         addMode === "manual"
-                          ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                          : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-semibold"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-900"
                       }`}
                     >
-                      🎯 <span className="hidden sm:inline">Chọn Thủ Công</span><span className="sm:hidden">Thủ công</span> ({filteredBankQuestions.length})
+                      <span className="hidden sm:inline">Chọn Thủ Công</span><span className="sm:hidden">Thủ công</span> ({filteredBankQuestions.length})
                     </button>
                     <button
                       type="button"
                       onClick={() => setAddMode("random")}
-                      className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer text-center ${
+                      className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium transition cursor-pointer text-center ${
                         addMode === "random"
-                          ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                          : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-semibold"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-900"
                       }`}
                     >
-                      ⚡ <span className="hidden sm:inline">Ngẫu Nhiên</span><span className="sm:hidden">Ngẫu nhiên</span>
+                      <span className="hidden sm:inline">Bốc Ngẫu Nhiên</span><span className="sm:hidden">Ngẫu nhiên</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setAddMode("create_new")}
-                      className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer text-center ${
+                      className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium transition cursor-pointer text-center ${
                         addMode === "create_new"
-                          ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                          : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-semibold"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-900"
                       }`}
                     >
-                      ✍️ <span className="hidden sm:inline">Soạn Câu Mới</span><span className="sm:hidden">Soạn mới</span>
+                      <span className="hidden sm:inline">Soạn Câu Mới</span><span className="sm:hidden">Soạn mới</span>
                     </button>
                   </div>
                 </div>
@@ -1206,7 +1215,7 @@ function ExamCreatorContent({
                               }}
                               className="w-full text-xs py-2 px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold focus:outline-none cursor-pointer"
                             >
-                              <option value="all">📝 Tất cả bài trong chương ({manualLessonsInChapter.length})</option>
+                              <option value="all">Tất cả bài trong chương ({manualLessonsInChapter.length})</option>
                               {manualLessonsInChapter.map((l) => (
                                 <option key={l._id} value={l._id}>
                                   {l.topic_name}
@@ -1225,7 +1234,7 @@ function ExamCreatorContent({
                               onChange={(e) => setManualTypeId(e.target.value)}
                               className="w-full text-xs py-2 px-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 font-bold focus:outline-none cursor-pointer"
                             >
-                              <option value="all">🏷️ Tất cả dạng bài ({manualTypesInLesson.length})</option>
+                              <option value="all">Tất cả dạng bài ({manualTypesInLesson.length})</option>
                               {manualTypesInLesson.map((t) => (
                                 <option key={t._id} value={t._id}>
                                   {t.topic_name}
@@ -1252,7 +1261,7 @@ function ExamCreatorContent({
                         >
                           {subjects.map((sub) => (
                             <option key={sub._id} value={sub._id}>
-                              📚 {sub.subject_name}
+                              {sub.subject_name}
                             </option>
                           ))}
                         </select>
@@ -1393,8 +1402,10 @@ function ExamCreatorContent({
               {addMode === "random" && (
                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl space-y-4 sm:space-y-5 max-w-2xl mx-auto w-full">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>⚡</span>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                      <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
                       <span>Bốc Ngẫu Nhiên Câu Hỏi Theo Ma Trận Độ Khó</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -1432,7 +1443,7 @@ function ExamCreatorContent({
                       >
                         {subjects.map((sub) => (
                           <option key={sub._id} value={sub._id}>
-                            📚 Môn: {sub.subject_name}
+                            Môn: {sub.subject_name}
                           </option>
                         ))}
                       </select>
@@ -1456,7 +1467,7 @@ function ExamCreatorContent({
                             }}
                             className="w-full text-xs py-2 px-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 font-bold text-blue-700 dark:text-blue-300 focus:outline-none cursor-pointer"
                           >
-                            <option value="all">📖 Toàn bộ các chương ({chapters.length})</option>
+                            <option value="all">Toàn bộ các chương ({chapters.length})</option>
                             {chapters.map((c) => (
                               <option key={c._id} value={c._id}>
                                 {c.topic_name}
@@ -1478,7 +1489,7 @@ function ExamCreatorContent({
                             className="w-full text-xs py-2 px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 font-semibold text-indigo-700 dark:text-indigo-300 focus:outline-none disabled:opacity-40 cursor-pointer"
                           >
                             <option value="all">
-                              {randomLessonsInChapter.length > 0 ? `📝 Tất cả bài (${randomLessonsInChapter.length})` : "(Chưa chọn chương)"}
+                              {randomLessonsInChapter.length > 0 ? `Tất cả bài (${randomLessonsInChapter.length})` : "(Chưa chọn chương)"}
                             </option>
                             {randomLessonsInChapter.map((l) => (
                               <option key={l._id} value={l._id}>
@@ -1498,7 +1509,7 @@ function ExamCreatorContent({
                             className="w-full text-xs py-2 px-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 font-semibold text-emerald-700 dark:text-emerald-300 focus:outline-none disabled:opacity-40 cursor-pointer"
                           >
                             <option value="all">
-                              {randomTypesInLesson.length > 0 ? `🏷️ Tất cả dạng (${randomTypesInLesson.length})` : "(Chưa chọn bài)"}
+                              {randomTypesInLesson.length > 0 ? `Tất cả dạng (${randomTypesInLesson.length})` : "(Chưa chọn bài)"}
                             </option>
                             {randomTypesInLesson.map((t) => (
                               <option key={t._id} value={t._id}>
@@ -1573,9 +1584,12 @@ function ExamCreatorContent({
                       type="button"
                       disabled={isRandomPicking || randomEasyCount + randomMediumCount + randomHardCount === 0}
                       onClick={handleRandomPick}
-                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer transition"
+                      className="w-full sm:w-auto px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-medium text-xs shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer transition"
                     >
-                      {isRandomPicking ? "Đang bốc..." : "⚡ Bốc Ngẫu Nhiên Vào Đề"}
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>{isRandomPicking ? "Đang bốc..." : "Bốc Ngẫu Nhiên Vào Đề"}</span>
                     </button>
                   </div>
                 </div>
@@ -1585,8 +1599,10 @@ function ExamCreatorContent({
               {addMode === "create_new" && (
                 <form onSubmit={handleCreateDirectQuestion} className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl space-y-4 max-w-2xl mx-auto w-full">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>✍️</span>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                      <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
                       <span>Soạn Câu Hỏi Mới Trực Tiếp Vào Đề Thi</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -1611,7 +1627,7 @@ function ExamCreatorContent({
                       >
                         {subjects.map((sub) => (
                           <option key={sub._id} value={sub._id}>
-                            📚 Môn: {sub.subject_name}
+                            Môn: {sub.subject_name}
                           </option>
                         ))}
                       </select>
@@ -1626,9 +1642,9 @@ function ExamCreatorContent({
                         onChange={(e) => setNewQDifficulty(e.target.value as "easy" | "medium" | "hard")}
                         className="w-full text-xs py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
                       >
-                        <option value="easy">🟢 Mức Dễ</option>
-                        <option value="medium">🟡 Mức Vừa</option>
-                        <option value="hard">🔴 Mức Khó</option>
+                        <option value="easy">Dễ (Nhận biết)</option>
+                        <option value="medium">Trung bình (Thông hiểu)</option>
+                        <option value="hard">Khó (Vận dụng cao)</option>
                       </select>
                     </div>
                   </div>
@@ -1901,19 +1917,24 @@ function ExamCreatorContent({
                           <button
                             type="button"
                             onClick={() => handleOpenEditQuestion(idx)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer flex items-center gap-1"
                           >
-                            <span>✏️ Sửa</span>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span>Sửa</span>
                           </button>
 
                           {/* Nút Xóa khỏi đề */}
                           <button
                             type="button"
                             onClick={() => handleRemoveQuestionFromExam(idx)}
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition cursor-pointer"
                             title="Xóa câu hỏi khỏi đề thi"
                           >
-                            🗑️
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
                       </div>
@@ -1944,7 +1965,7 @@ function ExamCreatorContent({
                       {/* Lời giải thích nếu có */}
                       {q.question_snapshot.explanation && (
                         <div className="mt-2 text-[11px] text-slate-500 italic bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg break-words">
-                          💡 <strong>Lời giải:</strong> {q.question_snapshot.explanation}
+                          <strong>Lời giải chi tiết:</strong> {q.question_snapshot.explanation}
                         </div>
                       )}
                     </div>
@@ -1958,7 +1979,7 @@ function ExamCreatorContent({
         {/* ========================================================================= */}
         {/* FOOTER MODAL - ACTIONS */}
         {/* ========================================================================= */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
           <div className="text-[11px] sm:text-xs text-slate-500 text-center sm:text-left flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-1.5">
             <span>Tổng cộng: <strong className="text-slate-800 dark:text-slate-200">{examQuestions.length} câu</strong></span>
             <span>|</span>
@@ -1972,7 +1993,7 @@ function ExamCreatorContent({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="col-span-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-center"
+              className="col-span-1 px-3 sm:px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer text-center"
             >
               Hủy
             </button>
@@ -1981,18 +2002,18 @@ function ExamCreatorContent({
               type="button"
               disabled={isSubmitting}
               onClick={() => handleSaveExam(false)}
-              className="col-span-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-950/40 font-bold text-xs transition cursor-pointer text-center"
+              className="col-span-1 px-3 sm:px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-xs transition cursor-pointer text-center"
             >
-              {isSubmitting ? "Đang lưu..." : "💾 Lưu Bản Nháp"}
+              {isSubmitting ? "Đang lưu..." : "Lưu Bản Nháp"}
             </button>
 
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => handleSaveExam(true)}
-              className="col-span-2 sm:col-span-1 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition cursor-pointer text-center"
+              className="col-span-2 sm:col-span-1 px-4 sm:px-5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-medium text-xs shadow-xs transition cursor-pointer text-center"
             >
-              {isSubmitting ? "Đang lưu..." : "🚀 Lưu & Xuất Bản Đề Thi"}
+              {isSubmitting ? "Đang lưu..." : "Lưu & Xuất Bản Đề Thi"}
             </button>
           </div>
         </div>
@@ -2004,8 +2025,10 @@ function ExamCreatorContent({
           <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-hidden">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl flex flex-col max-h-[90dvh] overflow-hidden animate-fade-in">
               <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-slate-900/70">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>✏️</span>
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                   <span>Sửa Câu Hỏi #{editingIndex + 1} Trong Đề Thi</span>
                 </h3>
                 <button

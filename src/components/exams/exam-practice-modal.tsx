@@ -487,7 +487,7 @@ function PracticeTestContent({ exam, onClose }: PracticeTestContentProps) {
 
                       {q.explanation && (
                         <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-800/60 border border-slate-200/60 text-xs text-slate-600 dark:text-slate-400">
-                          💡 <strong>Lời giải:</strong> {q.explanation}
+                          <strong>Lời giải chi tiết:</strong> {q.explanation}
                         </div>
                       )}
                     </div>

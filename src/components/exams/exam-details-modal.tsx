@@ -285,7 +285,7 @@ export default function ExamDetailsModal({
                   {/* Lời giải */}
                   {snap.explanation && (
                     <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                      💡 <strong className="text-slate-700 dark:text-slate-300">Lời giải chi tiết:</strong> {snap.explanation}
+                      <strong className="text-slate-700 dark:text-slate-300">Lời giải chi tiết:</strong> {snap.explanation}
                     </div>
                   )}
                 </div>
@@ -297,11 +297,11 @@ export default function ExamDetailsModal({
         {/* ========================================================================= */}
         {/* FOOTER ACTIONS */}
         {/* ========================================================================= */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-center"
+            className="w-full sm:w-auto px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer text-center"
           >
             Đóng
           </button>
@@ -314,9 +314,12 @@ export default function ExamDetailsModal({
                   onClose();
                   onEditExam(exam);
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-950/40 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <span>✏️ Chỉnh Sửa Đề</span>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>Chỉnh Sửa Đề</span>
               </button>
             )}
 
@@ -327,7 +330,7 @@ export default function ExamDetailsModal({
                   onClose();
                   onStartPractice(exam);
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-500/25 transition cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-medium text-xs shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <span>✍️ Thi Thử Ngay</span>
               </button>

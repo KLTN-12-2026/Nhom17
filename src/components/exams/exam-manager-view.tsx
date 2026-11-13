@@ -197,123 +197,100 @@ export default function ExamManagerView({ currentUser }: ExamManagerViewProps) {
   return (
     <div className="space-y-6">
       {currentUser?.name && (
-        <div className="flex items-center justify-between text-xs text-slate-500 font-medium bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 px-4 py-2.5 rounded-2xl">
+        <div className="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Khu vực giảng dạy của: <strong className="text-slate-800 dark:text-slate-200">{currentUser.name}</strong></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span>Khu vực biên soạn của: <strong className="text-slate-800 dark:text-slate-200 font-medium">{currentUser.name}</strong></span>
           </div>
-          <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
-            {currentUser.role === "admin" ? "Toàn Quyền Admin" : "Giáo Viên Bộ Môn"}
+          <span className="text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+            {currentUser.role === "admin" ? "Toàn quyền quản trị" : "Giáo viên bộ môn"}
           </span>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 4 THẺ THỐNG KÊ TỔNG QUAN */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Tổng Số Đề Thi
-            </span>
-            <span className="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      {/* 4 Metrics Ribbon */}
+      <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-slate-800">
+          <div className="p-4 sm:p-5">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+              <span className="text-xs font-medium">Tổng số đề thi</span>
+              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-            </span>
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {stats.total}
+            </div>
+            <div className="mt-1 text-[11px] text-slate-500">Tất cả bộ đề trong hệ thống</div>
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white">
-            {stats.total}
-          </div>
-          <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-semibold">
-            Tất cả bộ đề trong hệ thống
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Đã Xuất Bản
-            </span>
-            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <div className="p-4 sm:p-5">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+              <span className="text-xs font-medium">Đã xuất bản</span>
+              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </span>
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {stats.published}
+            </div>
+            <div className="mt-1 text-[11px] text-slate-500">Sẵn sàng tổ chức thi</div>
           </div>
-          <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
-            {stats.published}
-          </div>
-          <div className="mt-2 text-xs text-emerald-600 font-semibold">
-            Sẵn sàng tổ chức kiểm tra
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Bản Nháp
-            </span>
-            <span className="p-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <div className="p-4 sm:p-5">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+              <span className="text-xs font-medium">Bản nháp</span>
+              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
-            </span>
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {stats.draft}
+            </div>
+            <div className="mt-1 text-[11px] text-slate-500">Đang hoàn thiện nội dung</div>
           </div>
-          <div className="text-3xl font-black text-amber-600 dark:text-amber-400">
-            {stats.draft}
-          </div>
-          <div className="mt-2 text-xs text-amber-600 font-semibold">
-            Đang hoàn thiện nội dung
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Câu Hỏi Đã Gắn Đề
-            </span>
-            <span className="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          <div className="p-4 sm:p-5">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+              <span className="text-xs font-medium">Câu hỏi đã gắn đề</span>
+              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
-            </span>
-          </div>
-          <div className="text-3xl font-black text-purple-600 dark:text-purple-400">
-            {stats.totalQuestionsInAll}
-          </div>
-          <div className="mt-2 text-xs text-purple-600 font-semibold">
-            Có snapshot bảo lưu độc lập
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {stats.totalQuestionsInAll}
+            </div>
+            <div className="mt-1 text-[11px] text-slate-500">Có snapshot bảo lưu độc lập</div>
           </div>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* THANH CÔNG CỤ: TÌM KIẾM, LỌC MÔN HỌC & NÚT TẠO ĐỀ */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-3xl shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Bộ lọc bên trái */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          {/* Ô tìm kiếm */}
-          <div className="relative min-w-[240px] flex-1 sm:flex-initial">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
+      {/* Toolbar: Search, Filters & Action Button */}
+      <div className="border border-slate-200/80 dark:border-slate-800 p-3 rounded-xl bg-white dark:bg-slate-900 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          {/* Search */}
+          <div className="relative min-w-[220px] flex-1 sm:flex-initial">
+            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm kiếm tiêu đề đề thi..."
-              className="w-full text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus:outline-none focus:border-blue-500"
+              className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-slate-400"
             />
           </div>
 
-          {/* Lọc theo Ngân hàng môn học */}
+          {/* Subject Filter */}
           <select
             value={selectedSubjectFilter}
             onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-            className="text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 font-medium"
+            className="text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium focus:outline-none"
           >
-            <option value="all">Tất cả ngân hàng môn ({subjects.length})</option>
+            <option value="all">Tất cả môn học ({subjects.length})</option>
             {subjects.map((sub) => (
               <option key={sub._id} value={sub._id}>
                 {sub.subject_name} {sub.code ? `(${sub.code})` : ""}
@@ -321,49 +298,50 @@ export default function ExamManagerView({ currentUser }: ExamManagerViewProps) {
             ))}
           </select>
 
-          {/* Lọc trạng thái xuất bản */}
+          {/* Status Filter */}
           <select
             value={selectedStatusFilter}
             onChange={(e) => setSelectedStatusFilter(e.target.value as "all" | "published" | "draft")}
-            className="text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 font-medium"
+            className="text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium focus:outline-none"
           >
             <option value="all">Mọi trạng thái</option>
-            <option value="published">🟢 Đã xuất bản ({stats.published})</option>
-            <option value="draft">🟡 Bản nháp ({stats.draft})</option>
+            <option value="published">Đã xuất bản ({stats.published})</option>
+            <option value="draft">Bản nháp ({stats.draft})</option>
           </select>
         </div>
 
-        {/* Nút Tạo đề thi mới bên phải */}
+        {/* Create Exam Button */}
         <button
           type="button"
           onClick={() => {
             setExamToEdit(null);
             setIsCreatorModalOpen(true);
           }}
-          className="w-full md:w-auto px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer transition active:scale-95"
+          className="w-full md:w-auto px-3.5 py-1.5 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 font-medium text-xs flex items-center justify-center gap-1.5 cursor-pointer transition"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
           <span>Tạo Đề Thi Mới</span>
         </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* DANH SÁCH ĐỀ THI (LƯỚI DẠNG CARDS) */}
-      {/* ========================================================================= */}
+      {/* Exams Grid */}
       {isLoading ? (
-        <div className="py-20 text-center text-xs text-slate-400">
-          Đang tải danh sách đề thi...
+        <div className="py-20 text-center border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs text-slate-400">
+          <div className="w-6 h-6 border-2 border-slate-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-2.5" />
+          <span>Đang tải danh sách đề thi...</span>
         </div>
       ) : filteredExams.length === 0 ? (
-        <div className="py-20 text-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 space-y-3">
-          <span className="text-4xl block">📋</span>
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+        <div className="py-16 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 p-8 space-y-3">
+          <svg className="w-8 h-8 text-slate-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
             Chưa có đề thi nào phù hợp
           </h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-            Bạn có thể bấm nút &quot;Tạo Đề Thi Mới&quot; để chọn ngân hàng môn học, bốc câu hỏi ngẫu nhiên hoặc chọn thủ công.
+            Bạn có thể bấm &quot;Tạo Đề Thi Mới&quot; để chọn môn học, bốc câu hỏi tự động hoặc chọn thủ công từ ngân hàng.
           </p>
           <button
             type="button"
@@ -371,13 +349,13 @@ export default function ExamManagerView({ currentUser }: ExamManagerViewProps) {
               setExamToEdit(null);
               setIsCreatorModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
           >
-            <span>+ Tạo đề thi ngay</span>
+            <span>+</span> Tạo đề thi ngay
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredExams.map((exam) => {
             const subjectName = exam.subject_id?.subject_name || "Môn chung";
             const qCount = exam.questions?.length || 0;
@@ -385,102 +363,105 @@ export default function ExamManagerView({ currentUser }: ExamManagerViewProps) {
             return (
               <div
                 key={exam._id}
-                className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+                className="border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 p-5 hover:border-slate-300 dark:hover:border-slate-700 transition flex flex-col justify-between group"
               >
                 <div>
-                  {/* Top: Ngân hàng môn học & Huy hiệu trạng thái */}
+                  {/* Top Bar */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900 flex items-center gap-1.5 truncate">
-                      <span>📚</span>
-                      <span className="truncate">{subjectName}</span>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 truncate">
+                      {subjectName}
                     </span>
 
-                    {/* Công tắc Bật/Tắt Xuất bản 1-click */}
                     <button
                       type="button"
                       onClick={() => handleTogglePublish(exam._id, exam.is_published)}
                       title={exam.is_published ? "Bấm để chuyển về Bản nháp" : "Bấm để Xuất bản đề thi"}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition cursor-pointer flex items-center gap-1 ${
+                      className={`text-[10px] font-medium px-2 py-0.5 rounded border transition cursor-pointer flex items-center gap-1.5 ${
                         exam.is_published
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
-                          : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80"
+                          : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
                       }`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                      <span className={`w-1.5 h-1.5 rounded-full ${exam.is_published ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
                       <span>{exam.is_published ? "Đã xuất bản" : "Bản nháp"}</span>
                     </button>
                   </div>
 
-                  {/* Tiêu đề đề thi */}
+                  {/* Title */}
                   <h3
                     onClick={() => setDetailsModalExam(exam as unknown as ExamDataToEdit)}
-                    className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition cursor-pointer leading-snug line-clamp-2 mb-3"
+                    className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition cursor-pointer leading-snug line-clamp-2 mb-3"
                   >
                     {exam.title}
                   </h3>
 
-                  {/* 3 thông số chính: Thời gian, Số câu, Điểm */}
-                  <div className="grid grid-cols-3 gap-2 py-2.5 px-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-xs mb-3 text-center">
+                  {/* 3 Metrics: Duration, Question count, Max score */}
+                  <div className="grid grid-cols-3 gap-2 py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-xs mb-3 text-center border border-slate-100 dark:border-slate-800">
                     <div>
-                      <span className="text-[10px] text-slate-400 block font-semibold">Thời lượng</span>
-                      <strong className="text-slate-800 dark:text-slate-200">{exam.duration_minutes}p</strong>
+                      <span className="text-[10px] text-slate-400 block font-medium">Thời lượng</span>
+                      <strong className="text-slate-800 dark:text-slate-200 font-semibold">{exam.duration_minutes}p</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block font-semibold">Số câu</span>
-                      <strong className="text-blue-600 dark:text-blue-400">{qCount} câu</strong>
+                      <span className="text-[10px] text-slate-400 block font-medium">Số câu</span>
+                      <strong className="text-slate-900 dark:text-white font-semibold">{qCount} câu</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block font-semibold">Thang điểm</span>
-                      <strong className="text-emerald-600 dark:text-emerald-400">{exam.max_score} đ</strong>
+                      <span className="text-[10px] text-slate-400 block font-medium">Thang điểm</span>
+                      <strong className="text-slate-800 dark:text-slate-200 font-semibold">{exam.max_score}đ</strong>
                     </div>
                   </div>
 
-                  {/* Huy hiệu tính năng thông minh */}
+                  {/* Feature badges */}
                   <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 mb-4">
                     {exam.shuffle_questions && (
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">
-                        🔀 Xáo câu
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-medium">
+                        Xáo câu
                       </span>
                     )}
                     {exam.shuffle_options && (
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">
-                        🔀 Đảo đáp án
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-medium">
+                        Đảo đáp án
                       </span>
                     )}
                     {exam.allow_view_result_immediately && (
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">
-                        👁️ Xem đáp án
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-medium">
+                        Xem đáp án ngay
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* HÀNG HÀNH ĐỘNG DƯỚI CÙNG */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1.5">
-                  <div className="flex items-center gap-1">
-                    {/* Nút Xem chi tiết */}
+                {/* Footer Actions */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setDetailsModalExam(exam as unknown as ExamDataToEdit)}
                       title="Xem chi tiết đề thi và lời giải"
-                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition cursor-pointer flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-md text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center gap-1"
                     >
-                      <span>👁️ Chi tiết</span>
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span>Chi tiết</span>
                     </button>
 
-                    {/* Nút Thi thử */}
                     <button
                       type="button"
                       onClick={() => setPracticeModalExam(exam as unknown as ExamDataToEdit)}
                       title="Trải nghiệm làm bài thi thử như học viên"
-                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-md text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/80 dark:border-emerald-800/80 transition cursor-pointer flex items-center gap-1"
                     >
-                      <span>✍️ Thi thử</span>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Thi thử</span>
                     </button>
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {/* Nút Sửa đề */}
                     <button
                       type="button"
                       onClick={() => {
@@ -488,20 +469,23 @@ export default function ExamManagerView({ currentUser }: ExamManagerViewProps) {
                         setIsCreatorModalOpen(true);
                       }}
                       title="Chỉnh sửa cấu hình và câu hỏi đề thi"
-                      className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition cursor-pointer"
+                      className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition cursor-pointer"
                     >
-                      ✏️
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
                     </button>
 
-                    {/* Nút Xóa đề */}
                     <button
                       type="button"
                       disabled={isDeletingId === exam._id}
                       onClick={() => handleDeleteExam(exam._id)}
                       title="Xóa đề thi"
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer disabled:opacity-50"
+                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition cursor-pointer disabled:opacity-50"
                     >
-                      🗑️
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
                   </div>
                 </div>

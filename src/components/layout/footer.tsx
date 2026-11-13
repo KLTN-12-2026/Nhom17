@@ -1,207 +1,121 @@
-//src\components\layout\footer.tsx
 import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="relative mt-24 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl font-sans overflow-hidden">
-      {/* Hiệu ứng nền ánh sáng trang trí (Decorative Glow) */}
-      <div className="absolute top-0 left-1/4 -translate-y-1/2 w-96 h-48 bg-blue-500/10 dark:bg-blue-500/5 blur-3xl rounded-full pointer-events-none" />
-      <div className="absolute top-0 right-1/4 -translate-y-1/2 w-96 h-48 bg-indigo-500/10 dark:bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
-
-      {/* Viền màu gradient trang nhã trên đầu footer */}
-      <div className="h-[2px] w-full bg-gradient-to-r from-blue-600/30 via-indigo-600/60 to-emerald-500/30" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
-        {/* LƯỚI NỘI DUNG CHÍNH (4 CỘT CHUẨN SẢN PHẨM THẬT) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12 mb-16">
-          {/* CỘT 1: THƯƠNG HIỆU & GIỚI THIỆU (Chiếm 4 cột trên lg) */}
-          <div className="lg:col-span-4 space-y-4">
-            <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300">
-                <svg
-                  className="w-5 h-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                </svg>
+    <footer className="mt-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 font-sans">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* LƯỚI NỘI DUNG CHÍNH */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 mb-12">
+          {/* CỘT 1: THƯƠNG HIỆU & GIỚI THIỆU */}
+          <div className="lg:col-span-5 space-y-3">
+            <Link href="/" className="inline-flex items-center gap-2.5 group">
+              <div className="min-w-7 h-7 px-1.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold text-[10px] tracking-tight shadow-2xs group-hover:scale-105 transition-transform">
+                PQP
               </div>
-              <div>
-                <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white leading-none block">
-                  AI-
-                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    Quizz
-                  </span>
-                </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider block mt-1">
-                  Nền tảng thi &amp; đánh giá thông minh
-                </span>
-              </div>
+              <span className="font-semibold text-sm tracking-tight text-slate-900 dark:text-white leading-none">
+                AI-Quizz
+              </span>
             </Link>
 
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal pr-4">
-              Nền tảng khảo thí và luyện thi trắc nghiệm trực tuyến thế hệ mới. Tự động biên soạn đề thi,
-              giám sát phòng thi thời gian thực và đồng hành nâng cao năng lực cho người học bằng Trí tuệ Nhân tạo.
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+              Hệ thống khảo thí và luyện thi trắc nghiệm trực tuyến chuẩn Bộ GD&amp;ĐT. Biên soạn đề thi,
+              giám sát phòng thi thời gian thực và chẩn đoán lỗ hổng kiến thức bằng AI.
             </p>
 
-            {/* Trạng thái hệ thống */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 mt-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Hệ thống trực tuyến sẵn sàng phục vụ</span>
+            <div className="inline-flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Hệ thống trực tuyến sẵn sàng</span>
             </div>
           </div>
 
-          {/* CỘT 2: TÍNH NĂNG NỔI BẬT (Chiếm 3 cột trên lg) */}
-          <div className="lg:col-span-3 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="w-1.5 h-3.5 bg-blue-600 rounded-full inline-block" />
+          {/* CỘT 2: TÍNH NĂNG NỔI BẬT */}
+          <div className="lg:col-span-3 space-y-3">
+            <h4 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
               Khám Phá
             </h4>
-            <ul className="space-y-2.5 text-sm text-slate-600 dark:text-slate-400 font-medium">
+            <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
               <li>
-                <Link
-                  href="/#ai-features"
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
-                >
-                  <span className="text-xs text-blue-500 group-hover:translate-x-0.5 transition-transform">➔</span>
-                  Sinh câu hỏi tự động bằng AI
+                <Link href="/#ai-features" className="hover:text-slate-900 dark:hover:text-white transition">
+                  Sinh câu hỏi tự động
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/#live-proctoring"
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
-                >
-                  <span className="text-xs text-blue-500 group-hover:translate-x-0.5 transition-transform">➔</span>
+                <Link href="/#live-proctoring" className="hover:text-slate-900 dark:hover:text-white transition">
                   Giám sát phòng thi Live
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/#student-experience"
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
-                >
-                  <span className="text-xs text-blue-500 group-hover:translate-x-0.5 transition-transform">➔</span>
+                <Link href="/#student-experience" className="hover:text-slate-900 dark:hover:text-white transition">
                   Góc học tập &amp; Luyện thi
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/#practice-preview"
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
-                >
-                  <span className="text-xs text-blue-500 group-hover:translate-x-0.5 transition-transform">➔</span>
+                <Link href="/#practice-preview" className="hover:text-slate-900 dark:hover:text-white transition">
                   Thư viện đề thi mẫu
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* CỘT 3: HƯỚNG DẪN & HỖ TRỢ (Chiếm 2 hoặc 3 cột trên lg) */}
-          <div className="lg:col-span-3 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="w-1.5 h-3.5 bg-indigo-600 rounded-full inline-block" />
-              Hỗ Trợ &amp; Quy Chế
+          {/* CỘT 3: HƯỚNG DẪN & HỖ TRỢ */}
+          <div className="lg:col-span-2 space-y-3">
+            <h4 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+              Hỗ Trợ
             </h4>
-            <ul className="space-y-2.5 text-sm text-slate-600 dark:text-slate-400 font-medium">
+            <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
               <li>
-                <Link
-                  href="/#live-proctoring"
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
-                >
-                  <span className="text-xs text-indigo-500 group-hover:translate-x-0.5 transition-transform">➔</span>
-                  Quy chế phòng thi trực tuyến
+                <Link href="/#live-proctoring" className="hover:text-slate-900 dark:hover:text-white transition">
+                  Quy chế phòng thi
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/#ai-features"
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
-                >
-                  <span className="text-xs text-indigo-500 group-hover:translate-x-0.5 transition-transform">➔</span>
-                  Hướng dẫn làm bài thi trắc nghiệm
+                <Link href="/auth/login" className="hover:text-slate-900 dark:hover:text-white transition">
+                  Đăng nhập
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/auth/login"
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
-                >
-                  <span className="text-xs text-indigo-500 group-hover:translate-x-0.5 transition-transform">➔</span>
-                  Đăng nhập tài khoản
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/auth/register"
-                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 group"
-                >
-                  <span className="text-xs text-indigo-500 group-hover:translate-x-0.5 transition-transform">➔</span>
-                  Đăng ký tài khoản học viên
+                <Link href="/auth/register" className="hover:text-slate-900 dark:hover:text-white transition">
+                  Đăng ký tài khoản
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* CỘT 4: THÔNG TIN LIÊN HỆ & TRỢ GIÚP (Chiếm 2 cột trên lg) */}
-          <div className="lg:col-span-2 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full inline-block" />
+          {/* CỘT 4: THÔNG TIN LIÊN HỆ */}
+          <div className="lg:col-span-2 space-y-3">
+            <h4 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
               Liên Hệ
             </h4>
-            <div className="space-y-3 text-xs text-slate-600 dark:text-slate-400">
-              <p className="flex items-center gap-2">
-                <span>📧</span>
-                <span className="font-medium">support@ai-quizz.vn</span>
+            <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <p className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span>support@ai-quizz.vn</span>
               </p>
-              <p className="flex items-center gap-2">
-                <span>💬</span>
-                <span className="font-medium">Hỗ trợ kỹ thuật 24/7</span>
+              <p className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Hỗ trợ 24/7</span>
               </p>
-              <p className="flex items-center gap-2">
-                <span>🛡️</span>
-                <span className="font-medium">Bảo mật dữ liệu tuyệt đối</span>
-              </p>
-            </div>
-            <div className="pt-2">
-              <Link
-                href="/auth/register"
-                className="inline-block px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold text-xs hover:bg-blue-100 transition-colors"
-              >
-                Bắt đầu học ngay ➔
-              </Link>
             </div>
           </div>
         </div>
 
-        {/* DÒNG PHÂN CÁCH CUỐI & BẢN QUYỀN */}
-        <div className="pt-8 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
-          <div>
-            <p>© 2026 AI-Quizz. Nền tảng khảo thí &amp; đánh giá năng lực trực tuyến.</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-5">
-            <Link
-              href="/#ai-features"
-              className="hover:text-blue-600 dark:hover:text-blue-400 transition"
-            >
-              Giới thiệu
+        {/* BẢN QUYỀN */}
+        <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-400">
+          <p>© 2026 AI-Quizz. Nền tảng khảo thí &amp; đánh giá năng lực trực tuyến.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="hover:text-slate-600 dark:hover:text-slate-300 transition">
+              Trang chủ
             </Link>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <Link
-              href="/#live-proctoring"
-              className="hover:text-blue-600 dark:hover:text-blue-400 transition"
-            >
-              Quy chế thi trực tuyến
+            <span>•</span>
+            <Link href="/#ai-features" className="hover:text-slate-600 dark:hover:text-slate-300 transition">
+              Tính năng AI
             </Link>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <span className="text-slate-400 dark:text-slate-500">
-              Công nghệ Gemini AI
-            </span>
+            <span>•</span>
+            <span className="text-slate-400">Phiên bản 2.0</span>
           </div>
         </div>
       </div>
