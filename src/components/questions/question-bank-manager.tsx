@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import QuestionCreationModal from "@/components/questions/question-creation-modal";
+import Link from "next/link";
 
 export interface CurrentUser {
   id: string;
@@ -86,12 +87,11 @@ interface TopicTreeNode extends TopicItem {
   };
 }
 
-
 export default function QuestionBankManager({ currentUser }: QuestionBankManagerProps = {}) {
   // Navigation view levels:
-  // "subjects": xem danh mục các gói môn học
-  // "topics": xem danh sách các gói chuyên đề trong môn đã chọn
-  // "questions": mở tung danh sách câu hỏi trong chuyên đề đã chọn
+  // "subjects": xem danh mục các môn học
+  // "topics": xem danh sách chuyên đề phân cấp trong môn đã chọn
+  // "questions": xem danh sách câu hỏi chi tiết trong chuyên đề đã chọn
   const [viewLevel, setViewLevel] = useState<"subjects" | "topics" | "questions">("subjects");
 
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
@@ -199,7 +199,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       if (selectedDifficulty !== "all") params.set("difficulty", selectedDifficulty);
       if (selectedSource === "ai") params.set("is_ai_generated", "true");
       if (selectedSource === "manual") params.set("is_ai_generated", "false");
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
 
       const res = await fetch(`/api/instructor/questions?${params.toString()}`);
       const data = await res.json();
@@ -213,20 +213,18 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
     }
   }
 
+  // Reload questions whenever selectedTopic or filters change
   useEffect(() => {
-    if (viewLevel !== "questions") return;
+    if (viewLevel !== "questions" || !selectedTopic) return;
 
     let ignore = false;
+
     const params = new URLSearchParams();
-    if (selectedTopic) {
-      params.set("topic_id", selectedTopic._id);
-    } else if (selectedSubject) {
-      params.set("subject_id", selectedSubject._id);
-    }
+    params.set("topic_id", selectedTopic._id);
     if (selectedDifficulty !== "all") params.set("difficulty", selectedDifficulty);
     if (selectedSource === "ai") params.set("is_ai_generated", "true");
     if (selectedSource === "manual") params.set("is_ai_generated", "false");
-    if (searchQuery.trim()) params.set("search", searchQuery.trim());
+    if (searchQuery.trim()) params.set("q", searchQuery.trim());
 
     fetch(`/api/instructor/questions?${params.toString()}`)
       .then((res) => res.json())
@@ -343,7 +341,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
         list.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
         for (const item of list) {
           const indent =
-            depth === 0 ? "📁 " : `${"\u00A0\u00A0\u00A0\u00A0".repeat(depth)}↳ `;
+            depth === 0 ? "• " : `${"\u00A0\u00A0\u00A0\u00A0".repeat(depth)}↳ `;
           items.push({
             _id: item._id,
             label: `${indent}${item.topic_name}`,
@@ -369,91 +367,186 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
     return { totalSubjects, totalTopics, totalQuestions };
   }, [subjects, topics]);
 
-  // Open a Subject folder (Move to Level 2: Topics)
-  function handleSelectSubject(sub: SubjectItem) {
-    setSelectedSubject(sub);
+  // Permission helpers
+  function canManageSubject(subject: SubjectItem): boolean {
+    if (!currentUser) return false;
+    if (currentUser.role === "admin") return true;
+    if (!subject.created_by) return false;
+    const creatorId =
+      typeof subject.created_by === "string"
+        ? subject.created_by
+        : subject.created_by._id;
+    return creatorId === currentUser.id;
+  }
+
+  function canManageTopic(topic: TopicItem): boolean {
+    if (!currentUser) return false;
+    if (currentUser.role === "admin") return true;
+    if (!topic.created_by) return false;
+    const creatorId =
+      typeof topic.created_by === "string"
+        ? topic.created_by
+        : topic.created_by._id;
+    return creatorId === currentUser.id;
+  }
+
+  // Drill-down navigation handlers
+  function handleSelectSubject(subject: SubjectItem) {
+    setSelectedSubject(subject);
     setSelectedTopic(null);
     setViewLevel("topics");
   }
 
-  // Open a Topic folder (Move to Level 3: Questions - "Mở tung câu hỏi")
-  function handleSelectTopic(top: TopicItem) {
-    setSelectedTopic(top);
-    setSearchQuery("");
-    setSelectedDifficulty("all");
-    setSelectedSource("all");
+  function handleSelectTopic(topic: TopicItem) {
+    setSelectedTopic(topic);
     setViewLevel("questions");
   }
 
-  // Navigate back to Subjects (Level 1)
   function handleBackToSubjects() {
     setSelectedSubject(null);
     setSelectedTopic(null);
     setViewLevel("subjects");
-    reloadMetadata();
   }
 
-  // Navigate back to Topics (Level 2)
   function handleBackToTopics() {
     setSelectedTopic(null);
     setViewLevel("topics");
-    reloadMetadata();
   }
 
-  // Toggle explanation accordion
-  function toggleExplanation(questionId: string) {
+  function toggleExplanation(qId: string) {
     setExpandedExplanations((prev) => ({
       ...prev,
-      [questionId]: !prev[questionId],
+      [qId]: !prev[qId],
     }));
+  }
+
+  // Confirm delete question
+  async function handleConfirmDelete() {
+    if (!deletingQuestionId) return;
+    setIsDeleting(true);
+    setDeleteQuestionError("");
+
+    try {
+      const res = await fetch(`/api/instructor/questions/${deletingQuestionId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setQuestions((prev) => prev.filter((q) => q._id !== deletingQuestionId));
+        setDeletingQuestionId(null);
+        reloadMetadata();
+      } else {
+        setDeleteQuestionError(data.message || "Không thể xóa câu hỏi này.");
+      }
+    } catch {
+      setDeleteQuestionError("Lỗi kết nối khi xóa câu hỏi.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  // Confirm delete subject
+  async function handleConfirmDeleteSubject() {
+    if (!deletingSubject) return;
+    setIsDeletingSubject(true);
+    setDeleteSubjectError("");
+
+    try {
+      const res = await fetch(`/api/instructor/subjects/${deletingSubject._id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSubjects((prev) => prev.filter((s) => s._id !== deletingSubject._id));
+        setTopics((prev) => prev.filter((t) => String(t.subject_id) !== String(deletingSubject._id)));
+        setDeletingSubject(null);
+        if (selectedSubject?._id === deletingSubject._id) {
+          handleBackToSubjects();
+        }
+      } else {
+        setDeleteSubjectError(data.message || "Không thể xóa môn học này.");
+      }
+    } catch {
+      setDeleteSubjectError("Lỗi kết nối khi xóa môn học.");
+    } finally {
+      setIsDeletingSubject(false);
+    }
+  }
+
+  // Confirm delete topic
+  async function handleConfirmDeleteTopic() {
+    if (!deletingTopic) return;
+    setIsDeletingTopic(true);
+    setDeleteTopicError("");
+
+    try {
+      const res = await fetch(`/api/instructor/topics/${deletingTopic._id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTopics((prev) => prev.filter((t) => t._id !== deletingTopic._id));
+        setDeletingTopic(null);
+        if (selectedTopic?._id === deletingTopic._id) {
+          handleBackToTopics();
+        }
+        reloadMetadata();
+      } else {
+        setDeleteTopicError(data.message || "Không thể xóa chuyên đề này.");
+      }
+    } catch {
+      setDeleteTopicError("Lỗi kết nối khi xóa chuyên đề.");
+    } finally {
+      setIsDeletingTopic(false);
+    }
   }
 
   // Open Edit Modal
   function handleOpenEdit(q: QuestionItem) {
     setEditingId(q._id);
+    const resolvedTopicId = typeof q.topic_id === "object" && q.topic_id?._id
+      ? q.topic_id._id
+      : (typeof q.topic_id === "string" ? q.topic_id : selectedTopic?._id || "");
+    setEditTopicId(resolvedTopicId);
     setEditContent(q.content);
     setEditDifficulty(q.difficulty_level);
     setEditExplanation(q.explanation || "");
-    setEditTopicId(q.topic_id?._id || selectedTopic?._id || topics[0]?._id || "");
-
-    const labels = ["A", "B", "C", "D"];
-    const baseOptions: Option[] = labels.map((lbl, idx) => {
-      const existing = q.options[idx];
-      return {
-        option_label: lbl,
-        content: existing?.content || "",
-        is_correct: existing?.is_correct || false,
-      };
-    });
-    setEditOptions(baseOptions);
+    setEditOptions(
+      q.options.map((opt, i) => ({
+        option_label: opt.option_label || ["A", "B", "C", "D"][i] || "",
+        content: opt.content,
+        is_correct: opt.is_correct,
+      }))
+    );
     setEditFormError("");
     setIsEditModalOpen(true);
   }
 
-  // Save Edit Question
+  // Save Edit
   async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!editingId) return;
-    setEditFormError("");
 
     if (!editContent.trim()) {
-      setEditFormError("Vui lòng nhập nội dung câu hỏi.");
+      setEditFormError("Nội dung câu hỏi không được để trống.");
       return;
     }
 
-    const emptyOpt = editOptions.some((o) => !o.content.trim());
-    if (emptyOpt) {
-      setEditFormError("Tất cả 4 phương án A, B, C, D đều bắt buộc phải có nội dung.");
+    const hasEmptyOption = editOptions.some((o) => !o.content.trim());
+    if (hasEmptyOption) {
+      setEditFormError("Tất cả 4 phương án trắc nghiệm đều phải có nội dung.");
       return;
     }
 
-    const hasCorrect = editOptions.some((o) => o.is_correct);
-    if (!hasCorrect) {
-      setEditFormError("Bắt buộc phải đánh dấu ít nhất một phương án là đáp án đúng.");
+    const correctCount = editOptions.filter((o) => o.is_correct).length;
+    if (correctCount !== 1) {
+      setEditFormError("Phải có chính xác 1 phương án là đáp án đúng.");
       return;
     }
 
     setIsEditSubmitting(true);
+    setEditFormError("");
+
     try {
       const res = await fetch(`/api/instructor/questions/${editingId}`, {
         method: "PUT",
@@ -468,128 +561,21 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.question) {
+        setQuestions((prev) =>
+          prev.map((q) => (q._id === editingId ? data.question : q))
+        );
         setIsEditModalOpen(false);
-        reloadQuestionsList();
         reloadMetadata();
       } else {
-        setEditFormError(data.message || "Không thể cập nhật câu hỏi");
+        setEditFormError(data.message || "Cập nhật câu hỏi thất bại.");
       }
     } catch {
-      setEditFormError("Lỗi kết nối máy chủ khi cập nhật");
+      setEditFormError("Lỗi kết nối máy chủ khi lưu câu hỏi.");
     } finally {
       setIsEditSubmitting(false);
     }
   }
-
-  // Permission helpers
-  function canManageSubject(sub: SubjectItem): boolean {
-    if (!currentUser) return true;
-    if (currentUser.role === "admin") return true;
-    if (!sub.created_by) return true;
-    const creatorId = typeof sub.created_by === "object" ? sub.created_by?._id : sub.created_by;
-    return String(creatorId) === String(currentUser.id);
-  }
-
-  function canManageTopic(top: TopicItem): boolean {
-    if (!currentUser) return true;
-    if (currentUser.role === "admin") return true;
-    if (!top.created_by) return true;
-    const creatorId = typeof top.created_by === "object" ? top.created_by?._id : top.created_by;
-    return String(creatorId) === String(currentUser.id);
-  }
-
-  // Delete question confirmation
-  async function handleConfirmDelete() {
-    if (!deletingQuestionId) return;
-    setIsDeleting(true);
-    setDeleteQuestionError("");
-    try {
-      const res = await fetch(`/api/instructor/questions/${deletingQuestionId}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (data.success) {
-        setQuestions((prev) => prev.filter((q) => q._id !== deletingQuestionId));
-        setDeletingQuestionId(null);
-        reloadMetadata();
-      } else {
-        setDeleteQuestionError(data.message || "Không thể xóa câu hỏi");
-      }
-    } catch {
-      setDeleteQuestionError("Lỗi kết nối khi xóa câu hỏi");
-    } finally {
-      setIsDeleting(false);
-    }
-  }
-
-  // Delete subject confirmation
-  async function handleConfirmDeleteSubject() {
-    if (!deletingSubject) return;
-    if ((deletingSubject.questionCount || 0) > 0) {
-      setDeleteSubjectError(
-        `Môn học này đang chứa ${deletingSubject.questionCount} câu hỏi trong các chuyên đề. Không thể xóa môn học khi vẫn còn câu hỏi!`
-      );
-      return;
-    }
-    setIsDeletingSubject(true);
-    setDeleteSubjectError("");
-    try {
-      const res = await fetch(`/api/instructor/subjects/${deletingSubject._id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (selectedSubject?._id === deletingSubject._id) {
-          setSelectedSubject(null);
-          setSelectedTopic(null);
-          setViewLevel("subjects");
-        }
-        setDeletingSubject(null);
-        reloadMetadata();
-      } else {
-        setDeleteSubjectError(data.message || "Không thể xóa môn học");
-      }
-    } catch {
-      setDeleteSubjectError("Lỗi kết nối khi xóa môn học");
-    } finally {
-      setIsDeletingSubject(false);
-    }
-  }
-
-  // Delete topic confirmation
-  async function handleConfirmDeleteTopic() {
-    if (!deletingTopic) return;
-    if ((deletingTopic.questionCount || 0) > 0) {
-      setDeleteTopicError(
-        `Chuyên đề này đang chứa ${deletingTopic.questionCount} câu hỏi. Không thể xóa chuyên đề khi vẫn còn câu hỏi!`
-      );
-      return;
-    }
-    setIsDeletingTopic(true);
-    setDeleteTopicError("");
-    try {
-      const res = await fetch(`/api/instructor/topics/${deletingTopic._id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (selectedTopic?._id === deletingTopic._id) {
-          setSelectedTopic(null);
-          setViewLevel("topics");
-        }
-        setDeletingTopic(null);
-        reloadMetadata();
-      } else {
-        setDeleteTopicError(data.message || "Không thể xóa chuyên đề");
-      }
-    } catch {
-      setDeleteTopicError("Lỗi kết nối khi xóa chuyên đề");
-    } finally {
-      setIsDeletingTopic(false);
-    }
-  }
-
 
   // Open Unified Add / Import / AI Modal
   function handleOpenAddModal(targetTopicId?: string, defaultTab: "manual" | "file" | "ai" = "manual") {
@@ -599,117 +585,145 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
     setIsAddModalOpen(true);
   }
 
-
   return (
     <div className="space-y-6">
-      {/* ========================================================================= */}
-      {/* BREADCRUMB & NAVIGATION BAR */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 px-4 py-3 rounded-xl shadow-2xs flex items-center justify-between">
-        {/* Breadcrumb Path */}
-        <nav className="flex items-center gap-2 text-xs md:text-sm font-medium">
+      {/* Breadcrumb Trail (Linear / Vercel minimalist navigation) */}
+      <div className="border border-slate-200/80 dark:border-slate-800 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-between">
+        <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
           <button
             type="button"
             onClick={handleBackToSubjects}
-            className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition cursor-pointer ${
               viewLevel === "subjects"
-                ? "text-blue-600 dark:text-blue-400 font-semibold"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                ? "text-slate-900 dark:text-white font-semibold"
+                : ""
             }`}
           >
-            <span className="text-sm">📚</span>
-            Kho Môn Học
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            <span>Kho Môn Học</span>
           </button>
 
           {selectedSubject && (
             <>
-              <span className="text-slate-300 dark:text-slate-600">/</span>
+              <span className="text-slate-300 dark:text-slate-700">/</span>
               <button
                 type="button"
                 onClick={handleBackToTopics}
-                className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition cursor-pointer ${
                   viewLevel === "topics"
-                    ? "text-blue-600 dark:text-blue-400 font-semibold"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                    ? "text-slate-900 dark:text-white font-semibold"
+                    : ""
                 }`}
               >
-                <span className="text-sm">📐</span>
-                {selectedSubject.subject_name}
+                <span>{selectedSubject.subject_name}</span>
               </button>
             </>
           )}
 
           {selectedTopic && (
             <>
-              <span className="text-slate-300 dark:text-slate-600">/</span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1.5">
-                <span className="text-sm">📁</span>
+              <span className="text-slate-300 dark:text-slate-700">/</span>
+              <span className="text-slate-900 dark:text-white font-semibold truncate max-w-[280px]">
                 {selectedTopic.topic_name}
               </span>
             </>
           )}
         </nav>
+
+        {viewLevel === "topics" && selectedSubject && (
+          <button
+            type="button"
+            onClick={() => {
+              const firstTopic = topics.find((t) => String(t.subject_id) === String(selectedSubject._id));
+              handleOpenAddModal(firstTopic?._id || "", "manual");
+            }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Soạn câu hỏi mới</span>
+          </button>
+        )}
       </div>
 
       {/* ========================================================================= */}
       {/* TẦNG 1: DANH MỤC CÁC GÓI MÔN HỌC (Level: "subjects") */}
       {/* ========================================================================= */}
       {viewLevel === "subjects" && (
-        <div className="space-y-5">
-          {/* Soft Overview Metrics (Thân thiện, không bị chói mắt) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-xl flex items-center gap-3.5 shadow-2xs">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-semibold">
-                📚
+        <div className="space-y-6">
+          {/* 3 Metrics Bar */}
+          <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 overflow-hidden">
+            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-slate-800">
+              <div className="p-4 sm:p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Môn học khảo thí</p>
+                  <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">
+                    {overallStats.totalSubjects}
+                  </p>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium">Môn Học Khảo Thí</p>
-                <p className="text-base font-bold text-slate-800 dark:text-slate-100 mt-0.5">
-                  {overallStats.totalSubjects} Môn học
-                </p>
-              </div>
-            </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-xl flex items-center gap-3.5 shadow-2xs">
-              <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg font-semibold">
-                📁
+              <div className="p-4 sm:p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Chuyên đề kiến thức</p>
+                  <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">
+                    {overallStats.totalTopics}
+                  </p>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium">Gói Chuyên Đề</p>
-                <p className="text-base font-bold text-slate-800 dark:text-slate-100 mt-0.5">
-                  {overallStats.totalTopics} Chuyên đề
-                </p>
-              </div>
-            </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-xl flex items-center gap-3.5 shadow-2xs">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg font-semibold">
-                📝
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium">Kho Câu Hỏi Đã Soạn</p>
-                <p className="text-base font-bold text-slate-800 dark:text-slate-100 mt-0.5">
-                  {overallStats.totalQuestions} Câu hỏi
-                </p>
+              <div className="p-4 sm:p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Tổng câu hỏi trong kho</p>
+                  <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">
+                    {overallStats.totalQuestions}
+                  </p>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* List of Subject Packages / Folders */}
+          {/* List of Subjects */}
           {isLoadingMetadata ? (
-            <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-              <div className="w-7 h-7 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-xs text-slate-500">Đang tải các gói môn học...</p>
+            <div className="py-20 text-center border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900">
+              <div className="w-6 h-6 border-2 border-slate-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-2.5" />
+              <p className="text-xs text-slate-500">Đang tải danh mục môn học...</p>
             </div>
           ) : (
             <div>
               <div className="flex items-center justify-between mb-3 px-0.5">
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                    Danh Mục Gói Môn Học
+                    Kho Môn Học Đang Quản Lý
                   </h3>
-                  <span className="text-[11px] text-slate-400 font-medium">Bấm vào môn để xem các chuyên đề bên trong</span>
+                  <span className="text-[11px] text-slate-400 font-normal">
+                    Chọn một môn để truy cập cây chuyên đề và kho câu hỏi chi tiết
+                  </span>
                 </div>
+                <Link
+                  href={currentUser?.role === "admin" ? "/admin/subjects" : "/instructor/subjects"}
+                  className="text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                >
+                  Quản lý cây chủ đề →
+                </Link>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -718,27 +732,24 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                     <div
                       key={sub._id}
                       onClick={() => handleSelectSubject(sub)}
-                      className="group bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-600 p-5 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col justify-between"
+                      className="group border border-slate-200/80 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 bg-white dark:bg-slate-900 p-5 rounded-xl cursor-pointer transition flex flex-col justify-between"
                     >
                       <div>
-                        {/* Folder Header */}
+                        {/* Card Header */}
                         <div className="flex items-center justify-between mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg shadow-2xs group-hover:scale-105 transition-transform">
-                            📁
-                          </div>
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {sub.code || `MÔN-${sIdx + 1}`}
+                          </span>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                              {sub.code || `MÔN-${sIdx + 1}`}
-                            </span>
                             {sub.created_by && (
                               <span
-                                className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${
+                                className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
                                   canManageSubject(sub)
-                                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
-                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                                    ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                    : "bg-slate-50 dark:bg-slate-850 text-slate-400"
                                 }`}
                               >
-                                {canManageSubject(sub) ? "Của tôi" : "Đồng nghiệp"}
+                                {canManageSubject(sub) ? "Của tôi" : "Hệ thống"}
                               </span>
                             )}
                             {canManageSubject(sub) && (
@@ -750,36 +761,32 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                                   setDeletingSubject(sub);
                                   setDeleteSubjectError("");
                                 }}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                                className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
                               >
-                                🗑️
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                               </button>
                             )}
                           </div>
                         </div>
 
-                        {/* Folder Info */}
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                        {/* Card Content */}
+                        <h4 className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {sub.subject_name}
                         </h4>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
                           {sub.description || "Kho câu hỏi chuẩn thi THPT theo cấu trúc ma trận của Bộ GD&ĐT."}
                         </p>
                       </div>
 
-                      {/* Folder Stats Footer */}
+                      {/* Card Footer */}
                       <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 text-slate-500">
-                          <span className="font-medium text-slate-700 dark:text-slate-300">
-                            {sub.topicCount || 0} chuyên đề
-                          </span>
-                          <span>•</span>
-                          <span className="font-semibold text-blue-600 dark:text-blue-400">
-                            {sub.questionCount || 0} câu hỏi
-                          </span>
-                        </div>
-                        <span className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all text-xs font-medium flex items-center gap-1">
-                          Khám phá →
+                        <span className="text-slate-500 dark:text-slate-400">
+                          <strong className="text-slate-900 dark:text-white font-medium">{sub.topicCount || 0}</strong> chuyên đề • <strong className="text-slate-900 dark:text-white font-medium">{sub.questionCount || 0}</strong> câu hỏi
+                        </span>
+                        <span className="text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-0.5 transition-all text-xs font-medium">
+                          →
                         </span>
                       </div>
                     </div>
@@ -796,26 +803,25 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       {/* ========================================================================= */}
       {viewLevel === "topics" && selectedSubject && (
         <div className="space-y-6">
-          {/* Header with back button */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-3.5">
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleBackToSubjects}
-                className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-base font-bold transition-colors cursor-pointer shrink-0"
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer shrink-0"
                 title="Quay lại danh mục môn học"
               >
-                ←
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
               </button>
               <div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm font-bold shrink-0">
-                      📐
-                    </span>
-                    <span>Môn: {selectedSubject.subject_name}</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                    Môn: {selectedSubject.subject_name}
                   </h3>
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/50">
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                     {currentSubjectTopics.length} chuyên đề
                   </span>
                   {canManageSubject(selectedSubject) && (
@@ -825,60 +831,72 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                         setDeletingSubject(selectedSubject);
                         setDeleteSubjectError("");
                       }}
-                      className="text-xs font-medium text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-2 py-0.5 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer"
-                      title="Xóa môn học này (chỉ khi không còn câu hỏi)"
+                      className="text-xs font-medium text-slate-400 hover:text-rose-600 transition cursor-pointer ml-1"
+                      title="Xóa môn học này"
                     >
                       Xóa môn
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Chọn chuyên đề bài học để xem kho câu hỏi hoặc sử dụng Trợ lý AI để tự động tạo đề thi bám sát chương trình.
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Chọn chuyên đề để xem danh sách câu hỏi hoặc sử dụng AI để tự động tạo câu hỏi trắc nghiệm
                 </p>
               </div>
             </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href={currentUser?.role === "admin" ? "/admin/subjects" : "/instructor/subjects"}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                Quản lý cây chủ đề
+              </Link>
+            </div>
           </div>
 
-          {/* Hierarchical Tree of Topics inside Subject */}
+          {/* Hierarchical Knowledge Tree */}
           {subjectTopicTree.length === 0 ? (
-            <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-6">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <div className="py-16 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 p-6">
+              <svg className="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                 Chưa có gói chuyên đề nào trong môn này.
               </p>
+              <Link
+                href={currentUser?.role === "admin" ? "/admin/subjects" : "/instructor/subjects"}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
+              >
+                <span>+</span> Thêm chuyên đề trong Cây Chủ Đề
+              </Link>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {subjectTopicTree.map((rootNode, rIdx) => {
                 function renderTopicBranch(node: TopicTreeNode, depth: number, idxLabel: string) {
                   const hasKids = node.children.length > 0;
                   const directCount = node.stats?.total ?? node.questionCount ?? 0;
 
                   return (
-                    <div key={node._id} className="space-y-2.5">
+                    <div key={node._id} className="space-y-2">
                       <div
                         onClick={() => handleSelectTopic(node)}
-                        className={`group border cursor-pointer transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        className={`group border cursor-pointer transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           depth === 0
-                            ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-500 p-5 rounded-2xl shadow-2xs hover:shadow-md"
-                            : "bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/70 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-purple-500 p-3.5 rounded-xl"
+                            ? "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 p-4 sm:p-5 rounded-xl"
+                            : "bg-slate-50/70 dark:bg-slate-850/40 border-slate-200/70 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 rounded-lg"
                         }`}
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span
-                              className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
-                                depth === 0
-                                  ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60"
-                                  : depth === 1
-                                  ? "bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/50"
-                                  : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50"
-                              }`}
-                            >
-                              {depth === 0 ? `📁 Chương / Cấp 1 (${idxLabel})` : `↳ Cấp ${node.level}`}
-                            </span>
+                          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                            {depth === 0 && (
+                              <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                Chương {idxLabel}
+                              </span>
+                            )}
 
                             <h4
-                              className={`font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors ${
+                              className={`font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors ${
                                 depth === 0 ? "text-sm sm:text-base" : "text-xs sm:text-sm"
                               }`}
                             >
@@ -886,7 +904,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                             </h4>
 
                             {hasKids && (
-                              <span className="text-[11px] text-slate-400 font-medium">
+                              <span className="text-[11px] text-slate-400">
                                 ({node.children.length} mục con)
                               </span>
                             )}
@@ -899,23 +917,18 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                           )}
 
                           <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                            <span className="font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                            <span className="font-medium text-slate-700 dark:text-slate-300">
                               {node.subtreeQuestionCount} câu hỏi
                               {hasKids && directCount !== node.subtreeQuestionCount
                                 ? ` (trực tiếp: ${directCount})`
                                 : ""}
                             </span>
-                            <span className="text-emerald-600 font-medium">
-                              {node.subtreeStats.easy} Dễ
-                            </span>
                             <span>•</span>
-                            <span className="text-amber-600 font-medium">
-                              {node.subtreeStats.medium} TB
-                            </span>
+                            <span>Dễ: {node.subtreeStats.easy}</span>
                             <span>•</span>
-                            <span className="text-rose-600 font-medium">
-                              {node.subtreeStats.hard} Khó
-                            </span>
+                            <span>TB: {node.subtreeStats.medium}</span>
+                            <span>•</span>
+                            <span>Khó: {node.subtreeStats.hard}</span>
                           </div>
                         </div>
 
@@ -926,18 +939,22 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                           <button
                             type="button"
                             onClick={() => handleOpenAddModal(node._id, "ai")}
-                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/60 transition cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer flex items-center gap-1.5"
                             title={`AI tự động sinh câu hỏi theo bài "${node.topic_name}"`}
                           >
-                            <span>✨</span> AI Sinh Đề
+                            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            <span>AI Sinh Đề</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => handleSelectTopic(node)}
-                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition cursor-pointer flex items-center gap-1"
                           >
-                            Mở gói →
+                            <span>Mở chuyên đề</span>
+                            <span>→</span>
                           </button>
 
                           {canManageTopic(node) && (
@@ -953,14 +970,16 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                               }}
                               className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
                             >
-                              🗑️
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
                             </button>
                           )}
                         </div>
                       </div>
 
                       {hasKids && (
-                        <div className="ml-5 sm:ml-8 pl-4 border-l-2 border-indigo-200/80 dark:border-slate-700 space-y-2.5">
+                        <div className="ml-4 sm:ml-6 pl-3 sm:pl-4 border-l border-slate-200 dark:border-slate-800 space-y-2">
                           {node.children.map((child, cIdx) =>
                             renderTopicBranch(child, depth + 1, `${idxLabel}.${cIdx + 1}`)
                           )}
@@ -983,29 +1002,31 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       {viewLevel === "questions" && selectedTopic && (
         <div className="space-y-6">
           {/* Header of the opened package */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleBackToTopics}
-                className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer shrink-0"
                 title="Quay lại danh sách chuyên đề"
               >
-                ←
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
               </button>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                  <span className="text-xs font-medium text-slate-500">
                     {selectedSubject?.subject_name}
                   </span>
-                  <span className="text-xs text-slate-400">•</span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
                   <span className="text-xs font-medium text-slate-500">
-                    {questions.length} câu hỏi trong gói này
+                    {questions.length} câu hỏi
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    📁 Gói: {selectedTopic.topic_name}
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                    {selectedTopic.topic_name}
                   </h3>
                   {canManageTopic(selectedTopic) && (
                     <button
@@ -1014,11 +1035,10 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                         setDeletingTopic(selectedTopic);
                         setDeleteTopicError("");
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700 hover:border-rose-200 transition cursor-pointer whitespace-nowrap ml-1"
-                      title="Xóa chuyên đề này (chỉ khi không còn câu hỏi)"
+                      className="text-xs font-medium text-slate-400 hover:text-rose-600 transition cursor-pointer ml-1"
+                      title="Xóa chuyên đề này"
                     >
-                      <span>🗑️</span>
-                      <span>Xóa gói</span>
+                      Xóa chuyên đề
                     </button>
                   )}
                 </div>
@@ -1029,27 +1049,35 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
               <button
                 type="button"
                 onClick={() => handleOpenAddModal(selectedTopic._id, "ai")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm transition cursor-pointer whitespace-nowrap"
-                title="Dùng AI tự động sinh câu hỏi chuẩn SGK theo bài này"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition cursor-pointer"
+                title="Dùng AI tự động sinh câu hỏi theo bài này"
               >
-                <span>✨</span> AI Sinh Đề Theo Bài
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span>AI Sinh Đề</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleOpenAddModal(selectedTopic._id, "manual")}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs transition cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
               >
-                <span>+</span> Soạn / Nạp Tệp
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Soạn / Nạp Tệp</span>
               </button>
             </div>
           </div>
 
-          {/* Search & Filter Toolbar inside this opened package */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row gap-3">
+          {/* Search & Filter Toolbar */}
+          <div className="border border-slate-200/80 dark:border-slate-800 p-3 rounded-xl bg-white dark:bg-slate-900 flex flex-col md:flex-row gap-2.5">
             <div className="relative flex-1">
-              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-                🔍
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </span>
               <input
                 type="text"
@@ -1058,8 +1086,8 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                 onKeyDown={(e) => {
                   if (e.key === "Enter") reloadQuestionsList();
                 }}
-                placeholder="Tìm kiếm câu hỏi trong gói này (nhấn Enter)..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-xs focus:outline-none focus:border-blue-500"
+                placeholder="Tìm kiếm câu hỏi trong chuyên đề này (nhấn Enter)..."
+                className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-slate-400"
               />
             </div>
 
@@ -1067,7 +1095,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
               <select
                 value={selectedDifficulty}
                 onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="text-xs py-2 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none"
+                className="text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none"
               >
                 <option value="all">Tất cả độ khó</option>
                 <option value="easy">Dễ (Nhận biết)</option>
@@ -1078,7 +1106,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
               <select
                 value={selectedSource}
                 onChange={(e) => setSelectedSource(e.target.value)}
-                className="text-xs py-2 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none"
+                className="text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none"
               >
                 <option value="all">Tất cả nguồn</option>
                 <option value="ai">Do AI tạo</option>
@@ -1087,126 +1115,138 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
             </div>
           </div>
 
-          {/* List of Questions in this opened package */}
+          {/* List of Questions */}
           {isLoadingQuestions ? (
-            <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-xs text-slate-500">Đang mở tung các câu hỏi trong gói...</p>
+            <div className="py-20 text-center border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900">
+              <div className="w-6 h-6 border-2 border-slate-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-2.5" />
+              <p className="text-xs text-slate-500">Đang tải câu hỏi trong chuyên đề...</p>
             </div>
           ) : questions.length === 0 ? (
-            <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-6">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Gói này chưa có câu hỏi nào thỏa mãn bộ lọc.
+            <div className="py-16 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 p-6">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                Chuyên đề này chưa có câu hỏi nào thỏa mãn bộ lọc.
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-2.5 mt-4">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleOpenAddModal(selectedTopic._id, "ai")}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-md flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium rounded-lg hover:opacity-90 transition cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>✨</span> AI Tự Sinh Đề Theo Bài Này (1-Click)
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>AI Sinh Đề Tự Động</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleOpenAddModal(selectedTopic._id, "manual")}
-                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl cursor-pointer"
+                  className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-lg hover:bg-slate-50 transition cursor-pointer"
                 >
                   + Soạn Thủ Công / Nạp Tệp
                 </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {questions.map((q, idx) => {
                 const isExpanded = !!expandedExplanations[q._id];
                 return (
                   <div
                     key={q._id}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
+                    className="border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 p-4 sm:p-5 hover:border-slate-300 dark:hover:border-slate-700 transition"
                   >
                     {/* Header */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           Câu {idx + 1}
                         </span>
 
                         {q.difficulty_level === "easy" && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Dễ (Nhận biết)
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                            Nhận biết (Dễ)
                           </span>
                         )}
                         {q.difficulty_level === "medium" && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                            Trung bình (Thông hiểu)
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
+                            Thông hiểu (TB)
                           </span>
                         )}
                         {q.difficulty_level === "hard" && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                            Khó (Vận dụng cao)
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+                            Vận dụng cao (Khó)
                           </span>
                         )}
 
                         {q.is_ai_generated ? (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                            ✨ AI sinh
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 flex items-center gap-1">
+                            <svg className="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            <span>AI sinh</span>
                           </span>
                         ) : (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-50 text-slate-500 dark:bg-slate-850 dark:text-slate-400">
                             Giáo viên soạn
                           </span>
                         )}
                       </div>
 
                       {/* Action buttons: Edit & Delete */}
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(q)}
-                          className="px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-medium cursor-pointer"
+                          className="px-2.5 py-1 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1"
                         >
-                          ✏️ Sửa
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          <span>Sửa</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeletingQuestionId(q._id)}
-                          className="px-2.5 py-1 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-medium cursor-pointer"
+                          className="px-2.5 py-1 text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1"
                         >
-                          🗑️ Xóa
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          <span>Xóa</span>
                         </button>
                       </div>
                     </div>
 
                     {/* Question Content */}
-                    <div className="text-slate-900 dark:text-slate-100 font-medium text-sm leading-relaxed mb-4">
+                    <div className="text-slate-900 dark:text-slate-100 font-medium text-sm leading-relaxed mb-4 whitespace-pre-line">
                       {q.content}
                     </div>
 
                     {/* 4 Options Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
                       {q.options.map((opt, oIdx) => (
                         <div
                           key={oIdx}
-                          className={`flex items-start gap-3 p-3 rounded-xl border text-xs transition-all ${
+                          className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs transition ${
                             opt.is_correct
-                              ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-medium"
-                              : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+                              ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-200"
+                              : "border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300"
                           }`}
                         >
                           <span
-                            className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                            className={`w-5 h-5 rounded flex items-center justify-center font-semibold text-xs shrink-0 ${
                               opt.is_correct
-                                ? "bg-emerald-600 text-white shadow-sm"
-                                : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                                ? "bg-emerald-600 text-white"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                             }`}
                           >
                             {opt.option_label || ["A", "B", "C", "D"][oIdx]}
                           </span>
-                          <div className="flex-1 pt-0.5">
-                            <span>{opt.content}</span>
+                          <div className="flex-1 pt-0.5 min-w-0">
+                            <span className="leading-relaxed">{opt.content}</span>
                             {opt.is_correct && (
-                              <span className="ml-2 text-[11px] font-semibold text-emerald-600">
-                                ✓ Đáp án đúng
+                              <span className="ml-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                                (Đáp án đúng)
                               </span>
                             )}
                           </div>
@@ -1216,18 +1256,18 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
 
                     {/* Explanation */}
                     {q.explanation && (
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                         <button
                           type="button"
                           onClick={() => toggleExplanation(q._id)}
-                          className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 cursor-pointer transition"
                         >
-                          {isExpanded ? "▲ Thu gọn giải thích" : "▼ Xem lời giải chi tiết"}
+                          <span>{isExpanded ? "▲ Thu gọn lời giải" : "▼ Xem lời giải chi tiết"}</span>
                         </button>
 
                         {isExpanded && (
-                          <div className="mt-2.5 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                            <span className="font-bold text-blue-700 dark:text-blue-400 block mb-1">
+                          <div className="mt-2.5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                            <span className="font-semibold text-slate-900 dark:text-white block mb-1">
                               Phương pháp giải chi tiết:
                             </span>
                             {q.explanation}
@@ -1248,11 +1288,12 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       {/* ========================================================================= */}
       {isAddModalOpen && (
         <QuestionCreationModal
-          key={`${targetCreationTopicId}-${addModalTab}`}
+          key={`${targetCreationTopicId}-${addModalTab}-${selectedSubject?._id || ""}`}
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
           subjects={subjects}
           topics={topics}
+          currentSubjectId={selectedSubject?._id}
           defaultTopicId={targetCreationTopicId}
           defaultTab={addModalTab}
           onSuccess={() => {
@@ -1265,32 +1306,32 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 2: SỬA CÂU HỎI (Tiêu chí 5 & Ràng buộc) */}
+      {/* MODAL 2: SỬA CÂU HỎI */}
       {/* ========================================================================= */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden my-8">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-xl shadow-xl overflow-hidden my-8">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                   Chỉnh Sửa Câu Hỏi Trắc Nghiệm
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Cập nhật nội dung câu hỏi, điều chỉnh 4 phương án và đáp án đúng
+                  Cập nhật đề bài, 4 phương án trắc nghiệm và lời giải thích
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer p-1"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
+            <form onSubmit={handleSaveEdit} className="p-4 sm:p-5 space-y-4">
               {editFormError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs">
                   {editFormError}
                 </div>
               )}
@@ -1298,17 +1339,20 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
               {/* Topic & Difficulty */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Gói Chuyên Đề
                   </label>
                   <select
                     value={editTopicId}
                     onChange={(e) => setEditTopicId(e.target.value)}
-                    className="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
+                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
                   >
-                    {groupedAllTopicOptions.map((group) =>
+                    {(selectedSubject
+                      ? groupedAllTopicOptions.filter((g) => String(g.subject_id) === String(selectedSubject._id))
+                      : groupedAllTopicOptions
+                    ).map((group) =>
                       group.items.length > 0 ? (
-                        <optgroup key={group.subject_id} label={`📚 Môn: ${group.subject_name}`}>
+                        <optgroup key={group.subject_id} label={`Môn: ${group.subject_name}`}>
                           {group.items.map((item) => (
                             <option key={item._id} value={item._id}>
                               {item.label}
@@ -1321,13 +1365,13 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Mức Độ Khó
                   </label>
                   <select
                     value={editDifficulty}
                     onChange={(e) => setEditDifficulty(e.target.value as "easy" | "medium" | "hard")}
-                    className="w-full text-xs py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
+                    className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
                   >
                     <option value="easy">Dễ (Nhận biết)</option>
                     <option value="medium">Trung bình (Thông hiểu)</option>
@@ -1339,7 +1383,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
               {/* Content */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                     Đề Bài Câu Hỏi <span className="text-rose-500">*</span>
                   </label>
                   <div className="flex items-center gap-2">
@@ -1355,13 +1399,13 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                               .join(" ")
                           );
                         }}
-                        className="text-[11px] text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 px-2 py-0.5 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
-                        title="Gộp các dòng bị ngắt rời rạc (do copy từ PDF/Word) thành một dòng liền mạch"
+                        className="text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded font-medium transition cursor-pointer"
+                        title="Gộp các dòng bị ngắt rời rạc thành một dòng liền mạch"
                       >
-                        <span>🧹 Gộp dòng thừa</span>
+                        Gộp dòng thừa
                       </button>
                     )}
-                    <span className="text-[11px] text-slate-400">Có thể kéo giãn góc dưới</span>
+                    <span className="text-[11px] text-slate-400">Kéo góc dưới để mở rộng</span>
                   </div>
                 </div>
                 <textarea
@@ -1369,22 +1413,22 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   placeholder="Nhập nội dung đề bài câu hỏi trắc nghiệm, bài toán, công thức..."
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 leading-relaxed min-h-[110px] resize-y"
+                  className="w-full text-xs p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 leading-relaxed min-h-[110px] resize-y"
                 />
               </div>
 
               {/* 4 Options */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Danh Sách 4 Phương Án:
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  4 Phương Án Trắc Nghiệm:
                 </label>
                 <div className="space-y-2">
                   {editOptions.map((opt, idx) => (
                     <div
                       key={idx}
-                      className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                      className={`flex items-center gap-2 p-2 rounded-lg border transition ${
                         opt.is_correct
-                          ? "border-emerald-500 bg-emerald-50/40"
+                          ? "border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20"
                           : "border-slate-200 dark:border-slate-700"
                       }`}
                     >
@@ -1395,10 +1439,10 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                             prev.map((o, i) => ({ ...o, is_correct: i === idx }))
                           );
                         }}
-                        className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 cursor-pointer ${
+                        className={`w-6 h-6 rounded text-xs font-semibold flex items-center justify-center shrink-0 cursor-pointer ${
                           opt.is_correct
                             ? "bg-emerald-600 text-white"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                         }`}
                       >
                         {opt.option_label}
@@ -1413,11 +1457,11 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                             prev.map((o, i) => (i === idx ? { ...o, content: val } : o))
                           );
                         }}
-                        className="flex-1 text-xs py-1.5 px-2 bg-transparent focus:outline-none"
+                        className="flex-1 text-xs py-1 px-2 bg-transparent text-slate-900 dark:text-white focus:outline-none"
                       />
 
                       {opt.is_correct && (
-                        <span className="text-[11px] font-bold text-emerald-600 mr-2">
+                        <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 mr-2">
                           ✓ Đúng
                         </span>
                       )}
@@ -1429,7 +1473,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
               {/* Explanation */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                     Lời Giải Thích Chi Tiết
                   </label>
                   <div className="flex items-center gap-2">
@@ -1445,13 +1489,13 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                               .join(" ")
                           );
                         }}
-                        className="text-[11px] text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 px-2 py-0.5 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
+                        className="text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded font-medium transition cursor-pointer"
                         title="Gộp các dòng bị ngắt rời rạc thành một đoạn liền mạch"
                       >
-                        <span>🧹 Gộp dòng thừa</span>
+                        Gộp dòng thừa
                       </button>
                     )}
-                    <span className="text-[11px] text-slate-400">Không bắt buộc • Có thể kéo giãn</span>
+                    <span className="text-[11px] text-slate-400">Không bắt buộc</span>
                   </div>
                 </div>
                 <textarea
@@ -1459,7 +1503,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   value={editExplanation}
                   onChange={(e) => setEditExplanation(e.target.value)}
                   placeholder="Nhập các bước giải chi tiết hoặc lưu ý phương pháp giải..."
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 leading-relaxed min-h-[100px] resize-y"
+                  className="w-full text-xs p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 leading-relaxed min-h-[100px] resize-y"
                 />
               </div>
 
@@ -1468,14 +1512,14 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={isEditSubmitting}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl cursor-pointer"
+                  className="px-4 py-1.5 text-xs font-medium text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:opacity-90 disabled:opacity-50 rounded-lg cursor-pointer"
                 >
                   {isEditSubmitting ? "Đang lưu..." : "Lưu Cập Nhật"}
                 </button>
@@ -1485,28 +1529,28 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
         </div>
       )}
 
-
-
       {/* ========================================================================= */}
-      {/* MODAL 4: XÁC NHẬN XÓA (Tiêu chí 6) */}
+      {/* MODAL 3: XÁC NHẬN XÓA CÂU HỎI */}
       {/* ========================================================================= */}
       {deletingQuestionId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-2xl shadow-xl p-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-xl shadow-xl p-5 space-y-4">
             <div className="text-center">
-              <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl">
-                🗑️
+              <div className="w-10 h-10 bg-rose-50 dark:bg-rose-950/50 text-rose-600 rounded-lg flex items-center justify-center mx-auto mb-2.5">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                 Xác Nhận Xóa Câu Hỏi?
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Bạn có chắc chắn muốn xóa câu hỏi này khỏi gói ngân hàng không? Hành động này không thể hoàn tác.
+                Bạn có chắc chắn muốn xóa câu hỏi này khỏi kho ngân hàng không? Hành động này không thể hoàn tác.
               </p>
             </div>
 
             {deleteQuestionError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs leading-relaxed">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs leading-relaxed">
                 {deleteQuestionError}
               </div>
             )}
@@ -1518,7 +1562,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   setDeletingQuestionId(null);
                   setDeleteQuestionError("");
                 }}
-                className="flex-1 py-2.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+                className="flex-1 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg cursor-pointer"
               >
                 Hủy bỏ
               </button>
@@ -1526,7 +1570,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-xl cursor-pointer"
+                className="flex-1 py-2 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-lg cursor-pointer"
               >
                 {isDeleting ? "Đang xóa..." : "Xác Nhận Xóa"}
               </button>
@@ -1536,42 +1580,44 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: XÁC NHẬN XÓA MÔN HỌC */}
+      {/* MODAL 4: XÁC NHẬN XÓA MÔN HỌC */}
       {/* ========================================================================= */}
       {deletingSubject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-2xl shadow-xl overflow-hidden p-6 space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center text-2xl mx-auto">
-              🗑️
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-xl shadow-xl overflow-hidden p-5 space-y-4">
+            <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center mx-auto">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </div>
 
             <div className="text-center">
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                 Xóa Môn Học
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Môn học: <span className="font-semibold text-slate-800 dark:text-slate-200">{deletingSubject.subject_name}</span>
+                Môn học: <span className="font-medium text-slate-800 dark:text-slate-200">{deletingSubject.subject_name}</span>
               </p>
             </div>
 
             {deleteSubjectError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs leading-relaxed">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs leading-relaxed">
                 {deleteSubjectError}
               </div>
             )}
 
             {(deletingSubject.questionCount || 0) > 0 ? (
-              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl space-y-1.5">
-                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                  <span>⚠️</span> Không thể xóa môn học đang chứa câu hỏi
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg space-y-1">
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                  Không thể xóa môn học đang chứa câu hỏi
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                  Môn học này hiện đang chứa <strong>{deletingSubject.questionCount} câu hỏi</strong> trong {deletingSubject.topicCount || 0} chuyên đề. Để tránh làm mất tài liệu luyện thi của giáo viên, vui lòng xóa hoặc chuyển toàn bộ câu hỏi trước khi xóa môn học.
+                  Môn học này hiện đang chứa <strong>{deletingSubject.questionCount} câu hỏi</strong> trong {deletingSubject.topicCount || 0} chuyên đề. Vui lòng xóa hoặc chuyển toàn bộ câu hỏi trước khi xóa môn học.
                 </p>
               </div>
             ) : (
-              <p className="text-xs text-slate-600 dark:text-slate-400 text-center leading-relaxed">
-                Môn học này hiện không chứa câu hỏi nào. Bạn có chắc chắn muốn xóa môn học này không? Tất cả chuyên đề trống thuộc môn này cũng sẽ được dọn dẹp.
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center leading-relaxed">
+                Môn học này hiện không chứa câu hỏi nào. Bạn có chắc chắn muốn xóa môn học này không?
               </p>
             )}
 
@@ -1582,7 +1628,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   setDeletingSubject(null);
                   setDeleteSubjectError("");
                 }}
-                className="flex-1 py-2.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+                className="flex-1 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg cursor-pointer"
               >
                 {(deletingSubject.questionCount || 0) > 0 ? "Đã hiểu & Đóng" : "Hủy bỏ"}
               </button>
@@ -1592,7 +1638,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   type="button"
                   onClick={handleConfirmDeleteSubject}
                   disabled={isDeletingSubject}
-                  className="flex-1 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-xl cursor-pointer"
+                  className="flex-1 py-2 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-lg cursor-pointer"
                 >
                   {isDeletingSubject ? "Đang xóa..." : "Xác Nhận Xóa"}
                 </button>
@@ -1603,41 +1649,43 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 8: XÁC NHẬN XÓA CHUYÊN ĐỀ */}
+      {/* MODAL 5: XÁC NHẬN XÓA CHUYÊN ĐỀ */}
       {/* ========================================================================= */}
       {deletingTopic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-2xl shadow-xl overflow-hidden p-6 space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center text-2xl mx-auto">
-              🗑️
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-xl shadow-xl overflow-hidden p-5 space-y-4">
+            <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center mx-auto">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </div>
 
             <div className="text-center">
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                 Xóa Chuyên Đề
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Chuyên đề: <span className="font-semibold text-slate-800 dark:text-slate-200">{deletingTopic.topic_name}</span>
+                Chuyên đề: <span className="font-medium text-slate-800 dark:text-slate-200">{deletingTopic.topic_name}</span>
               </p>
             </div>
 
             {deleteTopicError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs leading-relaxed">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs leading-relaxed">
                 {deleteTopicError}
               </div>
             )}
 
             {(deletingTopic.questionCount || 0) > 0 ? (
-              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl space-y-1.5">
-                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                  <span>⚠️</span> Không thể xóa chuyên đề đang chứa câu hỏi
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg space-y-1">
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                  Không thể xóa chuyên đề đang chứa câu hỏi
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                  Chuyên đề này hiện đang chứa <strong>{deletingTopic.questionCount} câu hỏi</strong>. Để bảo vệ dữ liệu ôn thi, hệ thống không cho phép xóa chuyên đề khi vẫn còn câu hỏi. Vui lòng mở gói để xóa các câu hỏi trước.
+                  Chuyên đề này hiện đang chứa <strong>{deletingTopic.questionCount} câu hỏi</strong>. Vui lòng mở chuyên đề để xóa các câu hỏi trước khi xóa chuyên đề.
                 </p>
               </div>
             ) : (
-              <p className="text-xs text-slate-600 dark:text-slate-400 text-center leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center leading-relaxed">
                 Chuyên đề này hiện trống (0 câu hỏi). Bạn có chắc chắn muốn xóa chuyên đề này khỏi môn học không?
               </p>
             )}
@@ -1649,7 +1697,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   setDeletingTopic(null);
                   setDeleteTopicError("");
                 }}
-                className="flex-1 py-2.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+                className="flex-1 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg cursor-pointer"
               >
                 {(deletingTopic.questionCount || 0) > 0 ? "Đã hiểu & Đóng" : "Hủy bỏ"}
               </button>
@@ -1659,7 +1707,7 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   type="button"
                   onClick={handleConfirmDeleteTopic}
                   disabled={isDeletingTopic}
-                  className="flex-1 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-xl cursor-pointer"
+                  className="flex-1 py-2 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-lg cursor-pointer"
                 >
                   {isDeletingTopic ? "Đang xóa..." : "Xác Nhận Xóa"}
                 </button>

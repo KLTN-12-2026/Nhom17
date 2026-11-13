@@ -43,6 +43,7 @@ interface QuestionCreationModalProps {
   onClose: () => void;
   subjects: SubjectItem[];
   topics: TopicItem[];
+  currentSubjectId?: string;
   defaultTopicId?: string;
   defaultTab?: "manual" | "file" | "ai";
   onSuccess: () => void;
@@ -53,61 +54,129 @@ export default function QuestionCreationModal({
   onClose,
   subjects,
   topics,
+  currentSubjectId,
   defaultTopicId = "",
   defaultTab = "manual",
   onSuccess,
 }: QuestionCreationModalProps) {
   const [activeTab, setActiveTab] = useState<"manual" | "file" | "ai">(defaultTab);
-  const [selectedTopicId, setSelectedTopicId] = useState<string>(
-    () => defaultTopicId || topics[0]?._id || ""
-  );
 
-  // Sắp xếp danh sách chuyên đề theo cấu trúc Cây phân cấp (Môn học -> Chương cha -> Bài con -> Dạng con)
-  const groupedTopicOptions = useMemo(() => {
-    return subjects.map((sub) => {
-      const subTopics = topics.filter((t) => String(t.subject_id) === String(sub._id));
-      const childrenMap = new Map<string, TopicItem[]>();
-      const roots: TopicItem[] = [];
-      const idSet = new Set(subTopics.map((t) => String(t._id)));
+  // 1. Xác định môn học đang chọn (Ưu tiên: currentSubjectId -> môn chứa defaultTopicId -> môn đầu tiên)
+  const [activeSubjectId, setActiveSubjectId] = useState<string>(() => {
+    if (currentSubjectId) return String(currentSubjectId);
+    if (defaultTopicId) {
+      const found = topics.find((t) => String(t._id) === String(defaultTopicId));
+      if (found) return String(found.subject_id);
+    }
+    return subjects[0]?._id ? String(subjects[0]._id) : "";
+  });
 
-      for (const t of subTopics) {
-        const pId = t.parent_id ? String(t.parent_id) : null;
-        if (pId && idSet.has(pId) && pId !== String(t._id)) {
-          if (!childrenMap.has(pId)) childrenMap.set(pId, []);
-          childrenMap.get(pId)!.push(t);
-        } else {
-          roots.push(t);
-        }
+  // 2. Lấy toàn bộ chuyên đề thuộc Môn học đang chọn (Loại bỏ 100% các môn khác khỏi tầm nhìn)
+  const activeSubjectTopics = useMemo(() => {
+    if (!activeSubjectId) return [];
+    return topics.filter((t) => String(t.subject_id) === String(activeSubjectId));
+  }, [topics, activeSubjectId]);
+
+  // 3. Phân tách danh sách thành: Chương gốc (Roots / Level 1) và Map các bài con (Children)
+  const { rootChapters, childrenMap } = useMemo(() => {
+    const idSet = new Set(activeSubjectTopics.map((t) => String(t._id)));
+    const roots: TopicItem[] = [];
+    const cMap = new Map<string, TopicItem[]>();
+
+    for (const t of activeSubjectTopics) {
+      const pId = t.parent_id ? String(t.parent_id) : null;
+      if (pId && idSet.has(pId) && pId !== String(t._id)) {
+        if (!cMap.has(pId)) cMap.set(pId, []);
+        cMap.get(pId)!.push(t);
+      } else {
+        roots.push(t);
       }
+    }
 
-      const flattened: { _id: string; label: string; depth: number }[] = [];
-      function traverse(list: TopicItem[], depth: number) {
-        list.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
-        for (const item of list) {
-          const indent =
-            depth === 0
-              ? "📁 "
-              : `${"\u00A0\u00A0\u00A0\u00A0".repeat(depth)}↳ `;
-          flattened.push({
-            _id: item._id,
-            label: `${indent}${item.topic_name}`,
-            depth,
-          });
-          const kids = childrenMap.get(String(item._id)) || [];
-          if (kids.length > 0) {
-            traverse(kids, depth + 1);
-          }
-        }
+    roots.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
+    return { rootChapters: roots, childrenMap: cMap };
+  }, [activeSubjectTopics]);
+
+  // 4. Khởi tạo Chương đang chọn (selectedRootId) và Chuyên đề đích (selectedTopicId)
+  const [selectedRootId, setSelectedRootId] = useState<string>(() => {
+    if (defaultTopicId && activeSubjectTopics.some((t) => String(t._id) === String(defaultTopicId))) {
+      let curr = activeSubjectTopics.find((t) => String(t._id) === String(defaultTopicId));
+      const idSet = new Set(activeSubjectTopics.map((t) => String(t._id)));
+      while (curr && curr.parent_id && idSet.has(String(curr.parent_id))) {
+        curr = activeSubjectTopics.find((t) => String(t._id) === String(curr?.parent_id));
       }
+      return curr?._id || "";
+    }
+    const idSet = new Set(activeSubjectTopics.map((t) => String(t._id)));
+    const firstRoot = activeSubjectTopics.find((t) => !t.parent_id || !idSet.has(String(t.parent_id)));
+    return firstRoot?._id || activeSubjectTopics[0]?._id || "";
+  });
 
-      traverse(roots, 0);
-      return {
-        subject_id: sub._id,
-        subject_name: sub.subject_name,
-        items: flattened,
-      };
-    });
-  }, [subjects, topics]);
+  const [selectedTopicId, setSelectedTopicId] = useState<string>(() => {
+    if (defaultTopicId && activeSubjectTopics.some((t) => String(t._id) === String(defaultTopicId))) {
+      return defaultTopicId;
+    }
+    const idSet = new Set(activeSubjectTopics.map((t) => String(t._id)));
+    const firstRoot = activeSubjectTopics.find((t) => !t.parent_id || !idSet.has(String(t.parent_id)));
+    if (firstRoot) {
+      const firstChild = activeSubjectTopics.find((t) => String(t.parent_id) === String(firstRoot._id));
+      if (firstChild) return firstChild._id;
+      return firstRoot._id;
+    }
+    return activeSubjectTopics[0]?._id || "";
+  });
+
+  // 5. Danh sách bài học con thuộc riêng Chương gốc đang chọn (Tầng 2)
+  const currentChapterLessons = useMemo(() => {
+    if (!selectedRootId) return [];
+    const list: { _id: string; label: string; depth: number }[] = [];
+
+    function traverse(parentId: string, depth: number) {
+      const kids = childrenMap.get(String(parentId)) || [];
+      kids.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
+      for (const kid of kids) {
+        const indent = depth === 1 ? "↳ " : `${"\u00A0\u00A0".repeat(depth - 1)}↳ `;
+        list.push({
+          _id: kid._id,
+          label: `${indent}${kid.topic_name}`,
+          depth,
+        });
+        traverse(kid._id, depth + 1);
+      }
+    }
+
+    traverse(selectedRootId, 1);
+    return list;
+  }, [selectedRootId, childrenMap]);
+
+  // Bộ chuyển đổi Môn học
+  const handleSubjectChange = (newSubId: string) => {
+    setActiveSubjectId(newSubId);
+    const subTopics = topics.filter((t) => String(t.subject_id) === String(newSubId));
+    const idSet = new Set(subTopics.map((t) => String(t._id)));
+    const firstRoot = subTopics.find((t) => !t.parent_id || !idSet.has(String(t.parent_id))) || subTopics[0];
+    const newRootId = firstRoot?._id || "";
+    setSelectedRootId(newRootId);
+    const firstChild = subTopics.find((t) => String(t.parent_id) === String(newRootId));
+    setSelectedTopicId(firstChild?._id || newRootId);
+  };
+
+  // Bộ chuyển đổi Chương lớn
+  const handleChapterChange = (newRootId: string) => {
+    setSelectedRootId(newRootId);
+    const kids = childrenMap.get(String(newRootId)) || [];
+    kids.sort((a, b) => a.topic_name.localeCompare(b.topic_name, "vi"));
+    if (kids.length > 0) {
+      setSelectedTopicId(kids[0]._id);
+    } else {
+      setSelectedTopicId(newRootId);
+    }
+  };
+
+  // Bộ chuyển đổi Bài học cụ thể
+  const handleLessonChange = (newTopicId: string) => {
+    setSelectedTopicId(newTopicId);
+  };
 
   // =========================================================================
   // TAB 1: SOẠN THỦ CÔNG (TẠO TAY)
@@ -357,7 +426,7 @@ export default function QuestionCreationModal({
   const [aiPromptText, setAiPromptText] = useState("");
   const [aiCount, setAiCount] = useState<number>(3);
   const [aiDifficulty, setAiDifficulty] = useState<string>("mixed");
-  const [aiGrade, setAiGrade] = useState<string>("Lớp 12 (Trọng tâm thi THPT)");
+  const [aiGrade, setAiGrade] = useState<string>("Ôn thi Tốt nghiệp THPT Quốc Gia");
   const [aiQuestionFocus, setAiQuestionFocus] = useState<string>("comprehensive");
   const [isCustomTopicName, setIsCustomTopicName] = useState(false);
   const [customTopicName, setCustomTopicName] = useState("");
@@ -516,16 +585,13 @@ export default function QuestionCreationModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden my-6 flex flex-col max-h-[92vh]">
         {/* Modal Top Header */}
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-800/20">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-850/30">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">✨</span>
-              <h3 className="font-bold text-base md:text-lg text-slate-900 dark:text-white">
-                Thêm Câu Hỏi Vào Ngân Hàng
-              </h3>
-            </div>
+            <h3 className="font-semibold text-base sm:text-lg text-slate-900 dark:text-white">
+              Thêm Câu Hỏi Vào Ngân Hàng
+            </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Chọn 1 trong 3 phương thức: Soạn thủ công, Nạp từ file mẫu, hoặc dùng AI đọc tài liệu
+              Chọn 1 trong 3 phương thức: Soạn thủ công, Nạp từ tệp tin hoặc Dùng AI trích xuất tự động
             </p>
           </div>
           <button
@@ -537,82 +603,121 @@ export default function QuestionCreationModal({
           </button>
         </div>
 
-        {/* Target Topic Selection Bar (Chung cho cả 3 tab) */}
-        <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              📁 Lưu vào chuyên đề:
-            </span>
+        {/* Target Topic Selection Bar (Phân tầng liên hoàn: Môn -> Chương -> Bài) */}
+        <div className="px-4 sm:px-5 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center gap-3 shrink-0 text-xs">
+          {/* 1. Môn học */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="font-semibold text-slate-600 dark:text-slate-400">Môn:</span>
+            {subjects.length > 1 ? (
+              <select
+                value={activeSubjectId}
+                onChange={(e) => handleSubjectChange(e.target.value)}
+                className="text-xs py-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-slate-400 cursor-pointer shadow-2xs"
+              >
+                {subjects.map((sub) => (
+                  <option key={sub._id} value={sub._id}>
+                    {sub.subject_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="font-semibold text-slate-900 dark:text-white px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                {subjects.find((s) => String(s._id) === String(activeSubjectId))?.subject_name || "Môn học"}
+              </span>
+            )}
+          </div>
+
+          <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+
+          {/* 2. Chương / Chuyên đề gốc (Tầng 1) */}
+          <div className="flex items-center gap-1.5 min-w-[200px] flex-1">
+            <span className="font-medium text-slate-600 dark:text-slate-400 shrink-0">Chương:</span>
             <select
-              value={selectedTopicId}
-              onChange={(e) => setSelectedTopicId(e.target.value)}
-              className="text-xs py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:border-blue-500 max-w-md"
+              value={selectedRootId}
+              onChange={(e) => handleChapterChange(e.target.value)}
+              className="w-full text-xs py-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:outline-none focus:border-slate-400 cursor-pointer shadow-2xs truncate"
             >
-              {groupedTopicOptions.map((group) =>
-                group.items.length > 0 ? (
-                  <optgroup key={group.subject_id} label={`📚 Môn: ${group.subject_name}`}>
-                    {group.items.map((item) => (
-                      <option key={item._id} value={item._id}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ) : null
+              {rootChapters.length > 0 ? (
+                rootChapters.map((r) => (
+                  <option key={r._id} value={r._id}>
+                    {r.topic_name}
+                  </option>
+                ))
+              ) : (
+                <option value="">(Chưa có chương nào)</option>
               )}
             </select>
           </div>
 
-          <div className="text-[11px] text-slate-400">
-            Hệ thống sẽ gắn câu hỏi vào chuyên đề được chọn ở đây
+          {/* 3. Bài học chi tiết (Tầng 2 - chỉ hiển thị các bài con của chương đã chọn) */}
+          {currentChapterLessons.length > 0 && (
+            <>
+              <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+              <div className="flex items-center gap-1.5 min-w-[220px] flex-1">
+                <span className="font-medium text-slate-600 dark:text-slate-400 shrink-0">Bài học:</span>
+                <select
+                  value={selectedTopicId}
+                  onChange={(e) => handleLessonChange(e.target.value)}
+                  className="w-full text-xs py-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:outline-none focus:border-slate-400 cursor-pointer shadow-2xs truncate"
+                >
+                  {currentChapterLessons.map((lesson) => (
+                    <option key={lesson._id} value={lesson._id}>
+                      {lesson.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          <div className="text-[11px] text-slate-400 shrink-0 ml-auto hidden xl:inline">
+            Câu hỏi sẽ được gắn vào chuyên đề này
           </div>
         </div>
 
         {/* 3 Tabs Navigation Bar */}
-        <div className="px-5 pt-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div className="px-4 sm:px-5 pt-2 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/40 shrink-0">
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => setActiveTab("manual")}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer border-b-2 ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-t-lg transition cursor-pointer border-b-2 ${
                 activeTab === "manual"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900"
-                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "border-slate-900 dark:border-white text-slate-900 dark:text-white font-semibold bg-white dark:bg-slate-900"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
               }`}
             >
-              <span>✍️</span>
-              <span>1. Soạn Thủ Công</span>
+              <span>1. Soạn thủ công</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("file")}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer border-b-2 ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-t-lg transition cursor-pointer border-b-2 ${
                 activeTab === "file"
-                  ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900"
-                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "border-slate-900 dark:border-white text-slate-900 dark:text-white font-semibold bg-white dark:bg-slate-900"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
               }`}
             >
-              <span>📥</span>
-              <span>2. Nạp Từ File Chuẩn (Excel / Word)</span>
+              <span>2. Nạp từ tệp tin (Excel / Word)</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("ai")}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer border-b-2 ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-t-lg transition cursor-pointer border-b-2 ${
                 activeTab === "ai"
-                  ? "border-purple-600 text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-900"
-                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "border-slate-900 dark:border-white text-slate-900 dark:text-white font-semibold bg-white dark:bg-slate-900"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
               }`}
             >
-              <span>✨</span>
-              <span>3. AI Tự Sinh Đề (Theo Bài / Tài Liệu)</span>
+              <span>3. AI trích xuất tự động</span>
             </button>
           </div>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="p-5 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-5 overflow-y-auto flex-1">
           {/* ================================================================= */}
           {/* TAB 1: SOẠN THỦ CÔNG */}
           {/* ================================================================= */}
@@ -644,7 +749,7 @@ export default function QuestionCreationModal({
                       className="text-[11px] text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 px-2 py-0.5 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
                       title="Gộp các dòng bị ngắt rời rạc (do copy từ PDF/Word) thành một dòng liền mạch"
                     >
-                      <span>🧹 Gộp dòng thừa</span>
+                      <span>Gộp dòng thừa</span>
                     </button>
                   )}
                   <div className="flex items-center gap-1.5 text-xs">
@@ -737,7 +842,7 @@ export default function QuestionCreationModal({
                         className="text-[11px] text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 px-2 py-0.5 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
                         title="Gộp các dòng bị ngắt rời rạc thành một đoạn liền mạch"
                       >
-                        <span>🧹 Gộp dòng thừa</span>
+                        <span>Gộp dòng thừa</span>
                       </button>
                     )}
                     <span className="text-[11px] text-slate-400">Không bắt buộc</span>
@@ -755,7 +860,7 @@ export default function QuestionCreationModal({
                 </p>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="sticky bottom-0 z-10 bg-white dark:bg-slate-900 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2 -mx-4 sm:-mx-5 px-4 sm:px-5 mt-3">
                 <button
                   type="button"
                   onClick={onClose}
@@ -766,9 +871,9 @@ export default function QuestionCreationModal({
                 <button
                   type="submit"
                   disabled={manualSubmitting}
-                  className="px-6 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl cursor-pointer shadow-xs"
+                  className="px-5 py-2.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 disabled:opacity-50 rounded-xl cursor-pointer shadow-xs transition"
                 >
-                  {manualSubmitting ? "Đang lưu..." : "+ Lưu Câu Hỏi Vào Kho"}
+                  {manualSubmitting ? "Đang lưu..." : "Lưu Câu Hỏi Vào Kho"}
                 </button>
               </div>
             </form>
@@ -780,35 +885,35 @@ export default function QuestionCreationModal({
           {activeTab === "file" && (
             <div className="space-y-4">
               {/* Template Download Banner */}
-              <div className="p-4 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/40 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
-                    <span>💡</span> Mẹo: Nạp hàng loạt 50 - 100 câu hỏi trong 3 giây
+                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
+                    Mẹo: Nạp hàng loạt 50 - 100 câu hỏi nhanh chóng
                   </h4>
-                  <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400 mt-0.5">
-                    Hỗ trợ file bảng tính Excel (.xlsx, .csv) hoặc văn bản Word (.docx, .txt) theo mẫu chuẩn.
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Hỗ trợ file bảng tính Excel (.xlsx, .csv) hoặc văn bản Word (.docx, .txt) theo định dạng chuẩn.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={handleDownloadExcel}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-lg hover:bg-emerald-50 transition cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 transition cursor-pointer"
                   >
-                    <span>📊</span> Tải Mẫu Excel (.xlsx)
+                    Tải mẫu Excel (.xlsx)
                   </button>
                   <button
                     type="button"
                     onClick={handleDownloadTxt}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 transition cursor-pointer"
                   >
-                    <span>📄</span> Tải Mẫu Word/Text (.txt)
+                    Tải mẫu Text (.txt)
                   </button>
                 </div>
               </div>
 
               {importError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs">
                   {importError}
                 </div>
               )}
@@ -818,30 +923,30 @@ export default function QuestionCreationModal({
                 <button
                   type="button"
                   onClick={() => setImportMode("file")}
-                  className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition ${
+                  className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition ${
                     importMode === "file"
-                      ? "bg-emerald-600 text-white shadow-2xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600"
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                   }`}
                 >
-                  📁 Chọn Tệp File Từ Máy (.xlsx, .docx, .txt)
+                  Chọn tệp từ máy (.xlsx, .docx, .txt)
                 </button>
                 <button
                   type="button"
                   onClick={() => setImportMode("paste")}
-                  className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition ${
+                  className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition ${
                     importMode === "paste"
-                      ? "bg-emerald-600 text-white shadow-2xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600"
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                   }`}
                 >
-                  📋 Dán Nội Dung Văn Bản Trực Tiếp
+                  Dán nội dung trực tiếp
                 </button>
               </div>
 
               {/* Upload File Input */}
               {importMode === "file" && (
-                <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-500 rounded-2xl p-6 text-center transition bg-slate-50/50 dark:bg-slate-800/20">
+                <div className="border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 rounded-xl p-6 text-center transition bg-slate-50/50 dark:bg-slate-850/20">
                   <input
                     type="file"
                     id="import-file-input"
@@ -850,18 +955,20 @@ export default function QuestionCreationModal({
                     className="hidden"
                   />
                   <label htmlFor="import-file-input" className="cursor-pointer block">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-2 shadow-2xs">
-                      📂
+                    <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center mx-auto mb-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
                     </div>
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                       Bấm để chọn file hoặc kéo thả file vào đây
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Hỗ trợ định dạng: .xlsx (Excel), .docx (Word), .txt, .csv
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Định dạng hỗ trợ: .xlsx (Excel), .docx (Word), .txt, .csv
                     </p>
                     {importFileName && (
-                      <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-semibold">
-                        <span>✓ Đã chọn:</span> {importFileName}
+                      <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-md text-xs font-medium">
+                        <span>Đã chọn:</span> {importFileName}
                       </div>
                     )}
                   </label>
@@ -876,16 +983,16 @@ export default function QuestionCreationModal({
                     value={importPastedText}
                     onChange={(e) => setImportPastedText(e.target.value)}
                     placeholder="Dán nội dung đề bài theo mẫu:&#10;Câu 1: Đề bài...&#10;A. Đáp án 1&#10;*B. Đáp án đúng&#10;C. Đáp án 3&#10;D. Đáp án 4&#10;Lời giải: ..."
-                    className="w-full text-xs p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono focus:outline-none focus:border-emerald-500 leading-relaxed"
+                    className="w-full text-xs p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 leading-relaxed"
                   />
                   <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={handleParsePasted}
                       disabled={isParsingFile}
-                      className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl cursor-pointer"
+                      className="px-4 py-2 text-xs font-medium text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:opacity-90 rounded-lg cursor-pointer"
                     >
-                      {isParsingFile ? "Đang đọc..." : "🔍 Phân Tích Cú Pháp Câu Hỏi"}
+                      {isParsingFile ? "Đang đọc..." : "Phân Tích Cú Pháp Câu Hỏi"}
                     </button>
                   </div>
                 </div>
@@ -957,13 +1064,13 @@ export default function QuestionCreationModal({
                               }`}
                               title="Bấm để điều chỉnh mức độ khó của câu hỏi này"
                             >
-                              <option value="easy">🟢 Dễ (Nhận biết)</option>
-                              <option value="medium">🟡 TB (Thông hiểu)</option>
-                              <option value="hard">🔴 Khó (Vận dụng)</option>
+                              <option value="easy">Dễ (Nhận biết)</option>
+                              <option value="medium">TB (Thông hiểu)</option>
+                              <option value="hard">Khó (Vận dụng)</option>
                             </select>
                             {!q.isValid && (
-                              <span className="text-[10px] font-bold text-rose-600">
-                                ⚠️ {q.errors.join(", ")}
+                              <span className="text-[10px] font-medium text-rose-600">
+                                {q.errors.join(", ")}
                               </span>
                             )}
                           </div>
@@ -979,14 +1086,14 @@ export default function QuestionCreationModal({
                               key={oIdx}
                               className={`p-1.5 px-2.5 rounded-lg text-[11px] flex items-center justify-between ${
                                 opt.is_correct
-                                  ? "bg-emerald-100/70 text-emerald-900 font-bold"
-                                  : "bg-slate-100/70 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300"
+                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-semibold border border-emerald-200 dark:border-emerald-800"
+                                  : "border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
                               }`}
                             >
                               <span>
                                 <strong>{opt.option_label}.</strong> {opt.content || "(Trống)"}
                               </span>
-                              {opt.is_correct && <span className="text-emerald-700 font-bold">✓</span>}
+                              {opt.is_correct && <span className="text-emerald-700 dark:text-emerald-400 font-bold">✓</span>}
                             </div>
                           ))}
                         </div>
@@ -1000,23 +1107,23 @@ export default function QuestionCreationModal({
                     ))}
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="sticky bottom-0 z-10 bg-white dark:bg-slate-900 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2 -mx-4 sm:-mx-5 px-4 sm:px-5 mt-3">
                     <button
                       type="button"
                       onClick={() => setParsedQuestions([])}
-                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                      className="px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                     >
-                      Xóa bảng xem trước
+                      Xóa danh sách xem trước
                     </button>
                     <button
                       type="button"
                       onClick={handleSaveImported}
                       disabled={isSavingImport || parsedQuestions.filter((q) => q.selected && q.isValid).length === 0}
-                      className="px-6 py-2.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl cursor-pointer shadow-xs"
+                      className="px-4 py-1.5 text-xs font-medium text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:opacity-90 disabled:opacity-50 rounded-lg cursor-pointer"
                     >
                       {isSavingImport
                         ? "Đang lưu..."
-                        : `📥 Nạp ${parsedQuestions.filter((q) => q.selected && q.isValid).length} Câu Hợp Lệ Vào Kho`}
+                        : `Nạp ${parsedQuestions.filter((q) => q.selected && q.isValid).length} câu hợp lệ vào kho`}
                     </button>
                   </div>
                 </div>
@@ -1038,36 +1145,40 @@ export default function QuestionCreationModal({
                   )}
 
                   {/* Chế độ sinh câu hỏi: Theo bài học SGK vs Đọc tài liệu riêng */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
                     <button
                       type="button"
                       onClick={() => setAiMode("topic")}
-                      className={`flex items-center gap-2.5 p-2.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      className={`flex items-start gap-3 p-3 rounded-lg text-xs transition cursor-pointer text-left ${
                         aiMode === "topic"
-                          ? "bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-2xs border border-purple-200/50"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-700 font-medium"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent"
                       }`}
                     >
-                      <span className="text-base">🎯</span>
-                      <div className="text-left">
-                        <div className="font-bold">1. AI tự sinh theo bài học THPT</div>
-                        <div className="text-[10px] font-normal text-slate-400">Không cần tài liệu, AI tự bám sát SGK & ma trận</div>
+                      <svg className="w-4 h-4 text-slate-600 dark:text-slate-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-white">1. Sinh theo bài học chương trình</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Tự động bám sát ma trận và chuẩn kiến thức trọng tâm</div>
                       </div>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setAiMode("document")}
-                      className={`flex items-center gap-2.5 p-2.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      className={`flex items-start gap-3 p-3 rounded-lg text-xs transition cursor-pointer text-left ${
                         aiMode === "document"
-                          ? "bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-2xs border border-purple-200/50"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200/90 dark:border-slate-700 font-medium"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent"
                       }`}
                     >
-                      <span className="text-base">📄</span>
-                      <div className="text-left">
-                        <div className="font-bold">2. Đọc file tài liệu / đề cương riêng</div>
-                        <div className="text-[10px] font-normal text-slate-400">Tải tệp Word/PDF hoặc dán bài đọc riêng</div>
+                      <svg className="w-4 h-4 text-slate-600 dark:text-slate-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-white">2. Đọc tài liệu / đề cương riêng</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Trích xuất câu hỏi từ file Word/PDF hoặc bài đọc dán vào</div>
                       </div>
                     </button>
                   </div>
@@ -1075,29 +1186,34 @@ export default function QuestionCreationModal({
                   {/* Cấu hình cơ bản: Số lượng và Độ khó */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Khối Lớp (Chương Trình):
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Mục Tiêu &amp; Trọng Tâm Ôn Luyện:
                       </label>
                       <select
                         value={aiGrade}
                         onChange={(e) => setAiGrade(e.target.value)}
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-purple-500 font-medium"
+                        className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 font-medium"
                       >
-                        <option value="Lớp 12 (Trọng tâm thi THPT)">Lớp 12 (Trọng tâm thi THPT)</option>
-                        <option value="Lớp 11">Lớp 11</option>
-                        <option value="Lớp 10">Lớp 10</option>
-                        <option value="Ôn thi THPT Quốc Gia toàn diện">Ôn thi THPT Quốc Gia toàn diện</option>
+                        <optgroup label="Kỳ thi Tuyển sinh &amp; Đại học (Trọng tâm)">
+                          <option value="Ôn thi Tốt nghiệp THPT Quốc Gia">Ôn thi Tốt nghiệp THPT Quốc Gia</option>
+                          <option value="Luyện thi Đánh Giá Năng Lực (ĐGNL / ĐGTD)">Luyện thi Đánh Giá Năng Lực (ĐGNL / ĐGTD)</option>
+                        </optgroup>
+                        <optgroup label="Ôn tập bám sát chương trình khối lớp">
+                          <option value="Lớp 12 (Trọng tâm thi THPT)">Lớp 12 (Trọng tâm thi THPT)</option>
+                          <option value="Lớp 11 (Kiến thức nền tảng)">Lớp 11 (Kiến thức nền tảng)</option>
+                          <option value="Lớp 10 (Khởi động THPT)">Lớp 10 (Khởi động THPT)</option>
+                        </optgroup>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Mức Độ Khó Nhận Thức:
                       </label>
                       <select
                         value={aiDifficulty}
                         onChange={(e) => setAiDifficulty(e.target.value)}
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-purple-500 font-medium"
+                        className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 font-medium"
                       >
                         <option value="mixed">Phân bổ đều (Chuẩn đề thi)</option>
                         <option value="easy">Nhận biết (Dễ - Củng cố nền tảng)</option>
@@ -1107,13 +1223,13 @@ export default function QuestionCreationModal({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Số Lượng Câu Hỏi:
                       </label>
                       <select
                         value={aiCount}
                         onChange={(e) => setAiCount(Number(e.target.value))}
-                        className="w-full text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-purple-500 font-medium"
+                        className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 font-medium"
                       >
                         <option value={3}>3 câu hỏi (Sinh nhanh & Tối ưu)</option>
                         <option value={5}>5 câu hỏi (Chuẩn 1 bài học)</option>
@@ -1126,76 +1242,86 @@ export default function QuestionCreationModal({
 
                   {/* Body theo chế độ đã chọn */}
                   {aiMode === "topic" ? (
-                    <div className="space-y-3.5">
+                    <div className="space-y-3">
                       {/* Topic Card & Custom Topic Toggle */}
-                      <div className="p-4 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/50 rounded-2xl space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm text-lg">
-                            🎯
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-xs font-bold text-purple-950 dark:text-purple-200">
-                                Bài học / Chuyên đề mục tiêu:{" "}
-                                <span className="text-purple-700 dark:text-purple-400 font-extrabold underline">
-                                  {isCustomTopicName && customTopicName.trim()
-                                    ? customTopicName.trim()
-                                    : topics.find((t) => t._id === selectedTopicId)?.topic_name || "Bài học THPT"}
-                                </span>
-                              </h4>
-                              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-700 dark:text-purple-300 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isCustomTopicName}
-                                  onChange={(e) => setIsCustomTopicName(e.target.checked)}
-                                  className="w-3.5 h-3.5 rounded text-purple-600"
-                                />
-                                <span>Tự nhập tên bài học khác trong SGK</span>
-                              </label>
-                            </div>
-                            <p className="text-[11px] text-purple-800/80 dark:text-purple-300/80 mt-1 leading-relaxed">
-                              Trợ lý AI bám sát chương trình Giáo Dục Phổ Thông và ma trận đề thi của Bộ GD&ĐT để tự động tổng hợp định lý, tính chất, phản ứng và dạng bài tập trọng tâm.
-                            </p>
+                      <div className="p-3 bg-slate-50/70 dark:bg-slate-850/50 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                            Trọng tâm bài học trích xuất:
+                          </span>
+                          <div className="inline-flex items-center gap-1 p-0.5 bg-slate-200/70 dark:bg-slate-800 rounded-lg text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCustomTopicName(false);
+                                setCustomTopicName("");
+                              }}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                                !isCustomTopicName
+                                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                              }`}
+                            >
+                              Theo chuyên đề đã chọn
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsCustomTopicName(true)}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                                isCustomTopicName
+                                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
+                                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                              }`}
+                            >
+                              Tự nhập bài học riêng
+                            </button>
                           </div>
                         </div>
 
-                        {/* Input custom topic name if checked */}
-                        {isCustomTopicName && (
-                          <div className="pt-2 border-t border-purple-200/60 dark:border-purple-900/40">
-                            <label className="block text-[11px] font-bold text-purple-900 dark:text-purple-200 mb-1">
-                              Tên bài học hoặc chủ đề trong SGK:
-                            </label>
-                            <input
-                              type="text"
-                              value={customTopicName}
-                              onChange={(e) => setCustomTopicName(e.target.value)}
-                              placeholder="Ví dụ: Bài 1: Este - Lipit, Khảo sát hàm số bậc ba, Dao động điều hòa, Mệnh đề quan hệ..."
-                              className="w-full text-xs p-2.5 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 focus:outline-none focus:border-purple-600 font-medium"
-                            />
+                        {!isCustomTopicName ? (
+                          <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 rounded-lg text-xs text-slate-800 dark:text-slate-200">
+                            <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            <span className="font-semibold text-slate-900 dark:text-white truncate">
+                              {topics.find((t) => t._id === selectedTopicId)?.topic_name || "Bài học THPT"}
+                            </span>
+                            <span className="text-[11px] text-slate-400 ml-auto shrink-0 hidden sm:inline">
+                              (Bám sát chuẩn kiến thức &amp; ma trận đề thi)
+                            </span>
                           </div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={customTopicName}
+                            onChange={(e) => setCustomTopicName(e.target.value)}
+                            placeholder="Ví dụ: Bài 1: Este - Lipit, Khảo sát hàm số bậc ba, Dao động điều hòa..."
+                            autoFocus
+                            className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 font-medium"
+                          />
                         )}
                       </div>
 
                       {/* Quick Focus Tags */}
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                          Định Hướng Dạng Câu Hỏi Cho AI:
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                          Định Hướng Dạng Câu Hỏi:
                         </label>
                         <div className="flex flex-wrap gap-1.5">
                           {[
-                            { key: "comprehensive", label: "🎯 Cân đối toàn diện (Chuẩn ma trận)" },
-                            { key: "theory", label: "💡 Lý thuyết & Bản chất hiện tượng" },
-                            { key: "exercise", label: "🔢 Bài tập tính toán & Công thức" },
-                            { key: "trap", label: "⚡ Bẫy nhận thức & Điểm liệt" },
-                            { key: "graph", label: "📊 Đồ thị & Hiện tượng thực tế" },
+                            { key: "comprehensive", label: "Cân đối toàn diện (Chuẩn ma trận)" },
+                            { key: "theory", label: "Lý thuyết & Bản chất hiện tượng" },
+                            { key: "exercise", label: "Bài tập tính toán & Công thức" },
+                            { key: "trap", label: "Bẫy nhận thức & Điểm liệt" },
+                            { key: "graph", label: "Đồ thị & Hiện tượng thực tế" },
                           ].map((item) => (
                             <button
                               key={item.key}
                               type="button"
                               onClick={() => setAiQuestionFocus(item.key)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                                 aiQuestionFocus === item.key
-                                  ? "bg-purple-600 text-white shadow-xs font-bold"
+                                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
                                   : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                               }`}
                             >
@@ -1207,25 +1333,25 @@ export default function QuestionCreationModal({
 
                       {/* Optional Notes */}
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                          Yêu Cầu Trọng Tâm Hoặc Lưu Ý Thêm Cho AI (Tùy chọn):
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                          Yêu Cầu Trọng Tâm Hoặc Lưu Ý Thêm (Tùy chọn):
                         </label>
                         <input
                           type="text"
                           value={aiPromptText}
                           onChange={(e) => setAiPromptText(e.target.value)}
                           placeholder="Ví dụ: Cho thêm 1 câu liên hệ thực tiễn, giải thích phương pháp giải chi tiết..."
-                          className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-purple-500"
+                          className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
                         />
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {/* Document Upload for AI */}
-                      <div className="p-3.5 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-900/40 rounded-xl space-y-2">
+                      <div className="p-3.5 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
-                            <span>📄</span> Tải Tệp Tài Liệu Cho AI Đọc (.docx, .txt, .pdf):
+                          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                            Tải tệp tài liệu cho AI đọc (.docx, .txt, .pdf):
                           </label>
                           <input
                             type="file"
@@ -1236,13 +1362,13 @@ export default function QuestionCreationModal({
                           />
                           <label
                             htmlFor="ai-doc-input"
-                            className="px-3 py-1 bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 rounded-lg text-xs font-semibold hover:bg-purple-50 cursor-pointer shadow-2xs"
+                            className="px-3 py-1 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 cursor-pointer"
                           >
                             {isReadingDoc ? "Đang trích xuất..." : "Chọn Tệp Tài Liệu"}
                           </label>
                         </div>
                         {aiDocFileName && (
-                          <p className="text-[11px] text-purple-700 font-medium">
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
                             ✓ Đã trích xuất nội dung từ tệp: <strong>{aiDocFileName}</strong>
                           </p>
                         )}
@@ -1254,17 +1380,17 @@ export default function QuestionCreationModal({
                           Nội Dung Bài Đọc / Giáo Án / Đề Cương (Hoặc dán văn bản bài đọc):
                         </label>
                         <textarea
-                          rows={5}
+                          rows={4}
                           value={aiPromptText}
                           onChange={(e) => setAiPromptText(e.target.value)}
                           placeholder="Dán nội dung lý thuyết, bài đọc tiếng Anh, đoạn văn trích dẫn hoặc tài liệu để AI tự động trích xuất các ý và sinh câu hỏi..."
-                          className="w-full text-xs p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/40 focus:outline-none focus:border-purple-500 leading-relaxed"
+                          className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/40 focus:outline-none focus:border-slate-400 leading-relaxed"
                         />
                       </div>
                     </div>
                   )}
 
-                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="sticky bottom-0 z-10 bg-white dark:bg-slate-900 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2 -mx-4 sm:-mx-5 px-4 sm:px-5 mt-3">
                     <button
                       type="button"
                       onClick={onClose}
@@ -1275,21 +1401,28 @@ export default function QuestionCreationModal({
                     <button
                       type="submit"
                       disabled={isAiGenerating}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 rounded-xl cursor-pointer shadow-md"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 disabled:opacity-50 rounded-xl cursor-pointer shadow-xs transition"
                     >
                       {isAiGenerating ? (
                         <>
-                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>AI Đang Soạn Câu Hỏi Theo Bài...</span>
+                          <div className="w-3.5 h-3.5 border-2 border-white dark:border-slate-900 border-t-transparent rounded-full animate-spin" />
+                          <span>AI đang phân tích &amp; sinh câu hỏi...</span>
                         </>
-                      ) : aiMode === "topic" ? (
-                        `✨ AI Sinh Câu Hỏi Theo Bài "${
-                          isCustomTopicName && customTopicName.trim()
-                            ? customTopicName.trim()
-                            : topics.find((t) => t._id === selectedTopicId)?.topic_name || "Bài Học"
-                        }"`
                       ) : (
-                        "✨ AI Đọc Tài Liệu & Sinh Câu Hỏi"
+                        <>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          <span>
+                            {aiMode === "topic"
+                              ? `Sinh câu hỏi theo "${
+                                  isCustomTopicName && customTopicName.trim()
+                                    ? customTopicName.trim()
+                                    : topics.find((t) => t._id === selectedTopicId)?.topic_name || "Bài học"
+                                }"`
+                              : "Đọc tài liệu & Trích xuất câu hỏi"}
+                          </span>
+                        </>
                       )}
                     </button>
                   </div>
@@ -1299,8 +1432,8 @@ export default function QuestionCreationModal({
               {/* AI Preview Step */}
               {aiStep === "preview" && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-xl text-xs">
-                    <span className="font-bold text-purple-900">
+                  <div className="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs">
+                    <span className="font-semibold text-slate-900 dark:text-white">
                       AI đã tạo {aiGeneratedQuestions.length} câu hỏi. (Đã chọn{" "}
                       {aiGeneratedQuestions.filter((q) => q.selected).length} câu để lưu)
                     </span>
@@ -1308,14 +1441,14 @@ export default function QuestionCreationModal({
                       <button
                         type="button"
                         onClick={() => toggleSelectAllAi(true)}
-                        className="px-2.5 py-1 bg-white text-purple-700 rounded border border-purple-200 font-medium cursor-pointer"
+                        className="px-2.5 py-1 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg border border-slate-200 dark:border-slate-600 font-medium cursor-pointer"
                       >
                         Chọn tất cả
                       </button>
                       <button
                         type="button"
                         onClick={() => toggleSelectAllAi(false)}
-                        className="px-2.5 py-1 bg-white text-slate-600 rounded border border-slate-200 font-medium cursor-pointer"
+                        className="px-2.5 py-1 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-600 font-medium cursor-pointer"
                       >
                         Bỏ chọn
                       </button>
@@ -1327,7 +1460,9 @@ export default function QuestionCreationModal({
                       <div
                         key={q.id}
                         className={`p-4 rounded-xl border transition-all ${
-                          q.selected ? "border-purple-300 bg-white dark:bg-slate-800" : "border-slate-200 opacity-60"
+                          q.selected
+                            ? "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-850"
+                            : "border-slate-200 dark:border-slate-800 opacity-60 bg-slate-50 dark:bg-slate-900"
                         }`}
                       >
                         <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-700">
@@ -1354,9 +1489,9 @@ export default function QuestionCreationModal({
                             }`}
                             title="Bấm để điều chỉnh mức độ khó của câu hỏi này"
                           >
-                            <option value="easy">🟢 Dễ (Nhận biết)</option>
-                            <option value="medium">🟡 TB (Thông hiểu)</option>
-                            <option value="hard">🔴 Khó (Vận dụng)</option>
+                            <option value="easy">Dễ (Nhận biết)</option>
+                            <option value="medium">TB (Thông hiểu)</option>
+                            <option value="hard">Khó (Vận dụng)</option>
                           </select>
                         </div>
 
@@ -1391,7 +1526,7 @@ export default function QuestionCreationModal({
                     ))}
                   </div>
 
-                  <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="sticky bottom-0 z-10 bg-white dark:bg-slate-900 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center -mx-4 sm:-mx-5 px-4 sm:px-5 mt-3">
                     <button
                       type="button"
                       onClick={() => setAiStep("input")}
@@ -1403,11 +1538,11 @@ export default function QuestionCreationModal({
                       type="button"
                       onClick={handleSaveAiQuestions}
                       disabled={isAiSaving || aiGeneratedQuestions.filter((q) => q.selected).length === 0}
-                      className="px-6 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 rounded-xl cursor-pointer shadow-md"
+                      className="px-5 py-2.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 disabled:opacity-50 rounded-xl cursor-pointer shadow-xs transition"
                     >
                       {isAiSaving
                         ? "Đang lưu..."
-                        : `Lưu ${aiGeneratedQuestions.filter((q) => q.selected).length} Câu AI Đã Chọn Vào Gói`}
+                        : `Lưu ${aiGeneratedQuestions.filter((q) => q.selected).length} câu đã chọn vào kho`}
                     </button>
                   </div>
                 </div>

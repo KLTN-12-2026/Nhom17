@@ -11,6 +11,14 @@ export default async function StudentDashboardPage() {
     redirect("/auth/login?callbackUrl=/student");
   }
 
+  if (user.role === "instructor") {
+    redirect("/instructor");
+  }
+
+  if (user.role === "admin") {
+    redirect("/admin");
+  }
+
   return (
     <RoleDashboardShell
       user={user}
