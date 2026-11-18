@@ -79,11 +79,10 @@ export default function ExamDetailsModal({
                   {exam.title}
                 </h2>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
-                    exam.is_published
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${exam.is_published
                       ? "bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/60 dark:border-emerald-800"
                       : "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400"
-                  }`}
+                    }`}
                 >
                   {exam.is_published ? "Đã Xuất Bản" : "Bản Nháp"}
                 </span>
@@ -134,33 +133,30 @@ export default function ExamDetailsModal({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`text-xs px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 ${
-                  exam.shuffle_questions
+                className={`text-xs px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 ${exam.shuffle_questions
                     ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800"
                     : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-                }`}
+                  }`}
               >
                 <span>🔀</span>
                 <span>{exam.shuffle_questions ? "Xáo câu hỏi: Bật" : "Xáo câu hỏi: Tắt"}</span>
               </span>
 
               <span
-                className={`text-xs px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 ${
-                  exam.shuffle_options
+                className={`text-xs px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 ${exam.shuffle_options
                     ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800"
                     : "bg-slate-100 text-slate-500 border-slate-200 dark:border-slate-800 dark:border-slate-700"
-                }`}
+                  }`}
               >
                 <span>🔀</span>
                 <span>{exam.shuffle_options ? "Xáo đáp án: Bật" : "Xáo đáp án: Tắt"}</span>
               </span>
 
               <span
-                className={`text-xs px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 ${
-                  exam.allow_view_result_immediately
+                className={`text-xs px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 ${exam.allow_view_result_immediately
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800"
                     : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-                }`}
+                  }`}
               >
                 <span>👁️</span>
                 <span>{exam.allow_view_result_immediately ? "Xem đáp án sau thi: Bật" : "Xem đáp án: Tắt"}</span>
@@ -206,11 +202,10 @@ export default function ExamDetailsModal({
               <button
                 type="button"
                 onClick={() => setShowOnlyAnswers(!showOnlyAnswers)}
-                className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold transition cursor-pointer ${
-                  showOnlyAnswers
+                className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold transition cursor-pointer ${showOnlyAnswers
                     ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
                     : "border-slate-300 dark:border-slate-700 text-slate-600 hover:bg-slate-50"
-                }`}
+                  }`}
               >
                 {showOnlyAnswers ? "✓ Đang hiện đáp án đúng" : "Hiện đáp án đúng"}
               </button>
@@ -233,13 +228,12 @@ export default function ExamDetailsModal({
                         {q.question_order || idx + 1}
                       </span>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          snap.difficulty_level === "easy"
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${snap.difficulty_level === "easy"
                             ? "bg-emerald-50 text-emerald-600"
                             : snap.difficulty_level === "hard"
                               ? "bg-rose-50 text-rose-600"
                               : "bg-amber-50 text-amber-600"
-                        }`}
+                          }`}
                       >
                         {snap.difficulty_level === "easy" ? "Dễ" : snap.difficulty_level === "hard" ? "Khó" : "Vừa"}
                       </span>
@@ -259,18 +253,16 @@ export default function ExamDetailsModal({
                     {snap.options.map((opt, oIdx) => (
                       <div
                         key={oIdx}
-                        className={`p-2.5 rounded-xl border flex items-center gap-2.5 transition ${
-                          opt.is_correct
+                        className={`p-2.5 rounded-xl border flex items-center gap-2.5 transition ${opt.is_correct
                             ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-bold"
                             : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 ${
-                            opt.is_correct
+                          className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 ${opt.is_correct
                               ? "bg-emerald-600 text-white"
                               : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                          }`}
+                            }`}
                         >
                           {opt.option_label}
                         </span>

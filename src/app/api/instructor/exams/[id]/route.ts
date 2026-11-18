@@ -29,6 +29,7 @@ const examQuestionItemSchema = z.object({
 const updateExamSchema = z.object({
   title: z.string().trim().min(3, "Tiêu đề đề thi phải có ít nhất 3 ký tự").max(255).optional(),
   subject_id: z.string().min(1, "Vui lòng chọn ngân hàng môn học").optional(),
+  subject_ids: z.array(z.string()).optional(),
   duration_minutes: z.coerce.number().min(1, "Thời gian làm bài tối thiểu 1 phút").max(480).optional(),
   pass_score: z.coerce.number().min(0).optional(),
   max_score: z.coerce.number().min(0.1).optional(),
@@ -118,6 +119,11 @@ export async function PUT(
     if (parsed.title !== undefined) existingExam.title = parsed.title;
     if (parsed.subject_id !== undefined && mongoose.Types.ObjectId.isValid(parsed.subject_id)) {
       existingExam.subject_id = new mongoose.Types.ObjectId(parsed.subject_id);
+    }
+    if (parsed.subject_ids !== undefined) {
+      existingExam.subject_ids = parsed.subject_ids
+        .filter((id) => mongoose.Types.ObjectId.isValid(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
     }
     if (parsed.duration_minutes !== undefined) existingExam.duration_minutes = parsed.duration_minutes;
     if (parsed.pass_score !== undefined) existingExam.pass_score = parsed.pass_score;

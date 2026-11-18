@@ -1448,20 +1448,20 @@ export default function KnowledgeTreeManager({
                   ))}
                 </select>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Để trống để tạo thành một chương lớn mới, hoặc chọn chương cha để tạo bài học con trực thuộc.
+                  Để trống để tạo thành một chuyên đề lớn mới, hoặc chọn chuyên đề cha để tạo dạng bài ôn thi con trực thuộc.
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Tên chuyên đề / bài học <span className="text-rose-500">*</span>
+                  Tên chuyên đề / dạng bài ôn thi <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={topicNameInput}
                   onChange={(e) => setTopicNameInput(e.target.value)}
-                  placeholder="Ví dụ: Chương 1: Hàm số và Đồ thị, hoặc Bài 1.1: Khảo sát cực trị..."
+                  placeholder="Ví dụ: Chuyên đề 1: Đồ thị hàm số & Cực trị, hoặc Dạng 1: Cực trị chứa tham số m..."
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:border-slate-400 dark:focus:border-slate-500"
                 />
               </div>

@@ -376,11 +376,10 @@ export default function ExamManagerView({ currentUser }: ExamManagerViewProps) {
                       type="button"
                       onClick={() => handleTogglePublish(exam._id, exam.is_published)}
                       title={exam.is_published ? "Bấm để chuyển về Bản nháp" : "Bấm để Xuất bản đề thi"}
-                      className={`text-[10px] font-medium px-2 py-0.5 rounded border transition cursor-pointer flex items-center gap-1.5 ${
-                        exam.is_published
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80"
-                          : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
-                      }`}
+                      className={`text-[10px] font-medium px-2 py-0.5 rounded border transition cursor-pointer flex items-center gap-1.5 ${exam.is_published
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80"
+                        : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                        }`}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${exam.is_published ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
                       <span>{exam.is_published ? "Đã xuất bản" : "Bản nháp"}</span>

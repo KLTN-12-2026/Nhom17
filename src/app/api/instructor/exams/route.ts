@@ -29,6 +29,7 @@ const examQuestionItemSchema = z.object({
 const createExamSchema = z.object({
   title: z.string().trim().min(3, "Tiêu đề đề thi phải có ít nhất 3 ký tự").max(255),
   subject_id: z.string().min(1, "Vui lòng chọn ngân hàng môn học cho đề thi"),
+  subject_ids: z.array(z.string()).optional().default([]),
   duration_minutes: z.coerce.number().min(1, "Thời gian làm bài tối thiểu 1 phút").max(480),
   pass_score: z.coerce.number().min(0).default(5.0),
   max_score: z.coerce.number().min(0.1).default(10.0),
@@ -62,7 +63,8 @@ export async function GET(request: Request) {
     }
 
     if (subjectId && mongoose.Types.ObjectId.isValid(subjectId)) {
-      filter.subject_id = new mongoose.Types.ObjectId(subjectId);
+      const sObjId = new mongoose.Types.ObjectId(subjectId);
+      filter.$or = [{ subject_id: sObjId }, { subject_ids: sObjId }];
     }
 
     if (status === "published") {
@@ -154,6 +156,12 @@ export async function POST(request: Request) {
     const newExam = new Exam({
       title: parsed.title,
       subject_id: new mongoose.Types.ObjectId(parsed.subject_id),
+      subject_ids: (parsed.subject_ids && parsed.subject_ids.length > 0
+        ? parsed.subject_ids
+        : [parsed.subject_id]
+      )
+        .filter((id) => mongoose.Types.ObjectId.isValid(id))
+        .map((id) => new mongoose.Types.ObjectId(id)),
       created_by: new mongoose.Types.ObjectId(user.id),
       duration_minutes: parsed.duration_minutes,
       pass_score: parsed.pass_score,

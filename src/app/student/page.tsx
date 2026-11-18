@@ -3,6 +3,50 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-guards";
 import RoleDashboardShell from "@/components/dashboard/role-dashboard-shell";
 import Link from "next/link";
+import { connectDB } from "@/lib/db";
+import { ExamAttempt, Question, Subject, Topic } from "@/models";
+import mongoose from "mongoose";
+
+interface IPopulatedSubject {
+  _id: mongoose.Types.ObjectId;
+  subject_name: string;
+}
+
+interface IPopulatedTopic {
+  _id: mongoose.Types.ObjectId;
+  topic_name: string;
+  level: number;
+  subject_id?: IPopulatedSubject | null;
+}
+
+interface IPopulatedExam {
+  _id: mongoose.Types.ObjectId;
+  title: string;
+}
+
+interface IAttemptDoc {
+  _id: mongoose.Types.ObjectId;
+  topic_id?: IPopulatedTopic | null;
+  exam_id?: IPopulatedExam | null;
+  attempt_type?: "practice" | "official";
+  practice_title?: string;
+  score?: number;
+  total_correct?: number;
+  total_wrong?: number;
+  duration_seconds?: number;
+  status: string;
+  submit_time?: Date | null;
+  createdAt: Date;
+}
+
+function formatDuration(seconds?: number): string {
+  if (typeof seconds !== "number" || seconds <= 0) return "< 1 phút";
+  if (seconds < 60) return `${seconds} giây`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (secs === 0) return `${mins} phút`;
+  return `${mins} phút ${secs}s`;
+}
 
 export default async function StudentDashboardPage() {
   const user = await getCurrentUser();
@@ -18,6 +62,219 @@ export default async function StudentDashboardPage() {
   if (user.role === "admin") {
     redirect("/admin");
   }
+
+  // Kết nối CSDL và lấy dữ liệu THẬT của học viên
+  await connectDB();
+
+  const userObjId = new mongoose.Types.ObjectId(user.id);
+
+  // 1. Lấy toàn bộ các bài thi/bài luyện đã nộp của học viên này
+  const userAttempts = (await ExamAttempt.find({
+    user_id: userObjId,
+    status: "submitted",
+  })
+    .sort({ createdAt: -1 })
+    .populate({
+      path: "topic_id",
+      select: "topic_name level subject_id",
+      populate: {
+        path: "subject_id",
+        select: "subject_name",
+      },
+    })
+    .populate({
+      path: "exam_id",
+      select: "title",
+    })
+    .lean()) as unknown as IAttemptDoc[];
+
+  // 2. Tính toán 4 chỉ số Metric Cards
+  const totalSubmitted = userAttempts.length;
+  const practiceCount = userAttempts.filter(
+    (a) => a.attempt_type === "practice" || (!a.exam_id && a.topic_id)
+  ).length;
+  const officialCount = userAttempts.filter(
+    (a) => a.attempt_type === "official" || (a.exam_id && !a.topic_id)
+  ).length;
+
+  const passedCount = userAttempts.filter((a) => (a.score || 0) >= 5).length;
+  const passRate =
+    totalSubmitted > 0
+      ? Math.round((passedCount / totalSubmitted) * 1000) / 10
+      : 0;
+
+  const totalScoreSum = userAttempts.reduce((sum, a) => sum + (a.score || 0), 0);
+  const avgScore =
+    totalSubmitted > 0 ? Math.round((totalScoreSum / totalSubmitted) * 10) / 10 : 0;
+
+  let gradeLabel = "Chưa có bài nộp";
+  let gradeColor = "text-slate-400";
+  if (totalSubmitted > 0) {
+    if (avgScore >= 8) {
+      gradeLabel = "Xếp loại: Giỏi toàn diện";
+      gradeColor = "text-blue-600 dark:text-blue-400";
+    } else if (avgScore >= 6.5) {
+      gradeLabel = "Xếp loại: Khá vững";
+      gradeColor = "text-indigo-600 dark:text-indigo-400";
+    } else if (avgScore >= 5) {
+      gradeLabel = "Xếp loại: Đạt chuẩn";
+      gradeColor = "text-emerald-600 dark:text-emerald-400";
+    } else {
+      gradeLabel = "Xếp loại: Cần nỗ lực thêm";
+      gradeColor = "text-amber-600 dark:text-amber-400";
+    }
+  }
+
+  const totalQuestionsPracticed = userAttempts.reduce(
+    (sum, a) => sum + (a.total_correct || 0) + (a.total_wrong || 0),
+    0
+  );
+  const totalCorrectPracticed = userAttempts.reduce(
+    (sum, a) => sum + (a.total_correct || 0),
+    0
+  );
+  const accuracyRate =
+    totalQuestionsPracticed > 0
+      ? Math.round((totalCorrectPracticed / totalQuestionsPracticed) * 100)
+      : 0;
+
+  // 3. Phân tích lỗ hổng kiến thức & Đánh giá theo tiến độ học tập (Mastery Learning)
+  interface ITopicProgressTracking {
+    name: string;
+    latestScore: number;
+    highestScore: number;
+    lowestScore: number;
+    attemptsCount: number;
+  }
+
+  const topicProgressMap = new Map<string, ITopicProgressTracking>();
+
+  for (const att of userAttempts) {
+    if (att.topic_id?.topic_name) {
+      const tid = String(att.topic_id._id);
+      const score = typeof att.score === "number" ? att.score : 0;
+      const existing = topicProgressMap.get(tid);
+
+      if (!existing) {
+        // Vì userAttempts đã sort theo createdAt: -1 nên phần tử đầu tiên gặp chính là LẦN LÀM MỚI NHẤT
+        topicProgressMap.set(tid, {
+          name: att.topic_id.topic_name,
+          latestScore: score,
+          highestScore: score,
+          lowestScore: score,
+          attemptsCount: 1,
+        });
+      } else {
+        existing.attemptsCount += 1;
+        if (score > existing.highestScore) existing.highestScore = score;
+        if (score < existing.lowestScore) existing.lowestScore = score;
+      }
+    }
+  }
+
+  // Chuyên đề THỰC SỰ cần cải thiện: Lần làm gần nhất < 6.5 VÀ chưa từng đạt >= 7.0
+  const weakTopics: Array<{ name: string; latestScore: number }> = [];
+  // Chuyên đề vừa khắc phục thành công: Từng bị < 6.5 nhưng lần làm gần nhất đã bứt phá >= 7.0
+  const improvedTopics: Array<{ name: string; lowestScore: number; latestScore: number }> = [];
+
+  topicProgressMap.forEach((stat) => {
+    if (stat.latestScore < 6.5 && stat.highestScore < 7.0) {
+      weakTopics.push({ name: stat.name, latestScore: stat.latestScore });
+    } else if (stat.attemptsCount >= 2 && stat.lowestScore < 6.5 && stat.latestScore >= 7.0) {
+      improvedTopics.push({
+        name: stat.name,
+        lowestScore: stat.lowestScore,
+        latestScore: stat.latestScore,
+      });
+    }
+  });
+
+  // 4. Lấy danh sách Môn Học THPT thật và tính độ phủ dạng bài & ngân hàng câu hỏi
+  const allSubjects = await Subject.find().sort({ subject_name: 1 }).lean();
+
+  // Lấy toàn bộ topics để phân loại theo môn
+  const allTopics = await Topic.find()
+    .select("_id subject_id parent_id level topic_name")
+    .lean();
+
+  // Map subtopics (Dạng bài: level === 2 hoặc có parent_id) theo subject_id
+  const subjectSubtopicsMap = new Map<string, mongoose.Types.ObjectId[]>();
+  // Map tất cả topicIds theo subject_id
+  const subjectAllTopicIdsMap = new Map<string, mongoose.Types.ObjectId[]>();
+
+  for (const t of allTopics) {
+    const sid = String(t.subject_id);
+    const allList = subjectAllTopicIdsMap.get(sid) || [];
+    allList.push(t._id as mongoose.Types.ObjectId);
+    subjectAllTopicIdsMap.set(sid, allList);
+
+    // Dạng bài là topic có parent_id hoặc level >= 2
+    if (t.parent_id || (t.level && t.level >= 2)) {
+      const subList = subjectSubtopicsMap.get(sid) || [];
+      subList.push(t._id as mongoose.Types.ObjectId);
+      subjectSubtopicsMap.set(sid, subList);
+    }
+  }
+
+  // Tập hợp các topic_id (dạng bài) mà học sinh ĐÃ TỪNG LUYỆN
+  const practicedTopicIdSet = new Set<string>();
+  for (const att of userAttempts) {
+    if (att.topic_id?._id) {
+      practicedTopicIdSet.add(String(att.topic_id._id));
+    }
+  }
+
+  const subjectProgressList = await Promise.all(
+    allSubjects.map(async (sub, idx) => {
+      const sid = String(sub._id);
+      const subtopicIds = subjectSubtopicsMap.get(sid) || [];
+      const allTopicIds = subjectAllTopicIdsMap.get(sid) || [];
+
+      // Tổng số dạng bài ôn luyện của môn này (nếu môn chưa chia dạng bài thì dùng allTopicIds)
+      const targetTopicIds = subtopicIds.length > 0 ? subtopicIds : allTopicIds;
+      const totalUnits = targetTopicIds.length;
+
+      // Số dạng bài học sinh đã hoàn thành ít nhất 1 bài tự luyện
+      let completedUnits = 0;
+      for (const tid of targetTopicIds) {
+        if (practicedTopicIdSet.has(String(tid))) {
+          completedUnits += 1;
+        }
+      }
+
+      // Tổng số câu hỏi trong ngân hàng của môn này
+      const totalQuestionsInBank = await Question.countDocuments({
+        topic_id: { $in: allTopicIds },
+      });
+
+      // Phần trăm độ phủ dạng bài thực tế (0 - 100%)
+      const percent =
+        totalUnits > 0
+          ? Math.min(100, Math.round((completedUnits / totalUnits) * 100))
+          : 0;
+
+      const colors = ["bg-blue-600", "bg-indigo-600", "bg-amber-600", "bg-emerald-600", "bg-purple-600"];
+
+      return {
+        _id: sid,
+        name: sub.subject_name,
+        completedUnits,
+        totalUnits,
+        totalInBank: totalQuestionsInBank,
+        percent,
+        color: colors[idx % colors.length],
+      };
+    })
+  );
+
+  // 5. Tính số ngày đếm ngược đến kỳ thi THPT Quốc Gia (dự kiến cuối tháng 6/2026)
+  const examTargetDate = new Date("2026-06-25T07:30:00+07:00");
+  const now = new Date();
+  const diffMs = examTargetDate.getTime() - now.getTime();
+  const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+  // Lấy 4 bài làm gần nhất
+  const recentAttempts = userAttempts.slice(0, 4);
 
   return (
     <RoleDashboardShell
@@ -54,23 +311,28 @@ export default async function StudentDashboardPage() {
           {/* Hộp đếm ngược kỳ thi */}
           <div className="shrink-0 flex items-center gap-3 p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
             <div className="text-center px-3 py-1 border-r border-white/20">
-              <span className="block text-2xl sm:text-3xl font-black text-amber-300">238</span>
-              <span className="text-[10px] uppercase font-bold text-blue-100 tracking-wider">Ngày thi THPT</span>
+              <span className="block text-2xl sm:text-3xl font-black text-amber-300">
+                {daysRemaining}
+              </span>
+              <span className="text-[10px] uppercase font-bold text-blue-100 tracking-wider">
+                Ngày thi THPT
+              </span>
             </div>
             <div className="text-left text-xs leading-tight pr-2">
               <div className="font-bold text-white">Kỳ thi Tốt nghiệp 2026</div>
-              <div className="text-[11px] text-blue-200 mt-0.5">Mục tiêu: Đạt 26+ Khối A/A1/D</div>
+              <div className="text-[11px] text-blue-200 mt-0.5">Mục tiêu: Đạt 26+ Khối A/A1/B/D</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 4 Metric Cards */}
+      {/* 4 Metric Cards - DỮ LIỆU THẬT */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        {/* Card 1: Lượt Luyện Đã Nộp */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Bài Thi Đã Nộp
+              Lượt Luyện Đã Nộp
             </span>
             <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -79,14 +341,19 @@ export default async function StudentDashboardPage() {
             </span>
           </div>
           <div className="text-3xl font-black text-slate-900 dark:text-white">
-            24
+            {totalSubmitted} <span className="text-base font-normal text-slate-400">lượt</span>
           </div>
           <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
             <span>↑</span>
-            <span>Tỷ lệ đạt chuẩn: 91.6%</span>
+            <span>
+              {totalSubmitted > 0
+                ? `${practiceCount} tự luyện${officialCount > 0 ? ` • ${officialCount} thi phòng` : ""} (Đạt chuẩn: ${passRate}%)`
+                : "Chưa có lượt nộp bài"}
+            </span>
           </div>
         </div>
 
+        {/* Card 2: Điểm trung bình */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -99,13 +366,14 @@ export default async function StudentDashboardPage() {
             </span>
           </div>
           <div className="text-3xl font-black text-slate-900 dark:text-white">
-            8.4 <span className="text-base font-normal text-slate-400">/ 10</span>
+            {avgScore} <span className="text-base font-normal text-slate-400">/ 10</span>
           </div>
-          <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-semibold">
-            Xếp loại: Giỏi toàn diện
+          <div className={`mt-2 text-xs font-semibold ${gradeColor}`}>
+            {gradeLabel}
           </div>
         </div>
 
+        {/* Card 3: Câu hỏi đã luyện */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -118,29 +386,52 @@ export default async function StudentDashboardPage() {
             </span>
           </div>
           <div className="text-3xl font-black text-slate-900 dark:text-white">
-            580 <span className="text-base font-normal text-slate-400">câu</span>
+            {totalQuestionsPracticed} <span className="text-base font-normal text-slate-400">câu</span>
           </div>
           <div className="mt-2 text-xs text-purple-600 dark:text-purple-400 font-semibold">
-            Độ chính xác trung bình: 84%
+            {totalQuestionsPracticed > 0
+              ? `Độ chính xác trung bình: ${accuracyRate}%`
+              : "Sẵn sàng tự luyện"}
           </div>
         </div>
 
+        {/* Card 4: Cảnh báo lỗ hổng AI */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Cảnh Báo Lỗ Hổng AI
             </span>
-            <span className="p-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
+            <span
+              className={`p-2 rounded-xl ${
+                weakTopics.length > 0
+                  ? "bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400"
+                  : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+              }`}
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </span>
           </div>
           <div className="text-3xl font-black text-slate-900 dark:text-white">
-            2 <span className="text-base font-normal text-slate-400">chủ đề</span>
+            {weakTopics.length} <span className="text-base font-normal text-slate-400">chủ đề</span>
           </div>
-          <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-semibold truncate">
-            Cần bổ trợ: Đạo hàm &amp; Sóng cơ
+          <div className="mt-2 text-xs font-semibold truncate">
+            {weakTopics.length > 0 ? (
+              <span className="text-amber-600 dark:text-amber-400">
+                Cần bổ trợ: {weakTopics.map((t) => t.name).slice(0, 2).join(", ")}
+              </span>
+            ) : improvedTopics.length > 0 ? (
+              <span className="text-emerald-600 dark:text-emerald-400">
+                Đã bứt phá khắc phục lỗ hổng ✓
+              </span>
+            ) : totalSubmitted > 0 ? (
+              <span className="text-emerald-600 dark:text-emerald-400">
+                Nắm vững kiến thức đã học ✓
+              </span>
+            ) : (
+              <span className="text-slate-400">Chưa có dữ liệu cảnh báo</span>
+            )}
           </div>
         </div>
       </div>
@@ -186,7 +477,7 @@ export default async function StudentDashboardPage() {
           </div>
         </div>
 
-        {/* AI Tutor Insights */}
+        {/* AI Tutor Insights - CHẨN ĐOÁN THẬT DỰA TRÊN LỊCH SỬ HỌC SINH */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -199,16 +490,72 @@ export default async function StudentDashboardPage() {
                 Chẩn Đoán Từ Gemini AI
               </h3>
             </div>
+
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-              &ldquo;Trong đề thi thử Toán gần nhất, bạn giải rất nhanh các câu nhận biết hàm số nhưng mất nhiều thời gian ở bài toán thực tế cực trị bậc 3. Đề xuất làm thêm 10 câu vận dụng.&rdquo;
+              {improvedTopics.length > 0 ? (
+                <>
+                  🎉 &ldquo;Xuất sắc! Bạn đã có bước tiến vượt bậc ở dạng bài:{" "}
+                  <strong className="text-slate-900 dark:text-white">
+                    {improvedTopics[0].name}
+                  </strong>{" "}
+                  (vừa bứt phá lên{" "}
+                  <strong className="text-emerald-600 dark:text-emerald-400">
+                    {improvedTopics[0].latestScore}/10 điểm
+                  </strong>
+                  ). Lỗ hổng kiến thức này đã được bạn khắc phục hoàn toàn!&rdquo;
+                </>
+              ) : weakTopics.length > 0 ? (
+                <>
+                  &ldquo;Qua các bài tự luyện gần đây, bạn còn gặp khó khăn ở dạng bài:{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {weakTopics.map((t) => t.name).slice(0, 2).join(", ")}
+                  </strong>
+                  . Đề xuất làm thêm 5-10 câu trắc nghiệm dạng này để củng cố phương pháp giải nhanh!&rdquo;
+                </>
+              ) : totalSubmitted > 0 ? (
+                <>
+                  &ldquo;Bạn đang duy trì phong độ rất tốt với độ chính xác đạt{" "}
+                  <strong className="text-emerald-600">{accuracyRate}%</strong>. Hãy tiếp tục thử sức với các dạng bài vận dụng cao để nâng cao điểm số mục tiêu!&rdquo;
+                </>
+              ) : (
+                <>
+                  &ldquo;Chào mừng bạn đến với góc học tập THPT! Hãy chọn một dạng bài bất kỳ trong ngân hàng câu hỏi để tự luyện, AI sẽ lập tức phân tích điểm mạnh và điểm yếu cho bạn.&rdquo;
+                </>
+              )}
             </p>
-            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
-              <span className="font-bold">Chủ đề cần cải thiện:</span>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 font-medium">Toán: Cực trị hàm số</span>
-                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 font-medium">Lý: Sóng dừng</span>
+
+            {improvedTopics.length > 0 ? (
+              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-300">
+                <span className="font-bold flex items-center gap-1.5">
+                  <span>✓</span>
+                  <span>Chủ đề vừa bứt phá thành công:</span>
+                </span>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {improvedTopics.slice(0, 2).map((it, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 font-medium text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                    >
+                      {it.name} ({it.lowestScore}đ → {it.latestScore}đ)
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : weakTopics.length > 0 ? (
+              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
+                <span className="font-bold">Chủ đề cần cải thiện:</span>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {weakTopics.slice(0, 3).map((wt, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 font-medium truncate max-w-full"
+                    >
+                      {wt.name} ({wt.latestScore}đ)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -224,117 +571,167 @@ export default async function StudentDashboardPage() {
 
       {/* KHU VỰC CHI TIẾT: Lịch Sử Bài Thi & Tiến Độ Môn Học */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Bảng bài thi gần đây (US 16) */}
+        {/* Bảng bài thi gần đây (DỮ LIỆU THẬT) */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-xs">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 Lịch Sử Luyện Đề Gần Nhất
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">Các bài thi trắc nghiệm bạn đã hoàn thành gần đây</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Các bài thi trắc nghiệm bạn đã hoàn thành gần đây
+              </p>
             </div>
             <Link
-              href="/student/history"
+              href="/student/practice/history"
               className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
             >
               Xem tất cả →
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {[
-              {
-                title: "Đề Khảo Sát Toán 12 — Chuyên Đề Đạo Hàm & Cực Trị",
-                subject: "Toán Học 12",
-                score: "9.2",
-                time: "42 phút",
-                date: "28/10/2026",
-                badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-                status: "Đạt Giỏi",
-              },
-              {
-                title: "Đề Thi Thử Vật Lý 12 — Sóng Cơ & Dao Động Điều Hòa",
-                subject: "Vật Lý 12",
-                score: "8.6",
-                time: "48 phút",
-                date: "26/10/2026",
-                badge: "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
-                status: "Khá Giỏi",
-              },
-              {
-                title: "Trắc Nghiệm Tiếng Anh THPT — Chuyên Đề Ngữ Pháp & Đọc Hiểu",
-                subject: "Tiếng Anh THPT",
-                score: "8.0",
-                time: "55 phút",
-                date: "24/10/2026",
-                badge: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300",
-                status: "Đạt Chuẩn",
-              },
-              {
-                title: "Đề Tự Luyện Hóa Học 12 — Este & Lipit Nâng Cao",
-                subject: "Hóa Học 12",
-                score: "7.4",
-                time: "50 phút",
-                date: "22/10/2026",
-                badge: "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-                status: "Cần Cải Thiện",
-              },
-            ].map((test, idx) => (
-              <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                      {test.subject}
-                    </span>
-                    <span className="text-[11px] text-slate-400">• {test.date}</span>
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {test.title}
-                  </h4>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right">
-                    <span className="text-base font-black text-slate-900 dark:text-white">{test.score}</span>
-                    <span className="text-xs text-slate-400">/10</span>
-                  </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-xl ${test.badge}`}>
-                    {test.status}
-                  </span>
-                </div>
+          {recentAttempts.length === 0 ? (
+            <div className="py-12 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3 text-xl">
+                📝
               </div>
-            ))}
-          </div>
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Bạn chưa hoàn thành bài thi hay bài tự luyện nào
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Hãy bắt đầu củng cố kiến thức bằng các bài tập trắc nghiệm theo dạng bài.
+              </p>
+              <Link
+                href="/student/practice"
+                className="mt-3 inline-block px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition"
+              >
+                Bắt đầu tự luyện ngay →
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+              {recentAttempts.map((test) => {
+                const title =
+                  test.practice_title ||
+                  (test.topic_id?.topic_name
+                    ? `Ôn tập: ${test.topic_id.topic_name}`
+                    : test.exam_id?.title || "Bài tự luyện kiến thức");
+                const subject =
+                  test.topic_id?.subject_id?.subject_name || "Môn học chung";
+
+                const dateStr = test.submit_time
+                  ? new Date(test.submit_time).toLocaleDateString("vi-VN", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })
+                  : new Date(test.createdAt).toLocaleDateString("vi-VN", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    });
+
+                const timeSpent = formatDuration(test.duration_seconds);
+
+                let badge = "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300";
+                let status = "Cần Cải Thiện";
+                const sc = test.score || 0;
+                if (sc >= 8) {
+                  badge = "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300";
+                  status = "Đạt Giỏi";
+                } else if (sc >= 6.5) {
+                  badge = "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300";
+                  status = "Khá Giỏi";
+                } else if (sc >= 5) {
+                  badge = "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300";
+                  status = "Đạt Chuẩn";
+                }
+
+                const totalQ = (test.total_correct || 0) + (test.total_wrong || 0);
+                const correctQ = test.total_correct || 0;
+
+                return (
+                  <div
+                    key={String(test._id)}
+                    className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:bg-slate-50/60 dark:hover:bg-slate-800/40 px-2 rounded-2xl transition"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {subject}
+                        </span>
+                        <span className="text-[11px] text-slate-400">• {dateStr}</span>
+                        <span className="text-[11px] text-slate-400">• {timeSpent}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {title}
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <div className="flex items-baseline justify-end gap-0.5">
+                          <span className="text-base font-black text-slate-900 dark:text-white">
+                            {sc}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-400">/ 10đ</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">
+                          Đúng {correctQ}/{totalQ > 0 ? totalQ : 1} câu
+                        </div>
+                      </div>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-xl shrink-0 ${badge}`}>
+                        {status}
+                      </span>
+                      <Link
+                        href={`/student/practice/history?review=${test._id}`}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition pl-1 shrink-0"
+                        title="Xem lại chi tiết bài làm & lời giải"
+                      >
+                        <span>Xem lại</span>
+                        <span>→</span>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Cột tiến độ theo môn học THPT */}
+        {/* Cột tiến độ theo môn học THPT - DỮ LIỆU THẬT */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">
               Tiến Độ Môn Thi Trọng Tâm
             </h3>
-            <p className="text-xs text-slate-500 mb-5">Độ phủ kiến thức ngân hàng câu hỏi THPT</p>
+            <p className="text-xs text-slate-500 mb-5">
+              Độ phủ dạng bài & ngân hàng câu hỏi THPT
+            </p>
 
             <div className="space-y-4">
-              {[
-                { name: "Toán Học 12", percent: 85, count: "280 / 320 câu", color: "bg-blue-600" },
-                { name: "Vật Lý 12", percent: 72, count: "180 / 250 câu", color: "bg-indigo-600" },
-                { name: "Tiếng Anh THPT", percent: 68, count: "210 / 310 câu", color: "bg-emerald-600" },
-                { name: "Hóa Học 12", percent: 55, count: "110 / 200 câu", color: "bg-amber-600" },
-              ].map((sub, idx) => (
-                <div key={idx}>
-                  <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                    <span className="text-slate-800 dark:text-slate-200">{sub.name}</span>
-                    <span className="text-slate-500">{sub.count} ({sub.percent}%)</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${sub.color}`}
-                      style={{ width: `${sub.percent}%` }}
-                    />
-                  </div>
+              {subjectProgressList.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  Chưa có môn học nào trong hệ thống.
                 </div>
-              ))}
+              ) : (
+                subjectProgressList.map((sub) => (
+                  <div key={sub._id}>
+                    <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+                      <span className="text-slate-800 dark:text-slate-200">{sub.name}</span>
+                      <span className="text-slate-500 font-medium">
+                        {sub.completedUnits} / {sub.totalUnits} dạng bài ({sub.percent}%)
+                      </span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${sub.color} transition-all duration-500`}
+                        style={{ width: `${sub.percent}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -343,7 +740,7 @@ export default async function StudentDashboardPage() {
               href="/student/practice"
               className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Luyện thêm đề để tăng độ phủ kiến thức →
+              Luyện thêm dạng bài để tăng độ phủ kiến thức →
             </Link>
           </div>
         </div>
