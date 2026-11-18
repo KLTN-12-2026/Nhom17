@@ -32,7 +32,9 @@ export interface IAiAnalysis {
 
 export interface IExamAttempt extends Document {
   user_id: mongoose.Types.ObjectId; // hocvien_id
-  exam_id: mongoose.Types.ObjectId; // dethi_id
+  exam_id?: mongoose.Types.ObjectId | null; // dethi_id (null nếu luyện thi theo chủ đề tự do)
+  topic_id?: mongoose.Types.ObjectId | null; // chude_id (luyện thi theo chủ đề)
+  practice_title?: string; // tieu de bai luyen tap
   room_id?: mongoose.Types.ObjectId | null; // phongthi_id (null nếu luyện thi tự do)
   attempt_type: "practice" | "official";
   score: number; // diem_so
@@ -149,8 +151,18 @@ const ExamAttemptSchema = new Schema<IExamAttempt>(
     exam_id: {
       type: Schema.Types.ObjectId,
       ref: "Exam",
-      required: true,
+      default: null,
       index: true,
+    },
+    topic_id: {
+      type: Schema.Types.ObjectId,
+      ref: "Topic",
+      default: null,
+      index: true,
+    },
+    practice_title: {
+      type: String,
+      default: "",
     },
     room_id: {
       type: Schema.Types.ObjectId,

@@ -25,6 +25,7 @@ export interface IExamQuestion {
 
 export interface IExam extends Document {
   subject_id?: mongoose.Types.ObjectId;
+  subject_ids?: mongoose.Types.ObjectId[];
   created_by: mongoose.Types.ObjectId;
   title: string;
   duration_minutes: number;
@@ -91,6 +92,10 @@ const ExamSchema = new Schema<IExam>(
       type: Schema.Types.ObjectId,
       ref: "Subject",
       index: true,
+    },
+    subject_ids: {
+      type: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
+      default: [],
     },
     created_by: {
       type: Schema.Types.ObjectId,

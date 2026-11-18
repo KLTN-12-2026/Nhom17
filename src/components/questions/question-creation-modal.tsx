@@ -654,7 +654,7 @@ export default function QuestionCreationModal({
             <>
               <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
               <div className="flex items-center gap-1.5 min-w-[220px] flex-1">
-                <span className="font-medium text-slate-600 dark:text-slate-400 shrink-0">Bài học:</span>
+                <span className="font-medium text-slate-600 dark:text-slate-400 shrink-0">Dạng bài:</span>
                 <select
                   value={selectedTopicId}
                   onChange={(e) => handleLessonChange(e.target.value)}
@@ -1159,7 +1159,7 @@ export default function QuestionCreationModal({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                       </svg>
                       <div>
-                        <div className="font-semibold text-slate-900 dark:text-white">1. Sinh theo bài học chương trình</div>
+                        <div className="font-semibold text-slate-900 dark:text-white">1. Sinh theo chuyên đề ôn thi</div>
                         <div className="text-[11px] text-slate-500 mt-0.5">Tự động bám sát ma trận và chuẩn kiến thức trọng tâm</div>
                       </div>
                     </button>
@@ -1232,7 +1232,7 @@ export default function QuestionCreationModal({
                         className="w-full text-xs py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 font-medium"
                       >
                         <option value={3}>3 câu hỏi (Sinh nhanh & Tối ưu)</option>
-                        <option value={5}>5 câu hỏi (Chuẩn 1 bài học)</option>
+                        <option value={5}>5 câu hỏi (Chuẩn 1 chuyên đề)</option>
                         <option value={10}>10 câu hỏi (Gói bài tập luyện tập)</option>
                         <option value={15}>15 câu hỏi (Đề kiểm tra 1 tiết)</option>
                         <option value={20}>20 câu hỏi (Bộ đề chuyên sâu)</option>
@@ -1247,7 +1247,7 @@ export default function QuestionCreationModal({
                       <div className="p-3 bg-slate-50/70 dark:bg-slate-850/50 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-2">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                           <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                            Trọng tâm bài học trích xuất:
+                            Trọng tâm chuyên đề trích xuất:
                           </span>
                           <div className="inline-flex items-center gap-1 p-0.5 bg-slate-200/70 dark:bg-slate-800 rounded-lg text-xs">
                             <button
@@ -1273,7 +1273,7 @@ export default function QuestionCreationModal({
                                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                               }`}
                             >
-                              Tự nhập bài học riêng
+                              Tự nhập chuyên đề riêng
                             </button>
                           </div>
                         </div>
@@ -1284,7 +1284,7 @@ export default function QuestionCreationModal({
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                             <span className="font-semibold text-slate-900 dark:text-white truncate">
-                              {topics.find((t) => t._id === selectedTopicId)?.topic_name || "Bài học THPT"}
+                              {topics.find((t) => t._id === selectedTopicId)?.topic_name || "Chuyên đề ôn thi"}
                             </span>
                             <span className="text-[11px] text-slate-400 ml-auto shrink-0 hidden sm:inline">
                               (Bám sát chuẩn kiến thức &amp; ma trận đề thi)
@@ -1295,7 +1295,7 @@ export default function QuestionCreationModal({
                             type="text"
                             value={customTopicName}
                             onChange={(e) => setCustomTopicName(e.target.value)}
-                            placeholder="Ví dụ: Bài 1: Este - Lipit, Khảo sát hàm số bậc ba, Dao động điều hòa..."
+                            placeholder="Ví dụ: Cực trị & Tương giao đồ thị, Dao động điều hòa & Đồ thị sóng, Este & Thủy phân chất béo..."
                             autoFocus
                             className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 font-medium"
                           />

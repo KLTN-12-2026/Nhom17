@@ -17,7 +17,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       subject_id,
+      subject_ids,
       topic_id,
+      topic_ids,
       easy_count = 0,
       medium_count = 0,
       hard_count = 0,
@@ -36,18 +38,36 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!subject_id || !mongoose.Types.ObjectId.isValid(subject_id)) {
+    const rawSubjectIds: string[] = Array.isArray(subject_ids) && subject_ids.length > 0
+      ? subject_ids
+      : subject_id
+      ? [subject_id]
+      : [];
+
+    const validSubjectIds = rawSubjectIds
+      .filter((id: string) => mongoose.Types.ObjectId.isValid(id))
+      .map((id: string) => new mongoose.Types.ObjectId(id));
+
+    if (validSubjectIds.length === 0) {
       return NextResponse.json(
-        { success: false, message: "Vui lòng chọn ngân hàng môn học hợp lệ trước khi bốc câu hỏi" },
+        { success: false, message: "Vui lòng chọn ít nhất 1 ngân hàng môn học hợp lệ trước khi bốc câu hỏi" },
         { status: 400 },
       );
     }
 
-    // Xác định danh sách topic_id cần lọc (trong môn học đã chọn, bao gồm cả các chuyên đề con)
+    // Xác định danh sách topic_id cần lọc (trong các môn học đã chọn, bao gồm cả các chuyên đề con)
+    const rawTopicIds: string[] = Array.isArray(topic_ids) && topic_ids.length > 0
+      ? topic_ids
+      : topic_id
+      ? [topic_id]
+      : [];
+
+    const validTopicIds = rawTopicIds.filter((id: string) => mongoose.Types.ObjectId.isValid(id));
+
     let targetTopicIds: mongoose.Types.ObjectId[] = [];
-    if (topic_id && mongoose.Types.ObjectId.isValid(topic_id)) {
-      const allSubjectTopics = await Topic.find({ subject_id }).lean();
-      const descendantIds = new Set<string>([String(topic_id)]);
+    if (validTopicIds.length > 0) {
+      const allSubjectTopics = await Topic.find({ subject_id: { $in: validSubjectIds } }).lean();
+      const descendantIds = new Set<string>(validTopicIds.map(String));
       let added = true;
       while (added) {
         added = false;
@@ -61,7 +81,7 @@ export async function POST(request: Request) {
       }
       targetTopicIds = Array.from(descendantIds).map((id) => new mongoose.Types.ObjectId(id));
     } else {
-      const topics = await Topic.find({ subject_id }).select("_id").lean();
+      const topics = await Topic.find({ subject_id: { $in: validSubjectIds } }).select("_id").lean();
       targetTopicIds = topics.map((t) => t._id as mongoose.Types.ObjectId);
     }
 
