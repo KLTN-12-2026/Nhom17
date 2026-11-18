@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AiAttemptAnalysisCard from "@/components/student/ai-attempt-analysis-card";
 
 interface HistoryItem {
   _id: string;
@@ -430,8 +431,18 @@ export default function PracticeHistoryView() {
               </div>
             </div>
 
-            {/* Modal Body: Danh sách câu hỏi */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+            {/* Modal Body: Phân tích AI & Danh sách câu hỏi */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
+              {/* Trợ lý AI Phân Tích Lỗ Hổng Kiến Thức */}
+              {selectedAttemptId && (
+                <AiAttemptAnalysisCard
+                  attemptId={selectedAttemptId}
+                  onTopicSelectedForPractice={(tId) => {
+                    setSelectedAttemptId(null);
+                    router.push(`/student/practice?topicId=${tId}`);
+                  }}
+                />
+              )}
               {loadingDetail ? (
                 <div className="py-12 text-center">
                   <div className="inline-block w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />

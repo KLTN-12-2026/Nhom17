@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AiAttemptAnalysisCard from "@/components/student/ai-attempt-analysis-card";
 
 interface PracticeOption {
   _id: string;
@@ -427,6 +428,14 @@ export default function PracticeSessionView({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Trợ lý AI Phân Tích Lỗ Hổng Kiến Thức (Chỉ hiện sau khi nộp bài) */}
+      {isSubmitted && (
+        <AiAttemptAnalysisCard
+          attemptId={attemptId}
+          onTopicSelectedForPractice={(tId) => router.push(`/student/practice?topicId=${tId}`)}
+        />
       )}
 
       {/* 3. Bố Cục Chính 2 Cột: Nội Dung Câu Hỏi (Trái) & Bảng Điều Hướng (Phải) */}
