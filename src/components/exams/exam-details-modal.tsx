@@ -9,6 +9,7 @@ interface ExamDetailsModalProps {
   exam: ExamDataToEdit | null;
   onStartPractice?: (exam: ExamDataToEdit) => void;
   onEditExam?: (exam: ExamDataToEdit) => void;
+  onViewAiAnalytics?: (exam: ExamDataToEdit) => void;
 }
 
 export default function ExamDetailsModal({
@@ -17,6 +18,7 @@ export default function ExamDetailsModal({
   exam,
   onStartPractice,
   onEditExam,
+  onViewAiAnalytics,
 }: ExamDetailsModalProps) {
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [showOnlyAnswers, setShowOnlyAnswers] = useState(false);
@@ -299,6 +301,22 @@ export default function ExamDetailsModal({
           </button>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+            {onViewAiAnalytics && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onViewAiAnalytics(exam);
+                }}
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 font-medium text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <svg className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                <span>Báo Cáo AI</span>
+              </button>
+            )}
+
             {onEditExam && (
               <button
                 type="button"

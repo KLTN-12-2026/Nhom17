@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { ExamAttempt, Exam } from "@/models";
+import { ExamAttempt } from "@/models";
 import { checkApiAuthorization } from "@/lib/auth-guards";
 import { analyzeStudentAttempt } from "@/lib/ai-analysis-service";
 import mongoose from "mongoose";
