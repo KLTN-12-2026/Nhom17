@@ -4,12 +4,24 @@ import RoleDashboardShell from "@/components/dashboard/role-dashboard-shell";
 import PracticeCatalogView from "@/components/practice/practice-catalog-view";
 import Link from "next/link";
 
-export default async function StudentPracticePage() {
+type StudentPracticePageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function StudentPracticePage({
+  searchParams,
+}: StudentPracticePageProps) {
   const user = await getCurrentUser();
 
   if (!user) {
     redirect("/auth/login?callbackUrl=/student/practice");
   }
+
+  const query = await searchParams;
+  const initialTopicId =
+    typeof query.topic_id === "string" ? query.topic_id : "";
+  const initialSubjectId =
+    typeof query.subject_id === "string" ? query.subject_id : "";
 
   return (
     <RoleDashboardShell
@@ -28,7 +40,10 @@ export default async function StudentPracticePage() {
         </Link>
       }
     >
-      <PracticeCatalogView />
+      <PracticeCatalogView
+        initialTopicId={initialTopicId}
+        initialSubjectId={initialSubjectId}
+      />
     </RoleDashboardShell>
   );
 }

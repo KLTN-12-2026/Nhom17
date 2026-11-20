@@ -46,7 +46,13 @@ interface SubjectItem {
   description: string;
 }
 
-export default function PracticeCatalogView() {
+export default function PracticeCatalogView({
+  initialTopicId = "",
+  initialSubjectId = "",
+}: {
+  initialTopicId?: string;
+  initialSubjectId?: string;
+}) {
   const router = useRouter();
 
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
@@ -73,17 +79,48 @@ export default function PracticeCatalogView() {
 
     async function fetchInitialTopics() {
       try {
-        const res = await fetch("/api/student/practice/topics");
+        const query = new URLSearchParams();
+        if (initialSubjectId) query.set("subject_id", initialSubjectId);
+        const queryString = query.toString();
+        const endpoint = queryString
+          ? `/api/student/practice/topics?${queryString}`
+          : "/api/student/practice/topics";
+        const res = await fetch(endpoint);
         const data = await res.json();
 
         if (!isCancelled && data.success) {
+          const loadedChapters = (data.chapters || []) as ChapterItem[];
           setSubjects(data.subjects || []);
           setSelectedSubjectId(data.selected_subject_id || "");
-          setChapters(data.chapters || []);
+          setChapters(loadedChapters);
           setStats(data.stats || { totalQuestions: 0, totalPracticedAttempts: 0 });
 
-          // Mặc định đóng (gập) tất cả các chuyên đề để giao diện gọn gàng, người dùng cần mở chuyên đề nào thì tự bấm
-          setExpandedChapterIds(new Set());
+          const roadmapTopic = initialTopicId
+            ? loadedChapters.flatMap((chapter) =>
+                chapter.subtopics.map((subtopic) => ({
+                  chapterId: chapter._id,
+                  subtopic,
+                })),
+              ).find(({ subtopic }) => subtopic._id === initialTopicId)
+            : null;
+
+          if (roadmapTopic) {
+            setExpandedChapterIds(new Set([roadmapTopic.chapterId]));
+            if (roadmapTopic.subtopic.question_count > 0) {
+              setModalTopic(roadmapTopic.subtopic);
+              setModalQuestionCount(
+                roadmapTopic.subtopic.question_count < 10
+                  ? roadmapTopic.subtopic.question_count
+                  : 10,
+              );
+              setModalDifficulty("all");
+              setStartError("");
+            }
+          } else {
+            // Mặc định gập chuyên đề khi mở khu tự luyện thông thường.
+            setModalTopic(null);
+            setExpandedChapterIds(new Set());
+          }
         }
       } catch (err) {
         console.error("Lỗi khi tải cây kiến thức:", err);
@@ -99,7 +136,7 @@ export default function PracticeCatalogView() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [initialSubjectId, initialTopicId]);
 
   // Đổi môn học
   const handleSelectSubject = async (subId: string) => {

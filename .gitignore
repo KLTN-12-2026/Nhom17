@@ -19,6 +19,8 @@
 
 # production
 /build
+/public/uploads/roadmaps/
+/uploads/roadmaps/
 
 # misc
 .DS_Store
