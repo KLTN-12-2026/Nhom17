@@ -410,17 +410,33 @@ export default function PracticeHistoryView() {
 
               <div className="flex items-center gap-2">
                 {/* Toggle chỉ xem câu sai */}
-                <button
-                  type="button"
-                  onClick={() => setOnlyShowWrong(!onlyShowWrong)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    onlyShowWrong
-                      ? "bg-rose-500 text-white shadow-sm"
-                      : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300"
-                  }`}
-                >
-                  {onlyShowWrong ? "Đang lọc: Chỉ câu sai" : "Chỉ xem câu sai"}
-                </button>
+                {attemptDetail && (
+                  <button
+                    type="button"
+                    disabled={attemptDetail.total_wrong === 0}
+                    onClick={() => setOnlyShowWrong(!onlyShowWrong)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                      attemptDetail.total_wrong === 0
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-200 dark:border-slate-700"
+                        : onlyShowWrong
+                        ? "bg-rose-500 hover:bg-rose-600 text-white shadow-sm cursor-pointer"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                    }`}
+                    title={
+                      attemptDetail.total_wrong === 0
+                        ? "Bài thi đạt điểm tuyệt đối 100%, không có câu sai nào"
+                        : onlyShowWrong
+                        ? "Bấm để quay lại hiển thị toàn bộ câu hỏi"
+                        : `Xem ${attemptDetail.total_wrong} câu làm sai`
+                    }
+                  >
+                    {attemptDetail.total_wrong === 0
+                      ? "Không có câu sai (0)"
+                      : onlyShowWrong
+                      ? "✕ Hiện tất cả câu hỏi"
+                      : `Chỉ xem câu sai (${attemptDetail.total_wrong})`}
+                  </button>
+                )}
 
                 <button
                   onClick={() => setSelectedAttemptId(null)}
@@ -452,95 +468,126 @@ export default function PracticeHistoryView() {
                 <div className="py-12 text-center text-xs text-slate-400">
                   Không tìm thấy dữ liệu bài làm.
                 </div>
-              ) : (
-                attemptDetail.answers
-                  .filter((ans) => (onlyShowWrong ? !ans.is_correct : true))
-                  .map((ans, idx) => {
-                    const correctOpt = ans.options.find((o) => o.is_correct);
+              ) : (() => {
+                const filteredAnswers = attemptDetail.answers.filter((ans) =>
+                  onlyShowWrong ? !ans.is_correct : true
+                );
 
-                    return (
-                      <div
-                        key={ans.question_id || idx}
-                        className={`p-5 rounded-2xl border-2 transition ${
-                          ans.is_correct
-                            ? "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/20"
-                            : "border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20"
-                        }`}
-                      >
-                        {/* Status bar */}
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <span className="font-extrabold text-xs text-slate-700 dark:text-slate-300">
-                            Câu {ans.index}
+                if (filteredAnswers.length === 0) {
+                  return (
+                    <div className="py-8 px-6 text-center bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-300 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
+                        🎉
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-white">
+                        {onlyShowWrong
+                          ? "Không có câu hỏi nào làm sai!"
+                          : "Không có câu hỏi nào trong danh sách."}
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                        {onlyShowWrong
+                          ? "Chúc mừng! Bạn đã trả lời đúng 100% tất cả các câu hỏi trong lượt làm bài này."
+                          : "Không có câu hỏi nào phù hợp với bộ lọc hiện tại."}
+                      </p>
+                      {onlyShowWrong && (
+                        <button
+                          type="button"
+                          onClick={() => setOnlyShowWrong(false)}
+                          className="mt-3.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-bold transition cursor-pointer"
+                        >
+                          Hiển thị lại toàn bộ {attemptDetail.answers.length} câu hỏi
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                return filteredAnswers.map((ans, idx) => {
+                  const correctOpt = ans.options.find((o) => o.is_correct);
+
+                  return (
+                    <div
+                      key={ans.question_id || idx}
+                      className={`p-5 rounded-2xl border-2 transition ${
+                        ans.is_correct
+                          ? "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/20"
+                          : "border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20"
+                      }`}
+                    >
+                      {/* Status bar */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="font-extrabold text-xs text-slate-700 dark:text-slate-300">
+                          Câu {ans.index}
+                        </span>
+                        {ans.is_correct ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                            ✓ Làm đúng
                           </span>
-                          {ans.is_correct ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
-                              ✓ Làm đúng
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200">
-                              ✗ Làm sai
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white leading-relaxed mb-4 whitespace-pre-line">
-                          {ans.content}
-                        </div>
-
-                        {/* Options */}
-                        <div className="space-y-2 mb-4">
-                          {ans.options.map((opt) => {
-                            const isChosen = ans.selected_option_id === opt._id;
-                            const isAnswerCorrect = opt.is_correct;
-
-                            let optStyle =
-                              "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
-                            if (isAnswerCorrect) {
-                              optStyle =
-                                "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 font-semibold text-emerald-900 dark:text-emerald-100";
-                            } else if (isChosen && !isAnswerCorrect) {
-                              optStyle =
-                                "border-rose-500 bg-rose-50 dark:bg-rose-950/60 font-semibold text-rose-900 dark:text-rose-100";
-                            }
-
-                            return (
-                              <div
-                                key={opt._id}
-                                className={`flex items-start gap-3 p-3 rounded-xl border text-xs leading-snug ${optStyle}`}
-                              >
-                                <span className="font-bold shrink-0">{opt.option_label}.</span>
-                                <span className="flex-1">{opt.content}</span>
-                                {isAnswerCorrect && (
-                                  <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                                    [Đáp án đúng]
-                                  </span>
-                                )}
-                                {isChosen && !isAnswerCorrect && (
-                                  <span className="font-bold text-rose-600 dark:text-rose-400 shrink-0">
-                                    [Bạn đã chọn]
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Explanation Box */}
-                        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs text-slate-700 dark:text-slate-300">
-                          <span className="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
-                            💡 Phương pháp giải &amp; Lời giải chi tiết:
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200">
+                            ✗ Làm sai
                           </span>
-                          <div className="whitespace-pre-line font-mono text-[11px] leading-relaxed">
-                            {ans.explanation?.trim()
-                              ? ans.explanation
-                              : `Đáp án đúng là ${correctOpt?.option_label}. (Chưa có phân tích bổ sung).`}
-                          </div>
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white leading-relaxed mb-4 whitespace-pre-line">
+                        {ans.content}
+                      </div>
+
+                      {/* Options */}
+                      <div className="space-y-2 mb-4">
+                        {ans.options.map((opt) => {
+                          const isChosen = ans.selected_option_id === opt._id;
+                          const isAnswerCorrect = opt.is_correct;
+
+                          let optStyle =
+                            "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
+                          if (isAnswerCorrect) {
+                            optStyle =
+                              "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 font-semibold text-emerald-900 dark:text-emerald-100";
+                          } else if (isChosen && !isAnswerCorrect) {
+                            optStyle =
+                              "border-rose-500 bg-rose-50 dark:bg-rose-950/60 font-semibold text-rose-900 dark:text-rose-100";
+                          }
+
+                          return (
+                            <div
+                              key={opt._id}
+                              className={`flex items-start gap-3 p-3 rounded-xl border text-xs leading-snug ${optStyle}`}
+                            >
+                              <span className="font-bold shrink-0">{opt.option_label}.</span>
+                              <span className="flex-1">{opt.content}</span>
+                              {isAnswerCorrect && (
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                                  [Đáp án đúng]
+                                </span>
+                              )}
+                              {isChosen && !isAnswerCorrect && (
+                                <span className="font-bold text-rose-600 dark:text-rose-400 shrink-0">
+                                  [Bạn đã chọn]
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Explanation Box */}
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs text-slate-700 dark:text-slate-300">
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
+                          💡 Phương pháp giải &amp; Lời giải chi tiết:
+                        </span>
+                        <div className="whitespace-pre-line font-mono text-[11px] leading-relaxed">
+                          {ans.explanation?.trim()
+                            ? ans.explanation
+                            : `Đáp án đúng là ${correctOpt?.option_label}. (Chưa có phân tích bổ sung).`}
                         </div>
                       </div>
-                    );
-                  })
-              )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Modal Footer */}

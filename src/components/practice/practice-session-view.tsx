@@ -408,14 +408,28 @@ export default function PracticeSessionView({
             <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
+                disabled={resultSummary.total_wrong === 0}
                 onClick={() => setFilterWrongOnly(!filterWrongOnly)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  filterWrongOnly
-                    ? "bg-amber-400 text-slate-900 shadow-md"
-                    : "bg-white/20 hover:bg-white/30 text-white"
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+                  resultSummary.total_wrong === 0
+                    ? "bg-white/10 text-white/50 cursor-not-allowed border border-white/15"
+                    : filterWrongOnly
+                    ? "bg-amber-400 text-slate-900 shadow-md cursor-pointer hover:bg-amber-300"
+                    : "bg-white/20 hover:bg-white/30 text-white cursor-pointer"
                 }`}
+                title={
+                  resultSummary.total_wrong === 0
+                    ? "Bạn đã làm đúng 100%, không có câu sai nào"
+                    : filterWrongOnly
+                    ? "Bấm để quay lại hiển thị toàn bộ câu hỏi"
+                    : `Xem ${resultSummary.total_wrong} câu làm sai`
+                }
               >
-                {filterWrongOnly ? "Đang hiện: Chỉ câu sai" : "Lọc xem câu làm sai"}
+                {resultSummary.total_wrong === 0
+                  ? "✓ Đúng 100% (0 câu sai)"
+                  : filterWrongOnly
+                  ? "✕ Hiện tất cả câu hỏi"
+                  : `Lọc ${resultSummary.total_wrong} câu sai`}
               </button>
 
               <button
