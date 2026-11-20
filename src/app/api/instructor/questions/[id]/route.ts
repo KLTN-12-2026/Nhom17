@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db";
-import { Question } from "@/models";
+import { Exam, Question } from "@/models";
 import { checkApiAuthorization } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
 
@@ -140,6 +140,19 @@ export async function DELETE(request: Request, context: RouteParams) {
       return NextResponse.json(
         { success: false, message: "Bạn không có quyền xóa câu hỏi này vì nó được tạo bởi giáo viên khác." },
         { status: 403 }
+      );
+    }
+
+    const usedInExamsCount = await Exam.countDocuments({
+      "questions.question_id": id,
+    });
+    if (usedInExamsCount > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Không thể xóa câu hỏi này vì đang được sử dụng trong ${usedInExamsCount} đề thi. Vui lòng gỡ câu hỏi khỏi đề thi trước khi xóa.`,
+        },
+        { status: 400 }
       );
     }
 

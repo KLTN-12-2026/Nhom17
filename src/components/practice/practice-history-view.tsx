@@ -6,11 +6,15 @@ import { useRouter } from "next/navigation";
 
 interface HistoryItem {
   _id: string;
+  attempt_type?: "practice" | "official";
+  room_code?: string | null;
   practice_title: string;
   subject_name: string;
   topic_name: string;
   topic_id: string | null;
   score: number;
+  max_score?: number;
+  normalized_score_10?: number;
   total_correct: number;
   total_wrong: number;
   total_questions: number;
@@ -45,10 +49,15 @@ interface DetailedAnswer {
 
 interface AttemptDetail {
   _id: string;
+  attempt_type?: "practice" | "official";
+  room_code?: string | null;
+  can_view_details?: boolean;
+  waiting_room_finish?: boolean;
   practice_title: string;
   subject_name: string;
   topic_name: string;
   score: number;
+  max_score?: number;
   total_correct: number;
   total_wrong: number;
   total_questions: number;
@@ -300,8 +309,13 @@ export default function PracticeHistoryView() {
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
             {historyList.map((item) => {
-              const isHigh = item.score >= 8;
-              const isMed = item.score >= 5 && item.score < 8;
+              const maxScore = item.max_score || 10;
+              const norm10 =
+                item.normalized_score_10 ??
+                (maxScore > 0 ? (item.score / maxScore) * 10 : item.score);
+              const isHigh = norm10 >= 8;
+              const isMed = norm10 >= 5 && norm10 < 8;
+              const isOfficial = item.attempt_type === "official";
 
               return (
                 <div
@@ -310,6 +324,17 @@ export default function PracticeHistoryView() {
                 >
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          isOfficial
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                        }`}
+                      >
+                        {isOfficial
+                          ? `Thi phòng Live${item.room_code ? ` (${item.room_code})` : ""}`
+                          : "Tự luyện"}
+                      </span>
                       <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
                         {item.subject_name}
                       </span>
@@ -353,7 +378,10 @@ export default function PracticeHistoryView() {
                         }`}
                       >
                         {item.score}
-                        <span className="text-xs font-normal text-slate-400"> / 10</span>
+                        <span className="text-xs font-normal text-slate-400">
+                          {" "}
+                          / {maxScore}
+                        </span>
                       </div>
                     </div>
 
@@ -393,15 +421,21 @@ export default function PracticeHistoryView() {
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-4 shrink-0 bg-slate-50/50 dark:bg-slate-800/50">
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mb-1">
-                  Xem lại lời giải chi tiết
+                  {attemptDetail?.attempt_type === "official"
+                    ? "Chi tiết bài thi phòng trực tuyến"
+                    : "Xem lại lời giải chi tiết"}
                 </span>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  {attemptDetail?.practice_title || "Chi tiết bài làm tự luyện"}
+                  {attemptDetail?.practice_title || "Chi tiết bài làm"}
                 </h3>
                 {attemptDetail && (
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Điểm số: <strong className="text-indigo-600">{attemptDetail.score}/10</strong> •{" "}
-                    Đúng {attemptDetail.total_correct}/{attemptDetail.total_questions} câu • Thời gian:{" "}
+                    Điểm số:{" "}
+                    <strong className="text-indigo-600">
+                      {attemptDetail.score}/{attemptDetail.max_score || 10}
+                    </strong>{" "}
+                    • Đúng {attemptDetail.total_correct}/
+                    {attemptDetail.total_questions} câu • Thời gian:{" "}
                     {formatTime(attemptDetail.duration_seconds)}
                   </p>
                 )}
@@ -440,6 +474,19 @@ export default function PracticeHistoryView() {
               ) : !attemptDetail ? (
                 <div className="py-12 text-center text-xs text-slate-400">
                   Không tìm thấy dữ liệu bài làm.
+                </div>
+              ) : attemptDetail.can_view_details === false ? (
+                <div className="py-10 px-6 text-center rounded-2xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/70 dark:bg-amber-950/30 space-y-2">
+                  <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                    {attemptDetail.waiting_room_finish
+                      ? "Phòng thi vẫn đang diễn ra"
+                      : "Không được phép xem đáp án chi tiết"}
+                  </p>
+                  <p className="text-xs text-amber-700/90 dark:text-amber-200/80 max-w-md mx-auto leading-relaxed">
+                    {attemptDetail.waiting_room_finish
+                      ? "Đáp án chi tiết và lời giải sẽ tự động mở khóa sau khi Giảng viên kết thúc ca thi hoặc hết giờ làm bài của phòng thi để chống lộ đề."
+                      : "Giảng viên đã cấu hình không hiển thị đáp án chi tiết cho đề thi này."}
+                  </p>
                 </div>
               ) : (
                 attemptDetail.answers

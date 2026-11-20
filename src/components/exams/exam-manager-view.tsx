@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import ExamCreatorModal, {
   SubjectItem,
   TopicItem,
@@ -458,6 +459,16 @@ export default function ExamManagerView({ currentUser }: ExamManagerViewProps) {
                       </svg>
                       <span>Thi thử</span>
                     </button>
+
+                    {exam.is_published && (
+                      <Link
+                        href={`/instructor/rooms?examId=${exam._id}`}
+                        title="Mở phòng thi trực tuyến từ đề thi này"
+                        className="px-2.5 py-1 rounded-md text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200/80 dark:border-blue-800/80 transition flex items-center gap-1"
+                      >
+                        <span>Mở phòng</span>
+                      </Link>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1">
