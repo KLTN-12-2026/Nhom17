@@ -69,7 +69,7 @@ export default function PracticeHistoryView() {
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
   const [attemptDetail, setAttemptDetail] = useState<AttemptDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
-  const [onlyShowWrong, setOnlyShowWrong] = useState<boolean>(false);
+  const [filterQuestionType, setFilterQuestionType] = useState<"all" | "correct" | "wrong">("all");
 
   // Tải danh sách lịch sử khi mount
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function PracticeHistoryView() {
             if (reviewId) {
               setSelectedAttemptId(reviewId);
               setLoadingDetail(true);
-              setOnlyShowWrong(false);
+              setFilterQuestionType("all");
               fetch(`/api/student/practice/history/${reviewId}`)
                 .then((r) => r.json())
                 .then((d) => {
@@ -126,7 +126,7 @@ export default function PracticeHistoryView() {
     try {
       setSelectedAttemptId(attemptId);
       setLoadingDetail(true);
-      setOnlyShowWrong(false);
+      setFilterQuestionType("all");
 
       const res = await fetch(`/api/student/practice/history/${attemptId}`);
       const data = await res.json();
@@ -408,34 +408,64 @@ export default function PracticeHistoryView() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* Toggle chỉ xem câu sai */}
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {/* Bộ lọc phân loại câu hỏi (Tất cả / Câu đúng / Câu sai) */}
                 {attemptDetail && (
-                  <button
-                    type="button"
-                    disabled={attemptDetail.total_wrong === 0}
-                    onClick={() => setOnlyShowWrong(!onlyShowWrong)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                      attemptDetail.total_wrong === 0
-                        ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-200 dark:border-slate-700"
-                        : onlyShowWrong
-                        ? "bg-rose-500 hover:bg-rose-600 text-white shadow-sm cursor-pointer"
-                        : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
-                    }`}
-                    title={
-                      attemptDetail.total_wrong === 0
-                        ? "Bài thi đạt điểm tuyệt đối 100%, không có câu sai nào"
-                        : onlyShowWrong
-                        ? "Bấm để quay lại hiển thị toàn bộ câu hỏi"
-                        : `Xem ${attemptDetail.total_wrong} câu làm sai`
-                    }
-                  >
-                    {attemptDetail.total_wrong === 0
-                      ? "Không có câu sai (0)"
-                      : onlyShowWrong
-                      ? "✕ Hiện tất cả câu hỏi"
-                      : `Chỉ xem câu sai (${attemptDetail.total_wrong})`}
-                  </button>
+                  <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+                    <button
+                      type="button"
+                      onClick={() => setFilterQuestionType("all")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        filterQuestionType === "all"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      Tất cả ({attemptDetail.total_questions})
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={attemptDetail.total_correct === 0}
+                      onClick={() => setFilterQuestionType("correct")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                        attemptDetail.total_correct === 0
+                          ? "opacity-40 cursor-not-allowed text-slate-400"
+                          : filterQuestionType === "correct"
+                          ? "bg-emerald-500 text-white shadow-xs cursor-pointer"
+                          : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                      }`}
+                      title={
+                        attemptDetail.total_correct === 0
+                          ? "Không có câu hỏi nào làm đúng"
+                          : `Lọc xem ${attemptDetail.total_correct} câu làm đúng`
+                      }
+                    >
+                      <span>✓ Đúng</span>
+                      <span>({attemptDetail.total_correct})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={attemptDetail.total_wrong === 0}
+                      onClick={() => setFilterQuestionType("wrong")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                        attemptDetail.total_wrong === 0
+                          ? "opacity-40 cursor-not-allowed text-slate-400"
+                          : filterQuestionType === "wrong"
+                          ? "bg-rose-500 text-white shadow-xs cursor-pointer"
+                          : "text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                      }`}
+                      title={
+                        attemptDetail.total_wrong === 0
+                          ? "Bài thi đạt điểm tuyệt đối 100%, không có câu sai nào"
+                          : `Lọc xem ${attemptDetail.total_wrong} câu làm sai`
+                      }
+                    >
+                      <span>✗ Sai</span>
+                      <span>({attemptDetail.total_wrong})</span>
+                    </button>
+                  </div>
                 )}
 
                 <button
@@ -469,35 +499,39 @@ export default function PracticeHistoryView() {
                   Không tìm thấy dữ liệu bài làm.
                 </div>
               ) : (() => {
-                const filteredAnswers = attemptDetail.answers.filter((ans) =>
-                  onlyShowWrong ? !ans.is_correct : true
-                );
+                const filteredAnswers = attemptDetail.answers.filter((ans) => {
+                  if (filterQuestionType === "correct") return ans.is_correct;
+                  if (filterQuestionType === "wrong") return !ans.is_correct;
+                  return true;
+                });
 
                 if (filteredAnswers.length === 0) {
                   return (
-                    <div className="py-8 px-6 text-center bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-300 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
-                        🎉
+                    <div className="py-8 px-6 text-center bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
+                        {filterQuestionType === "wrong" ? "🎉" : "ℹ️"}
                       </div>
                       <h4 className="text-sm font-bold text-slate-800 dark:text-white">
-                        {onlyShowWrong
+                        {filterQuestionType === "wrong"
                           ? "Không có câu hỏi nào làm sai!"
+                          : filterQuestionType === "correct"
+                          ? "Không có câu hỏi nào làm đúng!"
                           : "Không có câu hỏi nào trong danh sách."}
                       </h4>
                       <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                        {onlyShowWrong
+                        {filterQuestionType === "wrong"
                           ? "Chúc mừng! Bạn đã trả lời đúng 100% tất cả các câu hỏi trong lượt làm bài này."
+                          : filterQuestionType === "correct"
+                          ? "Chưa có câu hỏi nào trả lời đúng trong lượt làm bài này."
                           : "Không có câu hỏi nào phù hợp với bộ lọc hiện tại."}
                       </p>
-                      {onlyShowWrong && (
-                        <button
-                          type="button"
-                          onClick={() => setOnlyShowWrong(false)}
-                          className="mt-3.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-bold transition cursor-pointer"
-                        >
-                          Hiển thị lại toàn bộ {attemptDetail.answers.length} câu hỏi
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setFilterQuestionType("all")}
+                        className="mt-3.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-bold transition cursor-pointer"
+                      >
+                        Hiển thị lại toàn bộ {attemptDetail.answers.length} câu hỏi
+                      </button>
                     </div>
                   );
                 }

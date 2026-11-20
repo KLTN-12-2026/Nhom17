@@ -68,7 +68,7 @@ export default function PracticeSessionView({
   } | null>(null);
 
   // Bộ lọc sau khi nộp bài
-  const [filterWrongOnly, setFilterWrongOnly] = useState<boolean>(false);
+  const [filterQuestionType, setFilterQuestionType] = useState<"all" | "correct" | "wrong">("all");
 
   // Tải dữ liệu phiên tự luyện (ưu tiên từ sessionStorage, fallback sang API)
   useEffect(() => {
@@ -239,9 +239,9 @@ export default function PracticeSessionView({
     }
   }, [attemptId, elapsedSeconds, questions, selectedAnswers]);
 
-  // Danh sách câu hỏi hiển thị (hỗ trợ lọc câu sai sau khi nộp)
+  // Danh sách câu hỏi hiển thị (hỗ trợ lọc câu đúng / câu sai sau khi nộp)
   const displayedQuestionIndices = useMemo(() => {
-    if (!isSubmitted || !filterWrongOnly) {
+    if (!isSubmitted || filterQuestionType === "all") {
       return questions.map((_, i) => i);
     }
 
@@ -250,12 +250,42 @@ export default function PracticeSessionView({
         const selectedId = selectedAnswers.get(q._id);
         const correctOpt = q.options.find((o) => o.is_correct);
         const isCorrect = selectedId && correctOpt && selectedId === correctOpt._id;
-        return isCorrect ? -1 : i;
+        if (filterQuestionType === "correct") {
+          return isCorrect ? i : -1;
+        }
+        if (filterQuestionType === "wrong") {
+          return isCorrect ? -1 : i;
+        }
+        return i;
       })
       .filter((i) => i !== -1);
-  }, [isSubmitted, filterWrongOnly, questions, selectedAnswers]);
+  }, [isSubmitted, filterQuestionType, questions, selectedAnswers]);
 
-  const currentQuestion = questions[currentIndex];
+  const handleSelectFilter = (type: "all" | "correct" | "wrong") => {
+    setFilterQuestionType(type);
+    const nextIndices = questions
+      .map((q, i) => {
+        const selectedId = selectedAnswers.get(q._id);
+        const correctOpt = q.options.find((o) => o.is_correct);
+        const isCorrect = selectedId && correctOpt && selectedId === correctOpt._id;
+        if (type === "correct") return isCorrect ? i : -1;
+        if (type === "wrong") return isCorrect ? -1 : i;
+        return i;
+      })
+      .filter((i) => i !== -1);
+    if (nextIndices.length > 0 && !nextIndices.includes(currentIndex)) {
+      setCurrentIndex(nextIndices[0]);
+    }
+  };
+
+  const effectiveIndex =
+    isSubmitted &&
+    displayedQuestionIndices.length > 0 &&
+    !displayedQuestionIndices.includes(currentIndex)
+      ? displayedQuestionIndices[0]
+      : currentIndex;
+
+  const currentQuestion = questions[effectiveIndex];
   const totalQuestions = questions.length;
   const answeredCount = selectedAnswers.size;
 
@@ -406,31 +436,61 @@ export default function PracticeSessionView({
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                disabled={resultSummary.total_wrong === 0}
-                onClick={() => setFilterWrongOnly(!filterWrongOnly)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition ${
-                  resultSummary.total_wrong === 0
-                    ? "bg-white/10 text-white/50 cursor-not-allowed border border-white/15"
-                    : filterWrongOnly
-                    ? "bg-amber-400 text-slate-900 shadow-md cursor-pointer hover:bg-amber-300"
-                    : "bg-white/20 hover:bg-white/30 text-white cursor-pointer"
-                }`}
-                title={
-                  resultSummary.total_wrong === 0
-                    ? "Bạn đã làm đúng 100%, không có câu sai nào"
-                    : filterWrongOnly
-                    ? "Bấm để quay lại hiển thị toàn bộ câu hỏi"
-                    : `Xem ${resultSummary.total_wrong} câu làm sai`
-                }
-              >
-                {resultSummary.total_wrong === 0
-                  ? "✓ Đúng 100% (0 câu sai)"
-                  : filterWrongOnly
-                  ? "✕ Hiện tất cả câu hỏi"
-                  : `Lọc ${resultSummary.total_wrong} câu sai`}
-              </button>
+              <div className="flex items-center gap-1 bg-white/10 p-1 rounded-2xl border border-white/15">
+                <button
+                  type="button"
+                  onClick={() => handleSelectFilter("all")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    filterQuestionType === "all"
+                      ? "bg-white text-emerald-900 shadow-sm"
+                      : "text-white/80 hover:text-white"
+                  }`}
+                >
+                  Tất cả ({resultSummary.total_questions})
+                </button>
+
+                <button
+                  type="button"
+                  disabled={resultSummary.total_correct === 0}
+                  onClick={() => handleSelectFilter("correct")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                    resultSummary.total_correct === 0
+                      ? "opacity-40 cursor-not-allowed text-white/50"
+                      : filterQuestionType === "correct"
+                      ? "bg-emerald-400 text-slate-900 shadow-sm cursor-pointer"
+                      : "text-white/90 hover:text-white cursor-pointer"
+                  }`}
+                  title={
+                    resultSummary.total_correct === 0
+                      ? "Không có câu hỏi nào làm đúng"
+                      : `Lọc xem ${resultSummary.total_correct} câu làm đúng`
+                  }
+                >
+                  <span>✓ Đúng</span>
+                  <span>({resultSummary.total_correct})</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={resultSummary.total_wrong === 0}
+                  onClick={() => handleSelectFilter("wrong")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                    resultSummary.total_wrong === 0
+                      ? "opacity-40 cursor-not-allowed text-white/50"
+                      : filterQuestionType === "wrong"
+                      ? "bg-rose-400 text-slate-900 shadow-sm cursor-pointer"
+                      : "text-white/90 hover:text-white cursor-pointer"
+                  }`}
+                  title={
+                    resultSummary.total_wrong === 0
+                      ? "Bài thi đạt điểm tuyệt đối 100%, không có câu sai nào"
+                      : `Lọc xem ${resultSummary.total_wrong} câu làm sai`
+                  }
+                >
+                  <span>✗ Sai</span>
+                  <span>({resultSummary.total_wrong})</span>
+                </button>
+              </div>
 
               <button
                 type="button"
@@ -461,7 +521,7 @@ export default function PracticeSessionView({
             <div className="flex items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-extrabold text-xs">
-                  Câu {currentIndex + 1}
+                  Câu {effectiveIndex + 1}
                 </span>
 
                 {/* Badge độ khó */}
@@ -653,12 +713,12 @@ export default function PracticeSessionView({
             {/* Grid các câu hỏi */}
             <div className="grid grid-cols-5 gap-2 mb-5">
               {questions.map((q, idx) => {
-                if (isSubmitted && filterWrongOnly && !displayedQuestionIndices.includes(idx)) {
+                if (isSubmitted && filterQuestionType !== "all" && !displayedQuestionIndices.includes(idx)) {
                   return null;
                 }
                 const isSelected = selectedAnswers.has(q._id);
                 const isChecked = checkedQuestionIds.has(q._id);
-                const isCurrent = idx === currentIndex;
+                const isCurrent = idx === effectiveIndex;
                 const correctOpt = q.options.find((o) => o.is_correct);
                 const isCorrect =
                   isSelected && correctOpt && selectedAnswers.get(q._id) === correctOpt._id;
