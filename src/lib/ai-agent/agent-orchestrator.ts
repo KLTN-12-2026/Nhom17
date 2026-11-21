@@ -229,12 +229,28 @@ export async function runAgentConversation(
   } catch (apiError) {
     console.error("Lỗi Gemini API trong Agent Orchestrator:", apiError);
 
-    // Fallback thông minh: Nếu Gemini lỗi/hết quota, nhưng học sinh hỏi về kết quả cá nhân
-    if (agentRole === "student" && (message.includes("kết quả") || message.includes("điểm") || message.includes("học tập"))) {
+    const isApiKeyMissing =
+      apiError instanceof Error && apiError.message.includes("GEMINI_API_KEY");
+
+    if (isApiKeyMissing) {
+      responseText =
+        `⚠️ **Hệ thống chưa được cấu hình Google Gemini API Key:**\n\n` +
+        `- Bạn cần điền API Key vào biến môi trường \`GEMINI_API_KEY\` trong file \`.env.local\`.\n` +
+        `- Lấy khóa API miễn phí tại: [Google AI Studio](https://aistudio.google.com/)\n` +
+        `- Sau khi lưu file \`.env.local\`, hãy tắt và chạy lại server (\`npm run dev\`) để Next.js nạp key mới.`;
+    } else if (
+      agentRole === "student" &&
+      (message.includes("kết quả") ||
+        message.includes("điểm") ||
+        message.includes("học tập"))
+    ) {
       try {
-        const directStats = await studentTools.analyzeMyLearningResults({ userId });
+        const directStats = await studentTools.analyzeMyLearningResults({
+          userId,
+        });
         if (directStats.status === "success") {
-          responseText = `### 📊 TỔNG HỢP KẾT QUẢ HỌC TẬP CỦA BẠN (Hệ thống dự phòng offline):\n\n` +
+          responseText =
+            `### 📊 TỔNG HỢP KẾT QUẢ HỌC TẬP CỦA BẠN (Hệ thống dự phòng offline):\n\n` +
             `- **Số lượt đã làm:** ${directStats.tong_luot_lam_bai} bài\n` +
             `- **Điểm trung bình:** ${directStats.diem_trung_binh} / 10\n` +
             `- **Tỷ lệ chính xác:** ${directStats.ty_le_chinh_xac_chung}\n` +
@@ -242,13 +258,16 @@ export async function runAgentConversation(
             `- **Chuyên đề cần củng cố:** ${directStats.chuyen_de_yeu_can_cai_thien?.join(", ") || "Không có chuyên đề báo động"}\n\n` +
             `*(Lưu ý: Phản hồi được tạo tự động từ công cụ phân tích cục bộ do kết nối AI trực tiếp đang tạm thời gián đoạn).*`;
         } else {
-          responseText = directStats.message || "Bạn chưa có dữ liệu bài làm để phân tích.";
+          responseText =
+            directStats.message || "Bạn chưa có dữ liệu bài làm để phân tích.";
         }
       } catch {
-        responseText = "Hiện tại hệ thống AI đang trong thời gian bảo trì hạn mức. Bạn vui lòng thử lại sau ít phút!";
+        responseText =
+          "Hiện tại hệ thống AI đang trong thời gian bảo trì hạn mức. Bạn vui lòng thử lại sau ít phút!";
       }
     } else {
-      responseText = "Rất tiếc, đã có lỗi kết nối đến máy chủ AI (quá tải hoặc hết hạn mức kết nối). Bạn vui lòng thử lại sau vài giây!";
+      responseText =
+        "Rất tiếc, đã có lỗi kết nối đến máy chủ AI (quá tải hoặc hết hạn mức kết nối). Bạn vui lòng thử lại sau vài giây!";
     }
   }
 

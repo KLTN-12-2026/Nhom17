@@ -200,9 +200,12 @@ export const teacherFunctionDeclarations: FunctionDeclaration[] = [
  * Khởi tạo Gemini Model được cấu hình riêng theo vai trò
  */
 export function getAgentGenerativeModel(role: "student" | "teacher") {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const rawKey = process.env.GEMINI_API_KEY || "";
+  const apiKey = rawKey.replace(/^["']|["']$/g, "").trim();
   if (!apiKey) {
-    throw new Error("Chưa cấu hình GEMINI_API_KEY trong biến môi trường.");
+    throw new Error(
+      "Chưa cấu hình GEMINI_API_KEY trong file .env.local. Vui lòng lấy API Key miễn phí tại Google AI Studio (https://aistudio.google.com) và gán vào GEMINI_API_KEY=... trong .env.local, sau đó restart lại server Next.js."
+    );
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
