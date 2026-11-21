@@ -70,7 +70,7 @@ export async function analyzeExamResults(
     exam_title: exam.title,
     pass_score: exam.pass_score || 5.0,
     max_score: exam.max_score || 10.0,
-    attempts: attempts as any,
+    attempts: attempts as unknown as Parameters<typeof analyzeClassExamAttempts>[0]["attempts"],
   });
 
   return {
@@ -170,7 +170,7 @@ export async function getMostIncorrectQuestions(
     exam_title: exam.title,
     pass_score: exam.pass_score || 5.0,
     max_score: exam.max_score || 10.0,
-    attempts: attempts as any,
+    attempts: attempts as unknown as Parameters<typeof analyzeClassExamAttempts>[0]["attempts"],
   });
 
   return {

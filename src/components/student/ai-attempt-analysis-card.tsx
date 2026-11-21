@@ -330,6 +330,24 @@ export default function AiAttemptAnalysisCard({
               </ul>
             </div>
           )}
+
+          {/* Nút kết nối trực tiếp với Student AI Agent */}
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                router.push(
+                  `/student/ai-analysis?attemptId=${attemptId}&q=${encodeURIComponent(
+                    "Hãy phân tích sâu các câu tôi đã làm sai trong bài này và hướng dẫn cách khắc phục từng dạng bài."
+                  )}`
+                );
+              }}
+              className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-md shadow-indigo-600/20 cursor-pointer"
+            >
+              <span>💬 Trao đổi sâu hơn với Trợ lý AI về bài làm này</span>
+              <span>➔</span>
+            </button>
+          </div>
         </div>
       )}
     </div>
