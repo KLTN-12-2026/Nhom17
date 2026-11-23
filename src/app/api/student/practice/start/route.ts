@@ -38,22 +38,36 @@ export async function POST(request: Request) {
       );
     }
 
-    // Xây dựng danh sách topic_id cần lọc (nếu là chuyên đề cha thì lấy thêm các dạng con)
-    let targetTopicIds: mongoose.Types.ObjectId[] = [
-      new mongoose.Types.ObjectId(String(topic._id)),
-    ];
-
-    if (Number(topic.level) === 1 || !topic.parent_id) {
-      const childTopics = await Topic.find({ parent_id: topic._id })
-        .select("_id")
-        .lean();
-      if (childTopics.length > 0) {
-        targetTopicIds = [
-          ...targetTopicIds,
-          ...childTopics.map((c) => new mongoose.Types.ObjectId(String(c._id))),
-        ];
+    // Xây dựng danh sách topic_id cần lọc (bao gồm đệ quy toàn bộ nhánh chuyên đề con cháu)
+    const allSubjectTopics = await Topic.find({ subject_id: topic.subject_id })
+      .select("_id parent_id")
+      .lean();
+    const childrenMap = new Map<string, string[]>();
+    for (const t of allSubjectTopics) {
+      if (t.parent_id) {
+        const pId = String(t.parent_id);
+        const list = childrenMap.get(pId) || [];
+        list.push(String(t._id));
+        childrenMap.set(pId, list);
       }
     }
+
+    const branchTopicIds = new Set<string>([String(topic._id)]);
+    const queue: string[] = [String(topic._id)];
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      const kids = childrenMap.get(curr) || [];
+      for (const kid of kids) {
+        if (!branchTopicIds.has(kid)) {
+          branchTopicIds.add(kid);
+          queue.push(kid);
+        }
+      }
+    }
+
+    const targetTopicIds: mongoose.Types.ObjectId[] = Array.from(
+      branchTopicIds
+    ).map((id) => new mongoose.Types.ObjectId(id));
 
     // Xây dựng query lọc
     const matchQuery: Record<string, unknown> = {

@@ -231,6 +231,14 @@ const ExamAttemptSchema = new Schema<IExamAttempt>(
 // Index phục vụ tra cứu lịch sử thi và thống kê nhanh
 ExamAttemptSchema.index({ user_id: 1, exam_id: 1, createdAt: -1 });
 ExamAttemptSchema.index({ room_id: 1, status: 1 });
+// Đảm bảo mỗi học viên chỉ có tối đa 1 phiên thi trong 1 phòng thi chính thức
+ExamAttemptSchema.index(
+  { room_id: 1, user_id: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { room_id: { $type: "objectId" } },
+  }
+);
 
 export const ExamAttempt =
   models.ExamAttempt ||

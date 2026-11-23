@@ -22,6 +22,8 @@ interface IPopulatedTopic {
 interface IPopulatedExam {
   _id: mongoose.Types.ObjectId;
   title: string;
+  max_score?: number;
+  subject_id?: IPopulatedSubject | null;
 }
 
 interface IAttemptDoc {
@@ -68,10 +70,10 @@ export default async function StudentDashboardPage() {
 
   const userObjId = new mongoose.Types.ObjectId(user.id);
 
-  // 1. Lấy toàn bộ các bài thi/bài luyện đã nộp của học viên này
+  // 1. Lấy toàn bộ các bài thi/bài luyện đã nộp (bao gồm cả tự động thu khi hết giờ)
   const userAttempts = (await ExamAttempt.find({
     user_id: userObjId,
-    status: "submitted",
+    status: { $in: ["submitted", "timed_out"] },
   })
     .sort({ createdAt: -1 })
     .populate({
@@ -84,11 +86,21 @@ export default async function StudentDashboardPage() {
     })
     .populate({
       path: "exam_id",
-      select: "title",
+      select: "title max_score subject_id",
+      populate: {
+        path: "subject_id",
+        select: "subject_name",
+      },
     })
     .lean()) as unknown as IAttemptDoc[];
 
-  // 2. Tính toán 4 chỉ số Metric Cards
+  // 2. Tính toán 4 chỉ số Metric Cards (quy chuẩn về thang điểm 10 khi tổng hợp)
+  const getNormalizedScore10 = (a: IAttemptDoc) => {
+    const maxS = a.exam_id?.max_score || 10;
+    const rawS = a.score || 0;
+    return maxS > 0 ? (rawS / maxS) * 10 : rawS;
+  };
+
   const totalSubmitted = userAttempts.length;
   const practiceCount = userAttempts.filter(
     (a) => a.attempt_type === "practice" || (!a.exam_id && a.topic_id)
@@ -97,13 +109,18 @@ export default async function StudentDashboardPage() {
     (a) => a.attempt_type === "official" || (a.exam_id && !a.topic_id)
   ).length;
 
-  const passedCount = userAttempts.filter((a) => (a.score || 0) >= 5).length;
+  const passedCount = userAttempts.filter(
+    (a) => getNormalizedScore10(a) >= 5
+  ).length;
   const passRate =
     totalSubmitted > 0
       ? Math.round((passedCount / totalSubmitted) * 1000) / 10
       : 0;
 
-  const totalScoreSum = userAttempts.reduce((sum, a) => sum + (a.score || 0), 0);
+  const totalScoreSum = userAttempts.reduce(
+    (sum, a) => sum + getNormalizedScore10(a),
+    0
+  );
   const avgScore =
     totalSubmitted > 0 ? Math.round((totalScoreSum / totalSubmitted) * 10) / 10 : 0;
 
@@ -617,7 +634,9 @@ export default async function StudentDashboardPage() {
                     ? `Ôn tập: ${test.topic_id.topic_name}`
                     : test.exam_id?.title || "Bài tự luyện kiến thức");
                 const subject =
-                  test.topic_id?.subject_id?.subject_name || "Môn học chung";
+                  test.topic_id?.subject_id?.subject_name ||
+                  test.exam_id?.subject_id?.subject_name ||
+                  "Môn học chung";
 
                 const dateStr = test.submit_time
                   ? new Date(test.submit_time).toLocaleDateString("vi-VN", {
@@ -636,13 +655,15 @@ export default async function StudentDashboardPage() {
                 let badge = "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300";
                 let status = "Cần Cải Thiện";
                 const sc = test.score || 0;
-                if (sc >= 8) {
+                const maxSc = test.exam_id?.max_score || 10;
+                const normSc = maxSc > 0 ? (sc / maxSc) * 10 : sc;
+                if (normSc >= 8) {
                   badge = "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300";
                   status = "Đạt Giỏi";
-                } else if (sc >= 6.5) {
+                } else if (normSc >= 6.5) {
                   badge = "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300";
                   status = "Khá Giỏi";
-                } else if (sc >= 5) {
+                } else if (normSc >= 5) {
                   badge = "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300";
                   status = "Đạt Chuẩn";
                 }
@@ -674,7 +695,7 @@ export default async function StudentDashboardPage() {
                           <span className="text-base font-black text-slate-900 dark:text-white">
                             {sc}
                           </span>
-                          <span className="text-xs font-semibold text-slate-400">/ 10đ</span>
+                          <span className="text-xs font-semibold text-slate-400">/ {maxSc}đ</span>
                         </div>
                         <div className="text-[10px] text-slate-500 font-medium">
                           Đúng {correctQ}/{totalQ > 0 ? totalQ : 1} câu
