@@ -151,12 +151,10 @@ export async function POST(request: Request) {
         _id: String(q._id),
         content: q.content,
         difficulty_level: q.difficulty_level,
-        explanation: q.explanation || "",
-        options: (q.options || []).map((opt: { _id: unknown; option_label: string; content: string; is_correct: boolean }) => ({
+        options: (q.options || []).map((opt: { _id: unknown; option_label: string; content: string }) => ({
           _id: String(opt._id),
           option_label: opt.option_label,
           content: opt.content,
-          is_correct: Boolean(opt.is_correct),
         })),
       })),
     });

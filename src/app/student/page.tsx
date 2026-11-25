@@ -715,7 +715,7 @@ export default async function StudentDashboardPage() {
                         {status}
                       </span>
                       <Link
-                        href={`/student/practice/history?review=${test._id}`}
+                        href={`/student/practice/history/${test._id}`}
                         className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition pl-1 shrink-0"
                         title="Xem lại chi tiết bài làm & lời giải"
                       >

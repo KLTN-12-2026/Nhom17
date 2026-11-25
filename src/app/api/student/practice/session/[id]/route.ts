@@ -111,7 +111,9 @@ export async function GET(
       qMap.set(String(q._id), q);
     }
 
-    // Giữ nguyên thứ tự câu hỏi như trong attempt.answers
+    const isAttemptFinished = attempt.status !== "in_progress";
+
+    // Giữ nguyên thứ tự câu hỏi như trong attempt.answers; chỉ trả đáp án đúng và giải thích sau khi đã nộp bài
     const orderedQuestions = answersList
       .map((ans) => {
         const q = qMap.get(String(ans.question_id));
@@ -121,7 +123,7 @@ export async function GET(
           _id: String(q._id),
           content: q.content,
           difficulty_level: q.difficulty_level,
-          explanation: q.explanation || "",
+          ...(isAttemptFinished ? { explanation: q.explanation || "" } : {}),
           selected_option_id: ans.selected_option_id
             ? String(ans.selected_option_id)
             : null,
@@ -129,7 +131,9 @@ export async function GET(
             _id: String(opt._id),
             option_label: opt.option_label,
             content: opt.content,
-            is_correct: Boolean(opt.is_correct),
+            ...(isAttemptFinished
+              ? { is_correct: Boolean(opt.is_correct) }
+              : {}),
           })),
         };
       })

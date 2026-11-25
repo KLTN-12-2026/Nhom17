@@ -1,4 +1,4 @@
-  "use client";
+"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -614,13 +614,21 @@ export default function PracticeHistoryView() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <Link
+                        href={`/student/practice/history/${item._id}`}
+                        className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-bold text-xs shadow-xs transition"
+                      >
+                        Xem chi tiết →
+                      </Link>
+
                       <button
                         type="button"
                         onClick={() => handleOpenDetail(item._id)}
-                        className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-bold text-xs shadow-xs transition cursor-pointer"
+                        className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer"
+                        title="Xem nhanh bài làm trong cửa sổ pop-up"
                       >
-                        Xem bài làm →
+                        Xem nhanh
                       </button>
 
                       {item.topic_id && (
@@ -677,6 +685,12 @@ export default function PracticeHistoryView() {
               </div>
 
               <div className="flex items-center gap-2">
+                <Link
+                  href={`/student/practice/history/${selectedAttemptId}`}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition shrink-0"
+                >
+                  Mở toàn trang ↗
+                </Link>
                 <button
                   onClick={() => setSelectedAttemptId(null)}
                   className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 flex items-center justify-center cursor-pointer shrink-0"
