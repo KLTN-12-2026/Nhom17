@@ -109,6 +109,20 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
   const [selectedSource, setSelectedSource] = useState<string>("all");
 
+  // Phân trang câu hỏi
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  // Reset trang về 1 khi đổi bộ lọc hoặc chuyên đề (theo khuyến nghị React, điều chỉnh state trong render thay vì useEffect)
+  const [prevFilterKey, setPrevFilterKey] = useState<string>(
+    `${selectedTopic}_${selectedDifficulty}_${selectedSource}_${searchQuery}`
+  );
+  const currentFilterKey = `${selectedTopic}_${selectedDifficulty}_${selectedSource}_${searchQuery}`;
+  if (prevFilterKey !== currentFilterKey) {
+    setPrevFilterKey(currentFilterKey);
+    setCurrentPage(1);
+  }
+
   // Expanded explanations
   const [expandedExplanations, setExpandedExplanations] = useState<Record<string, boolean>>({});
 
@@ -1147,20 +1161,24 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
               </div>
             </div>
           ) : (
-            <div className="space-y-3.5">
-              {questions.map((q, idx) => {
-                const isExpanded = !!expandedExplanations[q._id];
-                return (
-                  <div
-                    key={q._id}
-                    className="border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 p-4 sm:p-5 hover:border-slate-300 dark:hover:border-slate-700 transition"
-                  >
-                    {/* Header */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          Câu {idx + 1}
-                        </span>
+            <div className="space-y-4">
+              <div className="space-y-3.5">
+              {questions
+                .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                .map((q, localIdx) => {
+                  const globalIdx = (currentPage - 1) * pageSize + localIdx + 1;
+                  const isExpanded = !!expandedExplanations[q._id];
+                  return (
+                    <div
+                      key={q._id}
+                      className="border border-slate-200/80 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 p-4 sm:p-5 hover:border-slate-300 dark:hover:border-slate-700 transition"
+                    >
+                      {/* Header */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            Câu {globalIdx}
+                          </span>
 
                         {q.difficulty_level === "easy" && (
                           <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
@@ -1278,6 +1296,113 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
                   </div>
                 );
               })}
+            </div>
+
+            {/* Pagination Controls */}
+            {questions.length > 0 && (() => {
+              const totalPages = Math.ceil(questions.length / pageSize) || 1;
+              return (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                    <span>
+                      Hiển thị{" "}
+                      <strong className="text-slate-700 dark:text-slate-200">
+                        {(currentPage - 1) * pageSize + 1}
+                      </strong>{" "}
+                      -{" "}
+                      <strong className="text-slate-700 dark:text-slate-200">
+                        {Math.min(currentPage * pageSize, questions.length)}
+                      </strong>{" "}
+                      trên tổng số{" "}
+                      <strong className="text-slate-700 dark:text-slate-200">
+                        {questions.length}
+                      </strong>{" "}
+                      câu
+                    </span>
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <span>Số câu/trang:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                      >
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={currentPage <= 1}
+                        onClick={() => {
+                          setCurrentPage((p) => Math.max(1, p - 1));
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                      >
+                        ← Trang trước
+                      </button>
+
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 2 && page <= currentPage + 2)
+                        ) {
+                          return (
+                            <button
+                              key={page}
+                              type="button"
+                              onClick={() => {
+                                setCurrentPage(page);
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className={`min-w-8 h-7 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                                currentPage === page
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          );
+                        }
+                        if (
+                          page === currentPage - 3 ||
+                          page === currentPage + 3
+                        ) {
+                          return (
+                            <span key={page} className="px-1 text-slate-400 text-xs">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      })}
+
+                      <button
+                        type="button"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => {
+                          setCurrentPage((p) => Math.min(totalPages, p + 1));
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                      >
+                        Trang sau →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             </div>
           )}
         </div>

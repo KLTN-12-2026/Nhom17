@@ -14,6 +14,7 @@ import {
 
 const submitExamSchema = z.object({
   is_auto_submit: z.boolean().optional().default(false),
+  status: z.enum(["submitted", "revoked", "timed_out"]).optional(),
   answers: z
     .array(
       z.object({
@@ -229,7 +230,12 @@ export async function POST(
     attempt.total_wrong = graded.total_wrong;
     attempt.submit_time = effectiveSubmitTime;
     attempt.duration_seconds = durationSeconds;
-    attempt.status = isTimeoutSubmit ? "timed_out" : "submitted";
+    attempt.status =
+      parsed.status === "revoked"
+        ? "revoked"
+        : isTimeoutSubmit
+        ? "timed_out"
+        : "submitted";
 
     await attempt.save();
 

@@ -8,9 +8,13 @@ import {
   finalizeRoomAndPendingAttempts,
   syncCandidatesConnectionStatus,
 } from "@/lib/exam-grading";
+import { getRecentLiveViolations, dispatchTeacherAction } from "@/lib/proctor-live-bus";
 
 const patchRoomSchema = z.object({
-  action: z.enum(["start", "finish"]),
+  action: z.enum(["start", "finish", "warn_candidate", "revoke_candidate"]),
+  candidate_id: z.string().optional(),
+  attempt_id: z.string().optional(),
+  message: z.string().optional(),
 });
 
 /**
@@ -77,7 +81,7 @@ export async function GET(
 
     const attempts = await ExamAttempt.find({ room_id: roomDoc._id })
       .select(
-        "user_id status score total_correct total_wrong start_time submit_time duration_seconds answers"
+        "user_id status score total_correct total_wrong start_time submit_time duration_seconds answers violations"
       )
       .lean();
 
@@ -94,6 +98,8 @@ export async function GET(
         start_time: Date;
         submit_time: Date | null;
         duration_seconds: number;
+        violations_count: number;
+        violations: unknown[];
       }
     > = {};
 
@@ -112,6 +118,8 @@ export async function GET(
         start_time: att.start_time,
         submit_time: att.submit_time || null,
         duration_seconds: att.duration_seconds || 0,
+        violations_count: (att.violations || []).length,
+        violations: att.violations || [],
       };
     }
 
@@ -119,6 +127,7 @@ export async function GET(
       success: true,
       room: populatedRoom,
       attemptsByStudent,
+      live_violations: getRecentLiveViolations(30, id),
       server_now: new Date().toISOString(),
     });
   } catch (error) {
@@ -218,6 +227,77 @@ export async function PATCH(
       });
     }
 
+    if (action === "revoke_candidate") {
+      const candidateId = body.candidate_id;
+      const attemptId = body.attempt_id;
+      if (!candidateId && !attemptId) {
+        return NextResponse.json(
+          { success: false, message: "Thiếu ID thí sinh hoặc ID bài thi để đình chỉ." },
+          { status: 400 }
+        );
+      }
+
+      const query: Record<string, unknown> = { room_id: room._id };
+      if (attemptId && mongoose.Types.ObjectId.isValid(attemptId)) {
+        query._id = attemptId;
+      } else if (candidateId && mongoose.Types.ObjectId.isValid(candidateId)) {
+        query.user_id = candidateId;
+      }
+
+      const attempt = await ExamAttempt.findOne(query);
+      if (!attempt) {
+        return NextResponse.json(
+          { success: false, message: "Không tìm thấy bài thi của thí sinh này." },
+          { status: 404 }
+        );
+      }
+
+      attempt.status = "revoked";
+      attempt.submit_time = new Date();
+      await attempt.save();
+
+      const cIdx = room.candidates.findIndex(
+        (c: { user_id: mongoose.Types.ObjectId }) =>
+          String(c.user_id) === String(attempt.user_id)
+      );
+      if (cIdx >= 0) {
+        room.candidates[cIdx].connection_status = "submitted";
+        await room.save();
+      }
+
+      dispatchTeacherAction({
+        action_id: "act_" + Date.now(),
+        attempt_id: String(attempt._id),
+        candidate_id: String(attempt.user_id),
+        action_type: "revoke",
+        message: body.message || "Giám thị đã đình chỉ thi do phát hiện gian lận nghiêm trọng.",
+        timestamp: new Date().toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Đã đình chỉ bài thi của thí sinh thành công.",
+      });
+    }
+
+    if (action === "warn_candidate") {
+      const candidateId = body.candidate_id;
+      const attemptId = body.attempt_id;
+      dispatchTeacherAction({
+        action_id: "act_" + Date.now(),
+        attempt_id: attemptId || "",
+        candidate_id: candidateId || "",
+        action_type: "warn",
+        message: body.message || "Cảnh cáo: Thí sinh vui lòng tập trung vào màn hình làm bài thi!",
+        timestamp: new Date().toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Đã gửi cảnh cáo tới thí sinh.",
+      });
+    }
+
     // action === "finish"
     if (room.status === "finished") {
       return NextResponse.json({
@@ -304,28 +384,13 @@ export async function DELETE(
       );
     }
 
-    const submittedCount = await ExamAttempt.countDocuments({
-      room_id: room._id,
-      status: { $in: ["submitted", "timed_out"] },
-    });
-
-    if (submittedCount > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Phòng thi đã có học viên nộp bài, không thể xóa để bảo toàn dữ liệu điểm số.",
-        },
-        { status: 400 }
-      );
-    }
-
+    // Xóa toàn bộ lượt làm bài và dữ liệu giám sát của phòng thi này
     await ExamAttempt.deleteMany({ room_id: room._id });
     await ExamRoom.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,
-      message: "Đã xóa phòng thi thành công.",
+      message: "Đã xóa phòng thi và toàn bộ dữ liệu liên quan thành công.",
     });
   } catch (error) {
     console.error("Lỗi khi xóa phòng thi:", error);
