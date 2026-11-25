@@ -113,10 +113,15 @@ export default function QuestionBankManager({ currentUser }: QuestionBankManager
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  // Reset trang về 1 khi đổi bộ lọc hoặc chuyên đề
-  useEffect(() => {
+  // Reset trang về 1 khi đổi bộ lọc hoặc chuyên đề (theo khuyến nghị React, điều chỉnh state trong render thay vì useEffect)
+  const [prevFilterKey, setPrevFilterKey] = useState<string>(
+    `${selectedTopic}_${selectedDifficulty}_${selectedSource}_${searchQuery}`
+  );
+  const currentFilterKey = `${selectedTopic}_${selectedDifficulty}_${selectedSource}_${searchQuery}`;
+  if (prevFilterKey !== currentFilterKey) {
+    setPrevFilterKey(currentFilterKey);
     setCurrentPage(1);
-  }, [selectedTopic, selectedDifficulty, selectedSource, searchQuery]);
+  }
 
   // Expanded explanations
   const [expandedExplanations, setExpandedExplanations] = useState<Record<string, boolean>>({});

@@ -240,17 +240,15 @@ export function useWebcamProctor({ enabled = true, onViolation }: IWebcamProctor
     setFaceStatus("initializing");
   }, []);
 
-  // 1. Khởi động Camera người dùng khi enabled === true, tắt khi enabled === false
+  // 1. Khởi động Camera người dùng khi enabled === true, giải phóng khi tắt hoặc unmount
   useEffect(() => {
-    if (!enabled) {
-      stopCamera();
-      return;
-    }
+    if (!enabled) return;
 
     if (typeof navigator === "undefined" || !navigator.mediaDevices) return;
 
     let activeStream: MediaStream | null = null;
     let isCancelled = false;
+    const currentVideoEl = videoRef.current;
 
     async function startCamera() {
       try {
@@ -290,8 +288,11 @@ export function useWebcamProctor({ enabled = true, onViolation }: IWebcamProctor
       if (activeStream) {
         activeStream.getTracks().forEach((track) => track.stop());
       }
+      if (currentVideoEl) {
+        currentVideoEl.srcObject = null;
+      }
     };
-  }, [enabled, stopCamera]);
+  }, [enabled]);
 
   // 2. Khởi tạo MediaPipe Face Detection và chạy vòng lặp kiểm tra
   useEffect(() => {
