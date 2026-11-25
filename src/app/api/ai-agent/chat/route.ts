@@ -41,12 +41,12 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error: unknown) {
     console.error("AI Agent chat API error:", error);
-    const errMessage =
-      error instanceof Error
-        ? error.message
-        : "Đã có lỗi xảy ra khi xử lý yêu cầu AI";
     return NextResponse.json(
-      { success: false, message: errMessage },
+      {
+        success: false,
+        message:
+          "Hệ thống AI hiện đang tạm thời gián đoạn. Bạn vui lòng thử lại sau ít phút nhé!",
+      },
       { status: 500 }
     );
   }

@@ -229,7 +229,7 @@ export async function analyzeStudentAttempt(data: {
     try {
       const genAI = new GoogleGenerativeAI(geminiApiKey);
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.3,
@@ -590,7 +590,7 @@ export async function analyzeClassExamAttempts(data: {
     try {
       const genAI = new GoogleGenerativeAI(geminiApiKey);
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.3,

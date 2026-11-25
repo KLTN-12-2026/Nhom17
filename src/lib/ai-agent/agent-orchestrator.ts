@@ -229,16 +229,7 @@ export async function runAgentConversation(
   } catch (apiError) {
     console.error("Lỗi Gemini API trong Agent Orchestrator:", apiError);
 
-    const isApiKeyMissing =
-      apiError instanceof Error && apiError.message.includes("GEMINI_API_KEY");
-
-    if (isApiKeyMissing) {
-      responseText =
-        `⚠️ **Hệ thống chưa được cấu hình Google Gemini API Key:**\n\n` +
-        `- Bạn cần điền API Key vào biến môi trường \`GEMINI_API_KEY\` trong file \`.env.local\`.\n` +
-        `- Lấy khóa API miễn phí tại: [Google AI Studio](https://aistudio.google.com/)\n` +
-        `- Sau khi lưu file \`.env.local\`, hãy tắt và chạy lại server (\`npm run dev\`) để Next.js nạp key mới.`;
-    } else if (
+    if (
       agentRole === "student" &&
       (message.includes("kết quả") ||
         message.includes("điểm") ||
@@ -250,24 +241,24 @@ export async function runAgentConversation(
         });
         if (directStats.status === "success") {
           responseText =
-            `### 📊 TỔNG HỢP KẾT QUẢ HỌC TẬP CỦA BẠN (Hệ thống dự phòng offline):\n\n` +
+            `### 📊 TỔNG HỢP KẾT QUẢ HỌC TẬP CỦA BẠN:\n\n` +
             `- **Số lượt đã làm:** ${directStats.tong_luot_lam_bai} bài\n` +
             `- **Điểm trung bình:** ${directStats.diem_trung_binh} / 10\n` +
             `- **Tỷ lệ chính xác:** ${directStats.ty_le_chinh_xac_chung}\n` +
             `- **Chuyên đề nắm vững:** ${directStats.chuyen_de_manh?.join(", ") || "Đang tích lũy"}\n` +
             `- **Chuyên đề cần củng cố:** ${directStats.chuyen_de_yeu_can_cai_thien?.join(", ") || "Không có chuyên đề báo động"}\n\n` +
-            `*(Lưu ý: Phản hồi được tạo tự động từ công cụ phân tích cục bộ do kết nối AI trực tiếp đang tạm thời gián đoạn).*`;
+            `*(Hệ thống đã trích xuất dữ liệu bài thi trực tiếp từ cơ sở dữ liệu).*`;
         } else {
           responseText =
             directStats.message || "Bạn chưa có dữ liệu bài làm để phân tích.";
         }
       } catch {
         responseText =
-          "Hiện tại hệ thống AI đang trong thời gian bảo trì hạn mức. Bạn vui lòng thử lại sau ít phút!";
+          "Hệ thống AI hiện đang tạm thời gián đoạn kết nối. Bạn vui lòng thử lại sau ít phút nhé!";
       }
     } else {
       responseText =
-        "Rất tiếc, đã có lỗi kết nối đến máy chủ AI (quá tải hoặc hết hạn mức kết nối). Bạn vui lòng thử lại sau vài giây!";
+        "Hệ thống Trợ lý AI hiện đang tạm thời gián đoạn kết nối hoặc đang bảo trì. Bạn vui lòng thử lại sau ít phút nhé!";
     }
   }
 

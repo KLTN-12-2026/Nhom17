@@ -22,9 +22,22 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
     .populate({
       path: "answers.question_id",
       select: "content difficulty_level topic_id options",
-      populate: { path: "topic_id", select: "topic_name" },
+      populate: {
+        path: "topic_id",
+        select: "topic_name subject_id",
+        populate: { path: "subject_id", select: "subject_name" },
+      },
     })
-    .populate("topic_id", "topic_name")
+    .populate({
+      path: "topic_id",
+      select: "topic_name subject_id",
+      populate: { path: "subject_id", select: "subject_name" },
+    })
+    .populate({
+      path: "exam_id",
+      select: "title subject_id",
+      populate: { path: "subject_id", select: "subject_name" },
+    })
     .lean();
 
   if (!attempts || attempts.length === 0) {
@@ -41,7 +54,7 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
 
   const topicStatsMap = new Map<
     string,
-    { topic_name: string; total: number; correct: number; wrong: number }
+    { topic_name: string; subject_name: string; total: number; correct: number; wrong: number }
   >();
 
   for (const att of attempts) {
@@ -49,19 +62,39 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
     totalCorrect += att.total_correct || 0;
     totalWrong += att.total_wrong || 0;
 
+    // Suy luận tên môn học từ dữ liệu populate hoặc tiêu đề bài luyện
+    const attTopic = att.topic_id as { topic_name?: string; subject_id?: { subject_name?: string } } | null;
+    const attExam = att.exam_id as { title?: string; subject_id?: { subject_name?: string } } | null;
+    let fallbackSubject = attTopic?.subject_id?.subject_name || attExam?.subject_id?.subject_name || "";
+
+    if (!fallbackSubject && att.practice_title) {
+      if (/hóa|este|ancol|axit|lipit/i.test(att.practice_title)) fallbackSubject = "Hóa Học THPT";
+      else if (/toán|hàm số|tích phân|đạo hàm/i.test(att.practice_title)) fallbackSubject = "Toán Học THPT";
+      else if (/vật lý|dao động|sóng cơ|điện xoay chiều/i.test(att.practice_title) && !/tính chất vật lý/i.test(att.practice_title)) fallbackSubject = "Vật Lý THPT";
+    }
+
     for (const ans of att.answers || []) {
       totalQuestions += 1;
-      const q = ans.question_id as { topic_id?: { topic_name?: string; _id?: unknown } | unknown } | null;
+      const q = ans.question_id as {
+        topic_id?: { topic_name?: string; subject_id?: { subject_name?: string } } | unknown;
+      } | null;
       let topicName = "Kiến thức chung";
+      let subjectName = fallbackSubject || "Môn học chung";
 
-      if (q?.topic_id && typeof q.topic_id === "object" && "topic_name" in q.topic_id) {
-        topicName = (q.topic_id as { topic_name: string }).topic_name || topicName;
-      } else if (att.topic_id && typeof att.topic_id === "object" && "topic_name" in att.topic_id) {
-        topicName = (att.topic_id as { topic_name: string }).topic_name || topicName;
+      if (q?.topic_id && typeof q.topic_id === "object") {
+        const top = q.topic_id as { topic_name?: string; subject_id?: { subject_name?: string } };
+        topicName = top.topic_name || topicName;
+        if (top.subject_id?.subject_name) {
+          subjectName = top.subject_id.subject_name;
+        }
+      } else if (attTopic?.topic_name) {
+        topicName = attTopic.topic_name;
       }
 
-      const existing = topicStatsMap.get(topicName) || {
+      const mapKey = `[${subjectName}] ${topicName}`;
+      const existing = topicStatsMap.get(mapKey) || {
         topic_name: topicName,
+        subject_name: subjectName,
         total: 0,
         correct: 0,
         wrong: 0,
@@ -73,14 +106,15 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
       } else {
         existing.wrong += 1;
       }
-      topicStatsMap.set(topicName, existing);
+      topicStatsMap.set(mapKey, existing);
     }
   }
 
   const topicBreakdown = Array.from(topicStatsMap.values()).map((t) => {
     const accuracy = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
     return {
-      chuyen_de: t.topic_name,
+      mon_hoc: t.subject_name,
+      chuyen_de: `${t.topic_name} (Môn: ${t.subject_name})`,
       tong_cau: t.total,
       dung: t.correct,
       sai: t.wrong,
@@ -130,8 +164,17 @@ export async function getMyExamHistory(
   })
     .sort({ createdAt: -1 })
     .limit(limit)
-    .populate("topic_id", "topic_name")
-    .select("practice_title score total_correct total_wrong duration_seconds submit_time createdAt topic_id")
+    .populate({
+      path: "topic_id",
+      select: "topic_name subject_id",
+      populate: { path: "subject_id", select: "subject_name" },
+    })
+    .populate({
+      path: "exam_id",
+      select: "title subject_id",
+      populate: { path: "subject_id", select: "subject_name" },
+    })
+    .select("practice_title score total_correct total_wrong duration_seconds submit_time createdAt topic_id exam_id")
     .lean();
 
   if (!attempts || attempts.length === 0) {
@@ -142,11 +185,23 @@ export async function getMyExamHistory(
   }
 
   const history = attempts.map((a, idx) => {
-    const topic = a.topic_id as { topic_name?: string } | null;
+    const topic = a.topic_id as { topic_name?: string; subject_id?: { subject_name?: string } } | null;
+    const exam = a.exam_id as { title?: string; subject_id?: { subject_name?: string } } | null;
+    let subjectName = topic?.subject_id?.subject_name || exam?.subject_id?.subject_name || "";
+
+    if (!subjectName && a.practice_title) {
+      if (/hóa|este|ancol|axit|lipit/i.test(a.practice_title)) subjectName = "Hóa Học THPT";
+      else if (/toán|hàm số|tích phân|đạo hàm/i.test(a.practice_title)) subjectName = "Toán Học THPT";
+      else if (/vật lý|dao động|sóng cơ|điện xoay chiều/i.test(a.practice_title) && !/tính chất vật lý/i.test(a.practice_title)) subjectName = "Vật Lý THPT";
+    }
+
+    const titleStr = a.practice_title || (topic?.topic_name ? `Luyện tập: ${topic.topic_name}` : (exam?.title || "Bài luyện tập"));
+
     return {
       stt: idx + 1,
       ma_bai_lam: a._id.toString(),
-      tieu_de: a.practice_title || (topic?.topic_name ? `Luyện tập: ${topic.topic_name}` : "Bài luyện tập"),
+      mon_hoc: subjectName || "Môn học chung",
+      tieu_de: subjectName ? `[${subjectName}] ${titleStr}` : titleStr,
       diem_so: a.score,
       dung_sai: `${a.total_correct} đúng / ${a.total_wrong} sai`,
       thoi_gian_lam: `${Math.floor((a.duration_seconds || 0) / 60)} phút`,

@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
 interface Message {
   role: "user" | "model";
@@ -235,10 +237,43 @@ export default function AgentChatbox({
     return dict[toolName] || toolName;
   };
 
-  // Helper render văn bản markdown đơn giản (bold, lists, code, line breaks)
+  // Helper render công thức toán học với KaTeX an toàn
+  const renderKatex = (latex: string, isBlock: boolean) => {
+    try {
+      const clean = latex.trim();
+      return katex.renderToString(clean, {
+        displayMode: isBlock,
+        throwOnError: false,
+      });
+    } catch {
+      return latex;
+    }
+  };
+
+  // Helper render văn bản markdown kết hợp công thức toán học KaTeX
   const renderFormattedText = (content: string) => {
-    const lines = content.split("\n");
+    // Chuẩn hóa tách các khối $$...$$ để đứng riêng dòng
+    const normalized = content.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (_m, math) => {
+      return `\n$$${math.trim()}$$\n`;
+    });
+
+    const lines = normalized.split("\n");
     return lines.map((line, idx) => {
+      const trimmed = line.trim();
+
+      // Công thức toán học dạng khối $$...$$
+      if (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length >= 4) {
+        const mathContent = trimmed.slice(2, -2).trim();
+        const html = renderKatex(mathContent, true);
+        return (
+          <div
+            key={idx}
+            className="my-3 py-2.5 px-4 overflow-x-auto text-center bg-slate-50 dark:bg-slate-800/70 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 shadow-2xs"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        );
+      }
+
       // Tiêu đề ###
       if (line.startsWith("### ")) {
         return (
@@ -299,10 +334,10 @@ export default function AgentChatbox({
     });
   };
 
-  // Helper render các cú pháp inline như **bold** và `code`
+  // Helper render các cú pháp inline như **bold**, `code` và $inline math$
   const renderInlineMarkdown = (text: string) => {
-    // Tách phần **bold** và `code`
-    const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+    // Tách phần **bold**, `code`, và $inline math$
+    const parts = text.split(/(\*\*.*?\*\*|`.*?`|\$[^$\n]+?\$)/g);
     return parts.map((part, i) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
@@ -319,6 +354,17 @@ export default function AgentChatbox({
           >
             {part.slice(1, -1)}
           </code>
+        );
+      }
+      if (part.startsWith("$") && part.endsWith("$") && part.length >= 2) {
+        const mathContent = part.slice(1, -1).trim();
+        const html = renderKatex(mathContent, false);
+        return (
+          <span
+            key={i}
+            className="inline-block px-1 align-baseline"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
         );
       }
       return part;

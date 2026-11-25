@@ -223,8 +223,10 @@ export function getAgentGenerativeModel(role: "student" | "teacher") {
     },
   ];
 
+  const modelName = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
+
   return genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: modelName,
     systemInstruction,
     tools,
     generationConfig: {
