@@ -34,6 +34,8 @@ interface IAttemptAnswerDoc {
 
 interface IPracticeAttemptLeanDoc {
   _id: mongoose.Types.ObjectId;
+  attempt_type?: "practice" | "official";
+  room_id?: mongoose.Types.ObjectId | null;
   topic_id?: IPracticeAttemptTopic | null;
   practice_title?: string;
   status: string;
@@ -82,6 +84,17 @@ export async function GET(
       return NextResponse.json(
         { success: false, message: "Không tìm thấy phiên làm bài này" },
         { status: 404 }
+      );
+    }
+
+    if (attempt.attempt_type === "official" || attempt.room_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Không thể truy cập phiên thi phòng trực tuyến qua API tự luyện.",
+        },
+        { status: 403 }
       );
     }
 

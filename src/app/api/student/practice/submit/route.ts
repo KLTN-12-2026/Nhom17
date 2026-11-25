@@ -53,6 +53,31 @@ export async function POST(request: Request) {
       );
     }
 
+    if (attempt.attempt_type === "official" || attempt.room_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Không thể nộp bài thi phòng trực tuyến qua API tự luyện.",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (attempt.status !== "in_progress") {
+      return NextResponse.json({
+        success: true,
+        already_submitted: true,
+        message: "Bài tự luyện này đã được nộp trước đó.",
+        attempt_id: String(attempt._id),
+        score: attempt.score || 0,
+        total_correct: attempt.total_correct || 0,
+        total_wrong: attempt.total_wrong || 0,
+        total_questions: (attempt.answers || []).length || 1,
+        duration_seconds: attempt.duration_seconds || 0,
+      });
+    }
+
     // Trích xuất danh sách question_id cần chấm
     const questionIds = answers
       .map((a: { question_id: string }) => a.question_id)

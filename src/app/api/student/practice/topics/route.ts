@@ -111,7 +111,43 @@ export async function GET(request: Request) {
       }
     }
 
-    // Phân tách cây 2 cấp: Chuyên đề lớn (level 1) -> Dạng bài (level 2)
+    // Phân tách cây 2 cấp hiển thị: Chuyên đề lớn (level 1) -> Dạng bài (level 2),
+    // đồng thời cộng dồn câu hỏi từ tất cả nhánh con cháu (level >= 3 nếu có)
+    const childrenMap = new Map<string, string[]>();
+    for (const t of topics) {
+      if (t.parent_id) {
+        const pId = String(t.parent_id);
+        const list = childrenMap.get(pId) || [];
+        list.push(String(t._id));
+        childrenMap.set(pId, list);
+      }
+    }
+
+    const getBranchStats = (rootId: string) => {
+      const visited = new Set<string>([rootId]);
+      const queue = [rootId];
+      const stats = { total: 0, easy: 0, medium: 0, hard: 0 };
+
+      while (queue.length > 0) {
+        const curr = queue.shift()!;
+        const c = countMap.get(curr);
+        if (c) {
+          stats.total += c.total;
+          stats.easy += c.easy;
+          stats.medium += c.medium;
+          stats.hard += c.hard;
+        }
+        const kids = childrenMap.get(curr) || [];
+        for (const k of kids) {
+          if (!visited.has(k)) {
+            visited.add(k);
+            queue.push(k);
+          }
+        }
+      }
+      return stats;
+    };
+
     const level1List = topics.filter((t) => Number(t.level) === 1 || !t.parent_id);
     const level2List = topics.filter((t) => Number(t.level) === 2 && t.parent_id);
 
@@ -123,7 +159,7 @@ export async function GET(request: Request) {
         .filter((sub) => String(sub.parent_id) === chapterIdStr)
         .map((sub) => {
           const subIdStr = String(sub._id);
-          const qStats = countMap.get(subIdStr) || { total: 0, easy: 0, medium: 0, hard: 0 };
+          const qStats = getBranchStats(subIdStr);
           const prog = progressMap.get(subIdStr) || { attemptsCount: 0, highestScore: 0, lastScore: 0 };
 
           subjectTotalQuestions += qStats.total;
