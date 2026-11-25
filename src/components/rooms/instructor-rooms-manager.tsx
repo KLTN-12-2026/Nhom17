@@ -68,6 +68,7 @@ export default function InstructorRoomsManager({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [roomToDelete, setRoomToDelete] = useState<RoomItem | null>(null);
 
   // Modal tạo phòng thi
   const [isModalOpen, setIsModalOpen] = useState(Boolean(initialExamId));
@@ -226,19 +227,11 @@ export default function InstructorRoomsManager({
     }
   };
 
-  const handleDeleteRoom = async (roomId: string) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn xóa phòng thi này cùng lịch sử thí sinh trong phòng?"
-      )
-    ) {
-      return;
-    }
-
-    setDeletingId(roomId);
+  const handleDeleteRoom = async (room: RoomItem) => {
+    setDeletingId(room._id);
     setErrorMsg("");
     try {
-      const res = await fetch(`/api/instructor/rooms/${roomId}`, {
+      const res = await fetch(`/api/instructor/rooms/${room._id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -246,6 +239,7 @@ export default function InstructorRoomsManager({
         setErrorMsg(data.message || "Không thể xóa phòng thi.");
         return;
       }
+      setRoomToDelete(null);
       await loadData();
     } catch {
       setErrorMsg("Lỗi kết nối khi xóa phòng thi.");
@@ -477,11 +471,11 @@ export default function InstructorRoomsManager({
                     </button>
                   </div>
 
-                  {room.status !== "in_progress" && room.submitted_count === 0 && (
+                  {room.status !== "in_progress" && (
                     <button
                       type="button"
                       disabled={deletingId === room._id}
-                      onClick={() => handleDeleteRoom(room._id)}
+                      onClick={() => setRoomToDelete(room)}
                       title="Xóa phòng thi"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer disabled:opacity-50"
                     >
@@ -629,6 +623,91 @@ export default function InstructorRoomsManager({
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận xóa phòng thi */}
+      {roomToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-6 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Xác nhận xóa phòng thi
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Thao tác này sẽ xóa phòng thi khỏi hệ thống
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-xs space-y-1.5 mb-4">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Mã phòng:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{roomToDelete.room_code}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tên đề thi:</span>
+                <span className="font-semibold text-slate-900 dark:text-white text-right max-w-[220px] truncate">
+                  {roomToDelete.exam_id?.title || "Đề thi"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Trạng thái:</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
+                  {roomToDelete.status === "finished" ? "Đã kết thúc" : "Phòng chờ"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Số bài đã nộp:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{roomToDelete.submitted_count} bài</span>
+              </div>
+            </div>
+
+            {roomToDelete.submitted_count > 0 ? (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 text-xs text-rose-700 dark:text-rose-300 leading-relaxed mb-5">
+                <div className="font-semibold flex items-center gap-1.5 mb-1">
+                  <span>⚠️ Cảnh báo dữ liệu:</span>
+                </div>
+                Phòng thi này đã có <strong>{roomToDelete.submitted_count} lượt nộp bài</strong> của thí sinh. Khi xóa, toàn bộ kết quả thi, bảng điểm và ảnh chụp bằng chứng giám sát AI của ca thi này sẽ bị xóa vĩnh viễn và không thể khôi phục.
+              </div>
+            ) : (
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-5 leading-relaxed">
+                Phòng thi chưa có thí sinh nào nộp bài. Bạn có chắc chắn muốn xóa phòng thi này không?
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={Boolean(deletingId)}
+                onClick={() => setRoomToDelete(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(deletingId)}
+                onClick={() => handleDeleteRoom(roomToDelete)}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {deletingId ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Đang xóa...</span>
+                  </>
+                ) : (
+                  <span>Xác nhận xóa</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

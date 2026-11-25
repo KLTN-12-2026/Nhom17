@@ -14,14 +14,14 @@ export default async function StudentPracticeHistoryPage() {
   return (
     <RoleDashboardShell
       user={user}
-      title="Lịch Sử Tự Luyện & Tiến Độ Học Tập"
-      subtitle="Theo dõi quá trình ôn tập trắc nghiệm theo chủ đề, xem lại bài làm và khắc phục lỗ hổng kiến thức"
+      title="Lịch Sử Làm Bài & Tiến Độ Học Tập"
+      subtitle="Theo dõi toàn bộ kết quả thi phòng trực tuyến và lịch sử tự luyện đề theo chủ đề"
       actions={
         <Link
           href="/student/practice"
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 transition cursor-pointer"
         >
-          <span>← Tiếp tục ôn tập</span>
+          <span>+ Luyện Dạng Bài Mới</span>
         </Link>
       }
     >

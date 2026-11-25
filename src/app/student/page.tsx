@@ -6,6 +6,10 @@ import Link from "next/link";
 import { connectDB } from "@/lib/db";
 import { ExamAttempt, Question, Subject, Topic } from "@/models";
 import mongoose from "mongoose";
+import KnowledgeGapCardAndModal, {
+  WeakTopicItem,
+  ImprovedTopicItem,
+} from "@/components/student/knowledge-gap-card-and-modal";
 
 interface IPopulatedSubject {
   _id: mongoose.Types.ObjectId;
@@ -157,7 +161,9 @@ export default async function StudentDashboardPage() {
 
   // 3. Phân tích lỗ hổng kiến thức & Đánh giá theo tiến độ học tập (Mastery Learning)
   interface ITopicProgressTracking {
+    _id: string;
     name: string;
+    subjectName: string;
     latestScore: number;
     highestScore: number;
     lowestScore: number;
@@ -175,7 +181,9 @@ export default async function StudentDashboardPage() {
       if (!existing) {
         // Vì userAttempts đã sort theo createdAt: -1 nên phần tử đầu tiên gặp chính là LẦN LÀM MỚI NHẤT
         topicProgressMap.set(tid, {
+          _id: tid,
           name: att.topic_id.topic_name,
+          subjectName: att.topic_id.subject_id?.subject_name || "Môn học chung",
           latestScore: score,
           highestScore: score,
           lowestScore: score,
@@ -190,16 +198,24 @@ export default async function StudentDashboardPage() {
   }
 
   // Chuyên đề THỰC SỰ cần cải thiện: Lần làm gần nhất < 6.5 VÀ chưa từng đạt >= 7.0
-  const weakTopics: Array<{ name: string; latestScore: number }> = [];
+  const weakTopics: WeakTopicItem[] = [];
   // Chuyên đề vừa khắc phục thành công: Từng bị < 6.5 nhưng lần làm gần nhất đã bứt phá >= 7.0
-  const improvedTopics: Array<{ name: string; lowestScore: number; latestScore: number }> = [];
+  const improvedTopics: ImprovedTopicItem[] = [];
 
   topicProgressMap.forEach((stat) => {
     if (stat.latestScore < 6.5 && stat.highestScore < 7.0) {
-      weakTopics.push({ name: stat.name, latestScore: stat.latestScore });
+      weakTopics.push({
+        _id: stat._id,
+        name: stat.name,
+        subjectName: stat.subjectName,
+        latestScore: stat.latestScore,
+        attemptsCount: stat.attemptsCount,
+      });
     } else if (stat.attemptsCount >= 2 && stat.lowestScore < 6.5 && stat.latestScore >= 7.0) {
       improvedTopics.push({
+        _id: stat._id,
         name: stat.name,
+        subjectName: stat.subjectName,
         lowestScore: stat.lowestScore,
         latestScore: stat.latestScore,
       });
@@ -412,45 +428,12 @@ export default async function StudentDashboardPage() {
           </div>
         </div>
 
-        {/* Card 4: Cảnh báo lỗ hổng AI */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Cảnh Báo Lỗ Hổng AI
-            </span>
-            <span
-              className={`p-2 rounded-xl ${
-                weakTopics.length > 0
-                  ? "bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400"
-                  : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </span>
-          </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white">
-            {weakTopics.length} <span className="text-base font-normal text-slate-400">chủ đề</span>
-          </div>
-          <div className="mt-2 text-xs font-semibold truncate">
-            {weakTopics.length > 0 ? (
-              <span className="text-amber-600 dark:text-amber-400">
-                Cần bổ trợ: {weakTopics.map((t) => t.name).slice(0, 2).join(", ")}
-              </span>
-            ) : improvedTopics.length > 0 ? (
-              <span className="text-emerald-600 dark:text-emerald-400">
-                Đã bứt phá khắc phục lỗ hổng ✓
-              </span>
-            ) : totalSubmitted > 0 ? (
-              <span className="text-emerald-600 dark:text-emerald-400">
-                Nắm vững kiến thức đã học ✓
-              </span>
-            ) : (
-              <span className="text-slate-400">Chưa có dữ liệu cảnh báo</span>
-            )}
-          </div>
-        </div>
+        {/* Card 4: Cảnh Báo Lỗ Hổng AI (Bấm để xem chi tiết & Luyện ngay) */}
+        <KnowledgeGapCardAndModal
+          weakTopics={weakTopics}
+          improvedTopics={improvedTopics}
+          totalSubmitted={totalSubmitted}
+        />
       </div>
 
       {/* Main Student Hub (2 cột: Vào phòng thi + Trợ lý AI) */}
@@ -509,7 +492,19 @@ export default async function StudentDashboardPage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-              {improvedTopics.length > 0 ? (
+              {improvedTopics.length > 0 && weakTopics.length > 0 ? (
+                <>
+                  🎉 &ldquo;Chúc mừng bạn đã bứt phá ở dạng bài:{" "}
+                  <strong className="text-slate-900 dark:text-white">
+                    {improvedTopics[0].name}
+                  </strong>{" "}
+                  ({improvedTopics[0].latestScore}/10đ). Tuy nhiên, hệ thống nhận thấy bạn vẫn còn{" "}
+                  <strong className="text-amber-600 dark:text-amber-400 font-bold">
+                    {weakTopics.length} chuyên đề
+                  </strong>{" "}
+                  cần củng cố thêm. Hãy luyện thêm vài câu để vững vàng nhé!&rdquo;
+                </>
+              ) : improvedTopics.length > 0 ? (
                 <>
                   🎉 &ldquo;Xuất sắc! Bạn đã có bước tiến vượt bậc ở dạng bài:{" "}
                   <strong className="text-slate-900 dark:text-white">
@@ -541,38 +536,53 @@ export default async function StudentDashboardPage() {
               )}
             </p>
 
-            {improvedTopics.length > 0 ? (
-              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-300">
-                <span className="font-bold flex items-center gap-1.5">
-                  <span>✓</span>
-                  <span>Chủ đề vừa bứt phá thành công:</span>
-                </span>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {improvedTopics.slice(0, 2).map((it, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 font-medium text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
-                    >
-                      {it.name} ({it.lowestScore}đ → {it.latestScore}đ)
+            <div className="space-y-2.5">
+              {/* Khối 1: Chủ đề cần cải thiện (Lỗ hổng) */}
+              {weakTopics.length > 0 && (
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
+                  <div className="font-bold flex items-center justify-between gap-1 mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <span>⚠️</span>
+                      <span>Chủ đề cần cải thiện ({weakTopics.length}):</span>
                     </span>
-                  ))}
-                </div>
-              </div>
-            ) : weakTopics.length > 0 ? (
-              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
-                <span className="font-bold">Chủ đề cần cải thiện:</span>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {weakTopics.slice(0, 3).map((wt, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 font-medium truncate max-w-full"
-                    >
-                      {wt.name} ({wt.latestScore}đ)
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+                      Chưa đạt 7.0đ
                     </span>
-                  ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {weakTopics.slice(0, 3).map((wt) => (
+                      <span
+                        key={wt._id}
+                        className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 font-medium border border-amber-200/80 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-[11px] truncate max-w-full"
+                        title={`${wt.name} - ${wt.latestScore}/10 điểm`}
+                      >
+                        {wt.name} (<strong>{wt.latestScore}đ</strong>)
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : null}
+              )}
+
+              {/* Khối 2: Chủ đề vừa bứt phá thành công */}
+              {improvedTopics.length > 0 && (
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-300">
+                  <span className="font-bold flex items-center gap-1.5 mb-1.5">
+                    <span>✓</span>
+                    <span>Chủ đề vừa bứt phá thành công:</span>
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {improvedTopics.slice(0, 2).map((it) => (
+                      <span
+                        key={it._id}
+                        className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 font-medium text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-[11px]"
+                      >
+                        {it.name} ({it.lowestScore}đ → {it.latestScore}đ)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">

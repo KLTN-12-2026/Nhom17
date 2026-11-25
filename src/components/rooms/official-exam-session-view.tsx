@@ -3,6 +3,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useWindowProctor, WindowViolationType } from "@/hooks/useWindowProctor";
+import { useWebcamProctor, WebcamViolationType } from "@/hooks/useWebcamProctor";
+import WebcamProctorView from "@/components/proctor/webcam-proctor-view";
+import ViolationAlertModal from "@/components/proctor/violation-alert-modal";
 
 interface ExamOptionDTO {
   _id: string;
@@ -123,7 +127,22 @@ export default function OfficialExamSessionView({
   const [submitting, setSubmitting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [examResult, setExamResult] = useState<ExamResultDTO | null>(null);
-  const [onlyShowWrong, setOnlyShowWrong] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState<"all" | "correct" | "wrong" | "unanswered">("all");
+
+  // Trạng thái Giám sát & Chống gian lận AI (PB12)
+  const [hasCheckedIn, setHasCheckedIn] = useState<boolean>(false);
+  const stopCameraRef = useRef<() => void>(() => {});
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    type: string;
+    description: string;
+    evidenceSnapshot?: string | null;
+  }>({
+    isOpen: false,
+    type: "",
+    description: "",
+    evidenceSnapshot: null,
+  });
 
   const autoSubmitTriggeredRef = useRef(false);
 
@@ -200,7 +219,7 @@ export default function OfficialExamSessionView({
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ answers: pendingToSync }),
-              }).catch(() => {});
+              }).catch(() => { });
             }
           }
         } catch {
@@ -231,8 +250,15 @@ export default function OfficialExamSessionView({
   }, [loadSession]);
 
   const handleSubmitExam = useCallback(
-    async (isAutoSubmit = false) => {
+    async (isAutoSubmit = false, forceStatus?: "submitted" | "revoked" | "timed_out") => {
       if (submitting || examResult) return;
+
+      // Thoát toàn màn hình và ngắt camera khi nộp bài hoặc bị đình chỉ
+      if (typeof document !== "undefined" && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => { });
+      }
+      stopCameraRef.current();
+
       setSubmitting(true);
       setIsLocked(true);
       setShowSubmitConfirm(false);
@@ -248,6 +274,7 @@ export default function OfficialExamSessionView({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             is_auto_submit: isAutoSubmit,
+            status: forceStatus || (isAutoSubmit ? "timed_out" : "submitted"),
             answers: answersPayload,
           }),
         });
@@ -301,6 +328,135 @@ export default function OfficialExamSessionView({
       loadSession,
     ]
   );
+
+  // Ghi nhận vi phạm vào hệ thống CSDL thật và Live Bus
+  const reportViolationToBackend = useCallback(
+    async (type: string, description: string, snapshot?: string) => {
+      if (!attemptId) return;
+      try {
+        await fetch("/api/student/exam/violation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            attempt_id: attemptId,
+            room_id: roomId,
+            violation_type: type,
+            description,
+            evidence_detail: snapshot || "",
+            max_violations: 3,
+          }),
+        });
+      } catch (e) {
+        console.warn("Lỗi gửi vi phạm:", e);
+      }
+    },
+    [attemptId, roomId]
+  );
+
+  const [violationCount, setViolationCount] = useState<number>(0);
+  const lastViolationTimeRef = useRef<number>(0);
+  const captureSnapshotRef = useRef<() => string>(() => "");
+
+  // Hàm xử lý ghi nhận vi phạm duy nhất (tránh double dispatch & giới hạn tối đa 3 lần)
+  const handleRecordViolation = useCallback(
+    (type: string, description: string, snapshotBase64?: string) => {
+      if (isLocked || examResult || violationCount >= 3) return;
+
+      const now = Date.now();
+      // Chặn ghi nhận dồn dập trong vòng 3.5 giây
+      if (now - lastViolationTimeRef.current < 3500) {
+        return;
+      }
+      lastViolationTimeRef.current = now;
+
+      const snap = snapshotBase64 || captureSnapshotRef.current?.() || "";
+
+      setModalState({
+        isOpen: true,
+        type,
+        description,
+        evidenceSnapshot: snap,
+      });
+
+      setViolationCount((prev) => {
+        const next = Math.min(prev + 1, 3);
+        if (next >= 3) {
+          if (typeof document !== "undefined" && document.fullscreenElement) {
+            document.exitFullscreen().catch(() => { });
+          }
+          void handleSubmitExam(true, "revoked");
+        }
+        return next;
+      });
+
+      reportViolationToBackend(type, description, snap);
+    },
+    [isLocked, examResult, violationCount, handleSubmitExam, reportViolationToBackend]
+  );
+
+  // Hook Giám Sát Cửa Sổ Trình Duyệt (Chỉ chạy khi đã Check-in và đang trong phòng thi)
+  const {
+    isFullscreen,
+    isRevoked,
+    requestFullscreen,
+  } = useWindowProctor({
+    enabled: hasCheckedIn && !examResult && !isLocked && roomMeta?.status === "in_progress",
+    maxViolations: 3,
+    requireFullscreen: true,
+    gracePeriodMs: 6000,
+    onViolation: (type: WindowViolationType, desc: string) => {
+      handleRecordViolation(type, desc);
+    },
+    onRevoke: () => {
+      if (typeof document !== "undefined" && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => { });
+      }
+      void handleSubmitExam(true, "revoked");
+    },
+  });
+
+  // Hook Giám Sát Camera AI (MediaPipe Face Detection)
+  // Chỉ mở phần cứng camera khi: đã tải xong phiên, không có lỗi, chưa có kết quả, chưa bị khóa/đình chỉ, và phòng đang diễn ra
+  const isCameraProctorActive =
+    !loading &&
+    !loadError &&
+    !examResult &&
+    !isLocked &&
+    !isRevoked &&
+    roomMeta?.status === "in_progress";
+
+  const webcamProctor = useWebcamProctor({
+    enabled: isCameraProctorActive,
+    onViolation: (type: WebcamViolationType, desc: string, snapshotBase64: string) => {
+      // Chỉ ghi nhận vi phạm khi thí sinh đã hoàn tất check-in và đang làm bài
+      if (!hasCheckedIn) return;
+      handleRecordViolation(type, desc, snapshotBase64);
+    },
+  });
+
+  useEffect(() => {
+    stopCameraRef.current = webcamProctor.stopCamera;
+  }, [webcamProctor.stopCamera]);
+
+  useEffect(() => {
+    captureSnapshotRef.current = webcamProctor.captureSnapshot;
+  }, [webcamProctor.captureSnapshot]);
+
+  // Tự động thoát toàn màn hình và ngắt kết nối camera khi hoàn thành bài thi
+  useEffect(() => {
+    if (examResult) {
+      if (typeof document !== "undefined" && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => { });
+      }
+      stopCameraRef.current();
+    }
+  }, [examResult]);
+
+  // Thao tác bắt đầu làm bài chính thức sau khi hoàn tất Check-in
+  const handleStartOfficialExam = async () => {
+    await requestFullscreen();
+    setHasCheckedIn(true);
+  };
 
   // Đồng hồ đếm ngược thời gian thực & tự động nộp khi hết giờ
   useEffect(() => {
@@ -514,222 +670,652 @@ export default function OfficialExamSessionView({
     const passScore = examMeta?.pass_score ?? maxScore / 2;
     const passed = examResult.score >= passScore;
     const detailedList = examResult.detailed_answers || [];
-    const displayedDetails = onlyShowWrong
-      ? detailedList.filter((d) => !d.is_correct)
-      : detailedList;
+
+    const totalQuestions = examResult.total_questions || detailedList.length || 0;
+    const totalCorrect = examResult.total_correct ?? detailedList.filter((d) => d.is_correct).length;
+    const totalUnanswered = detailedList.filter((d) => !d.selected_option_id).length;
+    const totalWrong = detailedList.filter((d) => d.selected_option_id && !d.is_correct).length;
+    const accuracyRate = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+    const displayedDetails = detailedList.filter((item) => {
+      if (reviewFilter === "correct") return item.is_correct;
+      if (reviewFilter === "wrong") return item.selected_option_id && !item.is_correct;
+      if (reviewFilter === "unanswered") return !item.selected_option_id;
+      return true;
+    });
+
+    const scrollToQuestion = (qId: string) => {
+      setReviewFilter("all");
+      setTimeout(() => {
+        const el = document.getElementById(`review-question-${qId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-blue-500", "shadow-md");
+          setTimeout(() => {
+            el.classList.remove("ring-2", "ring-blue-500", "shadow-md");
+          }, 1800);
+        }
+      }, 50);
+    };
 
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-8 px-4 sm:px-6 lg:px-8 font-sans">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Card Tổng Kết Điểm */}
-          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
+      <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 py-6 px-4 sm:px-6 lg:px-8 font-sans">
+        <div className="max-w-[1440px] mx-auto space-y-6">
+          {/* =========================================================================
+              1. BẢNG TỔNG KẾT KẾT QUẢ THI COMPACT (TOP DASHBOARD)
+             ========================================================================= */}
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
+            {/* Top row: Status, room, privacy badge & Score */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pb-5 border-b border-slate-100 dark:border-slate-800">
+              <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-bold ${
                       examResult.status === "timed_out"
                         ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
-                        : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                        : examResult.status === "revoked"
+                          ? "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
+                          : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
                     }`}
                   >
                     {examResult.status === "timed_out"
-                      ? "⏱ Hết giờ — Hệ thống đã tự động thu bài"
-                      : "✓ Đã nộp bài thành công"}
+                      ? "⏱ Hết giờ — Hệ thống đã thu bài"
+                      : examResult.status === "revoked"
+                        ? "⛔ Bài thi bị đình chỉ do vi phạm quy chế"
+                        : "✓ Đã nộp bài thành công"}
                   </span>
                   {roomMeta?.room_code && (
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-xs font-bold text-slate-600 dark:text-slate-300">
-                      Phòng: {roomMeta.room_code}
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      Mã phòng: {roomMeta.room_code}
+                    </span>
+                  )}
+                  {examMeta?.subject_name && (
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 text-xs font-semibold border border-blue-200/60 dark:border-blue-800">
+                      {examMeta.subject_name}
                     </span>
                   )}
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                  {examMeta?.title || "Kết Quả Bài Thi"}
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                  {examMeta?.title || "Báo Cáo Kết Quả Bài Thi"}
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  {examMeta?.subject_name} • Thời gian làm bài:{" "}
-                  <strong className="text-slate-800 dark:text-slate-200">
-                    {formatDurationText(examResult.duration_seconds)}
-                  </strong>
-                </p>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  <span>
+                    Giảng viên: <strong className="text-slate-700 dark:text-slate-300">{roomMeta?.teacher_name || "Giảng viên"}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Thời gian làm bài: <strong className="text-slate-700 dark:text-slate-300">{formatDurationText(examResult.duration_seconds)}</strong>
+                  </span>
+                  {examResult.submit_time && (
+                    <>
+                      <span>•</span>
+                      <span>
+                        Nộp lúc: <strong className="text-slate-700 dark:text-slate-300">{new Date(examResult.submit_time).toLocaleTimeString("vi-VN")} {new Date(examResult.submit_time).toLocaleDateString("vi-VN")}</strong>
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div className="shrink-0 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white px-7 py-5 text-center min-w-[170px]">
-                <span className="block text-[11px] uppercase tracking-wider text-slate-300 font-semibold">
-                  Điểm số đạt được
-                </span>
-                <div
-                  className={`text-4xl font-black mt-1 ${
-                    passed ? "text-emerald-400" : "text-rose-400"
-                  }`}
-                >
-                  {examResult.score}
-                  <span className="text-base font-medium text-slate-400">
-                    /{maxScore}
+              {/* Score Box */}
+              <div className="flex items-center gap-4 bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl px-6 py-3.5 shrink-0">
+                <div>
+                  <span className="block text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">
+                    Điểm số đạt được
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span
+                      className={`text-3xl sm:text-4xl font-black ${
+                        passed ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                      }`}
+                    >
+                      {examResult.score}
+                    </span>
+                    <span className="text-sm font-semibold text-slate-400">/{maxScore}</span>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1 text-[11px] font-bold mt-1 px-2.5 py-0.5 rounded-full ${
+                      passed
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                        : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                    }`}
+                  >
+                    {passed ? "✓ Đạt yêu cầu" : "✗ Chưa đạt chuẩn"}
                   </span>
                 </div>
-                <span className="mt-1 inline-block text-xs font-semibold text-slate-300">
-                  {passed ? "Đạt yêu cầu" : "Chưa đạt chuẩn"}
-                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
-              <div className="rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 p-3">
-                <span className="block text-xs text-emerald-700 dark:text-emerald-300 font-medium">
-                  Câu trả lời đúng
-                </span>
-                <strong className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-                  {examResult.total_correct}
-                </strong>
+            {/* Thông báo trạng thái phòng thi & Quyền riêng tư */}
+            <div className="mt-3.5 space-y-2">
+              {roomMeta?.status === "finished" ? (
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="text-sm">📢</span>
+                  <span>Ca thi trực tuyến đã chính thức đóng. Bạn đang xem lại kết quả bài làm và bảng giải thích chi tiết đáp án.</span>
+                </div>
+              ) : examResult.waiting_room_finish ? (
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                  <span className="text-sm">⏳</span>
+                  <span>Bạn đã hoàn thành bài thi sớm. Ca thi tại phòng vẫn đang tiếp diễn. Lời giải chi tiết sẽ mở sau khi Giảng viên kết thúc ca thi hoặc hết giờ.</span>
+                </div>
+              ) : null}
+
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium">
+                <span className="text-base shrink-0">🛡️</span>
+                <span><strong>Bảo mật &amp; Quyền riêng tư:</strong> Giám sát AI và Camera đã được ngắt kết nối an toàn. Thiết bị của bạn không còn bị theo dõi.</span>
               </div>
-              <div className="rounded-xl bg-rose-50/70 dark:bg-rose-950/30 p-3">
-                <span className="block text-xs text-rose-700 dark:text-rose-300 font-medium">
-                  Sai / Bỏ trống
+            </div>
+
+            {/* Metrics horizontal cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 p-3">
+                <span className="block text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+                  Trả lời đúng
                 </span>
-                <strong className="text-xl font-black text-rose-600 dark:text-rose-400">
-                  {examResult.total_wrong}
-                </strong>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <strong className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                    {totalCorrect}
+                  </strong>
+                  <span className="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-semibold">
+                    / {totalQuestions} câu
+                  </span>
+                </div>
               </div>
-              <div className="rounded-xl bg-slate-100 dark:bg-slate-800/60 p-3">
+
+              <div className="rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40 p-3">
+                <span className="block text-xs text-rose-800 dark:text-rose-300 font-medium">
+                  Trả lời sai
+                </span>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <strong className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                    {totalWrong}
+                  </strong>
+                  <span className="text-xs text-rose-700/80 dark:text-rose-400/80 font-semibold">câu</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 p-3">
+                <span className="block text-xs text-amber-800 dark:text-amber-300 font-medium">
+                  Chưa trả lời
+                </span>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <strong className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                    {totalUnanswered}
+                  </strong>
+                  <span className="text-xs text-amber-700/80 dark:text-amber-400/80 font-semibold">câu</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40 p-3">
+                <span className="block text-xs text-blue-800 dark:text-blue-300 font-medium">
+                  Tỷ lệ chính xác
+                </span>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <strong className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                    {accuracyRate}%
+                  </strong>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 p-3 col-span-2 sm:col-span-1">
                 <span className="block text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  Tổng số câu
+                  Thời gian làm bài
                 </span>
-                <strong className="text-xl font-black text-slate-900 dark:text-white">
-                  {examResult.total_questions}
-                </strong>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <strong className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200">
+                    {formatDurationText(examResult.duration_seconds)}
+                  </strong>
+                </div>
               </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                href="/student"
-                className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:opacity-90 transition"
-              >
-                ← Về Góc học tập
-              </Link>
-              <Link
-                href="/student/practice/history"
-                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-              >
-                Xem lịch sử làm bài
-              </Link>
             </div>
           </div>
 
-          {/* Chi tiết đáp án nếu đề cho phép xem ngay */}
+          {/* =========================================================================
+              2. PHẦN CHI TIẾT ĐÁP ÁN & ĐIỀU HƯỚNG CÂU HỎI (2-COLUMN LAYOUT)
+             ========================================================================= */}
           {examMeta?.allow_view_result_immediately && detailedList.length > 0 ? (
-            <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                  Chi Tiết Bài Làm &amp; Đáp Án
-                </h2>
-                <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={onlyShowWrong}
-                    onChange={(e) => setOnlyShowWrong(e.target.checked)}
-                    className="rounded border-slate-300"
-                  />
-                  <span>Chỉ xem câu làm sai / bỏ trống</span>
-                </label>
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Cột chính: Danh sách câu hỏi và lời giải chi tiết */}
+              <div className="lg:col-span-8 xl:col-span-8 space-y-5">
+                <div className="flex items-center justify-between pb-1">
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Chi Tiết Bài Làm &amp; Lời Giải</span>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      {displayedDetails.length}/{detailedList.length} câu
+                    </span>
+                  </h2>
 
-              <div className="space-y-4">
-                {displayedDetails.map((item) => (
-                  <div
-                    key={item.question_id}
-                    className={`rounded-2xl border p-4 sm:p-5 space-y-3 ${
-                      item.is_correct
-                        ? "border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/20 dark:bg-emerald-950/10"
-                        : "border-rose-200/80 dark:border-rose-800/60 bg-rose-50/20 dark:bg-rose-950/10"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
-                        <span className="text-slate-500 mr-1.5">
-                          Câu {item.index}:
-                        </span>
-                        {item.content}
-                      </p>
-                      <span
-                        className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                          item.is_correct
-                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-                            : "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
+                  {/* Filter chips on mobile / small screen */}
+                  <div className="block lg:hidden text-xs text-slate-500">
+                    Lọc: <strong>{reviewFilter === "all" ? "Tất cả" : reviewFilter === "correct" ? "Đúng" : reviewFilter === "wrong" ? "Sai" : "Chưa làm"}</strong>
+                  </div>
+                </div>
+
+                {displayedDetails.length === 0 ? (
+                  <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 text-center text-sm text-slate-500">
+                    Không có câu hỏi nào khớp với bộ lọc hiện tại.
+                  </div>
+                ) : (
+                  displayedDetails.map((item) => {
+                    const isUnanswered = !item.selected_option_id;
+                    const isRight = item.is_correct;
+
+                    return (
+                      <div
+                        key={item.question_id}
+                        id={`review-question-${item.question_id}`}
+                        className={`rounded-2xl border p-5 sm:p-6 transition-all bg-white dark:bg-slate-900 shadow-sm ${
+                          isRight
+                            ? "border-emerald-200 dark:border-emerald-900/60"
+                            : isUnanswered
+                              ? "border-slate-300 dark:border-slate-700"
+                              : "border-rose-200 dark:border-rose-900/60"
                         }`}
                       >
-                        {item.is_correct ? "Đúng" : "Sai"}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {item.options.map((opt) => {
-                        const isSelected = item.selected_option_id === opt._id;
-                        const isRight = Boolean(opt.is_correct);
-
-                        let optClass =
-                          "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-slate-700 dark:text-slate-300";
-                        if (isRight) {
-                          optClass =
-                            "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 font-semibold";
-                        } else if (isSelected && !isRight) {
-                          optClass =
-                            "border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200";
-                        }
-
-                        return (
-                          <div
-                            key={opt._id}
-                            className={`rounded-xl border px-3.5 py-2.5 text-xs flex items-start gap-2 ${optClass}`}
-                          >
-                            <span className="font-bold shrink-0">
-                              {opt.option_label}.
+                        {/* Question Header */}
+                        <div className="flex items-start justify-between gap-3 mb-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-black text-slate-800 dark:text-slate-200">
+                              Câu {item.index}
                             </span>
-                            <span className="flex-1">{opt.content}</span>
-                            {isRight && (
-                              <span className="text-[10px] font-bold text-emerald-600 shrink-0">
-                                ✓ Đáp án đúng
-                              </span>
-                            )}
-                            {isSelected && !isRight && (
-                              <span className="text-[10px] font-bold text-rose-600 shrink-0">
-                                ✗ Bạn chọn
+                            {item.difficulty_level && (
+                              <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 capitalize">
+                                {item.difficulty_level === "easy"
+                                  ? "Nhận biết"
+                                  : item.difficulty_level === "medium"
+                                    ? "Thông hiểu"
+                                    : "Vận dụng"}
                               </span>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
 
-                    {item.explanation && (
-                      <div className="rounded-xl bg-slate-100/80 dark:bg-slate-800/60 px-3.5 py-2.5 text-xs text-slate-600 dark:text-slate-300">
-                        <strong className="text-slate-800 dark:text-white">
-                          Giải thích:
-                        </strong>{" "}
-                        {item.explanation}
+                          {/* Status Badge */}
+                          {isRight ? (
+                            <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                              ✓ Trả lời đúng
+                            </span>
+                          ) : isUnanswered ? (
+                            <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700 flex items-center gap-1">
+                              ⚪ Chưa trả lời / Bỏ trống
+                            </span>
+                          ) : (
+                            <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1">
+                              ✗ Trả lời sai
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Question Text */}
+                        <div className="text-slate-900 dark:text-white text-base sm:text-[16.5px] font-medium leading-relaxed mb-4">
+                          {item.content}
+                        </div>
+
+                        {/* Options List */}
+                        <div className="space-y-2.5">
+                          {item.options.map((opt) => {
+                            const isSelected = item.selected_option_id === opt._id;
+                            const isCorrectOpt = Boolean(opt.is_correct);
+
+                            let optionBoxStyle =
+                              "border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300";
+                            let letterStyle =
+                              "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-slate-600";
+                            let statusPill = null;
+
+                            if (isCorrectOpt && isSelected) {
+                              // Đáp án đúng và thí sinh đã chọn
+                              optionBoxStyle =
+                                "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 font-medium ring-1 ring-emerald-500/30";
+                              letterStyle = "bg-emerald-600 text-white font-bold border-transparent";
+                              statusPill = (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 shrink-0">
+                                  ✓ Đáp án đúng &amp; Bạn đã chọn
+                                </span>
+                              );
+                            } else if (isCorrectOpt && !isSelected) {
+                              // Đáp án đúng (thí sinh chọn đáp án khác hoặc bỏ trống)
+                              optionBoxStyle =
+                                "border-emerald-500/80 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-100 font-medium";
+                              letterStyle = "bg-emerald-500 text-white font-bold border-transparent";
+                              statusPill = (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100/90 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 shrink-0">
+                                  ✓ Đáp án đúng
+                                </span>
+                              );
+                            } else if (!isCorrectOpt && isSelected) {
+                              // Thí sinh chọn sai
+                              optionBoxStyle =
+                                "border-rose-400 bg-rose-50/70 dark:bg-rose-950/40 text-rose-950 dark:text-rose-100 ring-1 ring-rose-400/40";
+                              letterStyle = "bg-rose-600 text-white font-bold border-transparent";
+                              statusPill = (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 shrink-0">
+                                  ✗ Bạn đã chọn
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <div
+                                key={opt._id}
+                                className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3.5 sm:p-4 rounded-xl border text-sm transition ${optionBoxStyle}`}
+                              >
+                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                  <span
+                                    className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center text-xs ${letterStyle}`}
+                                  >
+                                    {opt.option_label}
+                                  </span>
+                                  <span className="pt-0.5 leading-relaxed break-words flex-1">
+                                    {opt.content}
+                                  </span>
+                                </div>
+                                {statusPill && <div className="pl-10 sm:pl-0 shrink-0">{statusPill}</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Explanation Box */}
+                        {item.explanation && (
+                          <div className="mt-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 p-4 sm:p-5">
+                            <div className="flex items-center gap-1.5 mb-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                              <span className="text-sm">💡</span>
+                              <span>Giải Thích &amp; Phương Pháp Giải</span>
+                            </div>
+                            <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line pl-5 border-l-2 border-blue-400/80">
+                              {item.explanation}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Cột Phụ: Sticky Sidebar điều hướng câu hỏi và lọc */}
+              <div className="lg:col-span-4 xl:col-span-4 sticky top-6 space-y-5">
+                {/* Panel Lọc câu hỏi */}
+                <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                    Bộ Lọc Câu Hỏi
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter("all")}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${
+                        reviewFilter === "all"
+                          ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
+                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200"
+                      }`}
+                    >
+                      <span>Tất cả</span>
+                      <span className="text-[11px] opacity-80">{totalQuestions}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter("correct")}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${
+                        reviewFilter === "correct"
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100"
+                      }`}
+                    >
+                      <span>Làm đúng</span>
+                      <span className="text-[11px] opacity-80">{totalCorrect}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter("wrong")}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${
+                        reviewFilter === "wrong"
+                          ? "bg-rose-600 text-white shadow-sm"
+                          : "bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 hover:bg-rose-100"
+                      }`}
+                    >
+                      <span>Làm sai</span>
+                      <span className="text-[11px] opacity-80">{totalWrong}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter("unanswered")}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${
+                        reviewFilter === "unanswered"
+                          ? "bg-amber-600 text-white shadow-sm"
+                          : "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 hover:bg-amber-100"
+                      }`}
+                    >
+                      <span>Chưa làm</span>
+                      <span className="text-[11px] opacity-80">{totalUnanswered}</span>
+                    </button>
                   </div>
-                ))}
+                </div>
+
+                {/* Panel Bảng chuyển nhanh câu hỏi (Question Palette) */}
+                <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                      Danh Sách Câu Hỏi
+                    </h3>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Bấm để xem nhanh
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-5 sm:grid-cols-6 lg:grid-cols-5 gap-2 max-h-[320px] overflow-y-auto pr-1">
+                    {detailedList.map((item) => {
+                      const isUnans = !item.selected_option_id;
+                      const isRight = item.is_correct;
+
+                      let btnColor = "bg-rose-500 hover:bg-rose-600 text-white";
+                      if (isRight) {
+                        btnColor = "bg-emerald-600 hover:bg-emerald-700 text-white";
+                      } else if (isUnans) {
+                        btnColor =
+                          "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 hover:bg-slate-200";
+                      }
+
+                      return (
+                        <button
+                          key={item.question_id}
+                          type="button"
+                          onClick={() => scrollToQuestion(item.question_id)}
+                          className={`h-9 rounded-xl text-xs font-bold transition flex items-center justify-center ${btnColor}`}
+                          title={`Câu ${item.index}: ${isRight ? "Đúng" : isUnans ? "Chưa làm" : "Sai"}`}
+                        >
+                          {item.index}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Chú thích màu sắc */}
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Đúng ({totalCorrect})
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Sai ({totalWrong})
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600"></span> Bỏ trống ({totalUnanswered})
+                    </span>
+                  </div>
+                </div>
+
+                {/* Các nút hành động điều hướng */}
+                <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 shadow-sm space-y-2.5">
+                  <Link
+                    href="/student"
+                    className="w-full py-2.5 px-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 transition text-center"
+                  >
+                    <span>← Quay về Góc học tập</span>
+                  </Link>
+                  <Link
+                    href="/student/practice/history"
+                    className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center justify-center text-center"
+                  >
+                    <span>Xem lịch sử làm bài</span>
+                  </Link>
+                </div>
               </div>
             </div>
           ) : examResult.waiting_room_finish ? (
-            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 p-6 text-center space-y-2">
-              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 p-8 text-center space-y-3">
+              <span className="text-3xl">⏳</span>
+              <p className="text-base font-bold text-amber-800 dark:text-amber-300">
                 Đang chờ ca thi kết thúc để mở đáp án chi tiết
               </p>
-              <p className="text-xs sm:text-sm text-amber-700/90 dark:text-amber-200/80">
+              <p className="text-xs sm:text-sm text-amber-700/90 dark:text-amber-200/80 max-w-xl mx-auto leading-relaxed">
                 Phòng thi vẫn đang diễn ra với các thí sinh khác. Đáp án chi tiết và lời giải sẽ tự động mở khóa ngay sau khi Giảng viên kết thúc ca thi hoặc hết giờ làm bài.
               </p>
+              <div className="pt-2">
+                <Link
+                  href="/student"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition"
+                >
+                  ← Về Góc học tập
+                </Link>
+              </div>
             </div>
           ) : (
-            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 text-center text-xs sm:text-sm text-slate-500">
-              Giảng viên cấu hình không hiển thị đáp án chi tiết ngay sau khi nộp bài. Điểm số của bạn đã được lưu vào hệ thống.
+            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 text-center space-y-3">
+              <span className="text-3xl">🔒</span>
+              <p className="text-base font-bold text-slate-800 dark:text-slate-200">
+                Giảng viên không mở xem đáp án chi tiết
+              </p>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+                Điểm số bài thi của bạn đã được lưu an toàn vào hệ thống.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/student"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:opacity-90 transition"
+                >
+                  ← Về Góc học tập
+                </Link>
+              </div>
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // MÀN HÌNH CHECK-IN & KIỂM TRA THIẾT BỊ GIÁM SÁT AI (PB12)
+  // =========================================================================
+  if (!hasCheckedIn && !examResult && !isLocked && roomMeta?.status === "in_progress") {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-6 font-sans">
+        {/* Header */}
+        <header className="max-w-4xl w-full mx-auto flex items-center justify-between pb-4 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/student"
+              className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-300 hover:text-white transition text-sm font-bold"
+            >
+              ←
+            </Link>
+            <div>
+              <h1 className="text-base sm:text-lg font-black text-white">
+                Phòng Thi Trực Tuyến Giám Sát AI
+              </h1>
+              <p className="text-xs text-slate-400">
+                {examMeta?.title} • {examMeta?.subject_name}
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+            Mã phòng: {roomMeta?.room_code}
+          </span>
+        </header>
+
+        {/* Body */}
+        <main className="max-w-4xl w-full mx-auto my-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          {/* Cột Trái: Webcam Live Preview */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+              1. Kiểm Tra Webcam Thí Sinh
+            </span>
+            <WebcamProctorView
+              videoRef={webcamProctor.videoRef}
+              canvasRef={webcamProctor.canvasRef}
+              stream={webcamProctor.stream}
+              faceStatus={webcamProctor.faceStatus}
+              detectedFaces={webcamProctor.detectedFaces}
+              errorMessage={webcamProctor.errorMessage}
+              hasCamera={webcamProctor.hasCamera}
+              variant="checkin"
+            />
+          </div>
+
+          {/* Cột Phải: Quy chế phòng thi */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 block">
+                2. Quy Chế Chống Gian Lận Trực Tuyến
+              </span>
+              <div className="space-y-3 text-xs leading-relaxed text-slate-300">
+                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <span className="text-base text-emerald-400 shrink-0">🖥️</span>
+                  <span>
+                    <strong>Toàn Màn Hình bắt buộc:</strong> Bấm bắt đầu sẽ tự động chuyển sang chế độ Fullscreen. Không được bấm ESC thoát ra.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <span className="text-base text-amber-400 shrink-0">🚫</span>
+                  <span>
+                    <strong>Cấm Chuyển Tab / Ứng dụng:</strong> Mọi thao tác rời khỏi bài thi (Alt+Tab, phím F12, mở tab khác) đều bị ghi nhận ngay lập tức.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <span className="text-base text-blue-400 shrink-0">👤</span>
+                  <span>
+                    <strong>Camera AI theo dõi:</strong> Không rời khỏi ghế, không che webcam, không quay mặt đi nơi khác và không có người thứ hai.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-red-950/40 border border-red-900/60 text-red-200">
+                  <span className="text-base text-red-400 shrink-0">⛔</span>
+                  <span>
+                    <strong>Đình chỉ thi:</strong> Vi phạm đủ <strong>3 lần</strong> hệ thống sẽ <strong>tự động đình chỉ thi và nộp bài cưỡng chế</strong>!
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={!webcamProctor.hasCamera}
+                onClick={handleStartOfficialExam}
+                className={`w-full py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg transition ${webcamProctor.hasCamera
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30 active:scale-98 cursor-pointer"
+                  : "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-70"
+                  }`}
+              >
+                {webcamProctor.hasCamera
+                  ? "🚀 Bật Toàn Màn Hình & Bắt Đầu Làm Bài"
+                  : "⏳ Đang kết nối camera... Vui lòng cấp quyền"}
+              </button>
+              <p className="text-[11px] text-slate-400 text-center mt-2">
+                {webcamProctor.hasCamera
+                  ? `Thời gian: ${examMeta?.duration_minutes} phút • Gồm ${questions.length} câu hỏi`
+                  : "⚠️ Thí sinh phải cho phép trình duyệt truy cập camera để mở khóa bài thi"}
+              </p>
+            </div>
+          </div>
+        </main>
+
+        <footer className="max-w-4xl w-full mx-auto text-center text-xs text-slate-400 pb-2">
+          Hệ thống khảo thí AI-Quizz 2.0 • Chống gian lận
+        </footer>
       </div>
     );
   }
@@ -790,16 +1376,41 @@ export default function OfficialExamSessionView({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Huy hiệu đếm số lần vi phạm quy chế phòng thi (PB12) */}
+            <div
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${violationCount >= 2
+                ? "bg-rose-50 border-rose-300 text-rose-600 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-400 animate-pulse"
+                : violationCount === 1
+                  ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/60 dark:border-amber-800 dark:text-amber-300"
+                  : "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400"
+                }`}
+              title="Số lần vi phạm quy chế (Tối đa 3 lần sẽ bị đình chỉ thi)"
+            >
+              <span>{violationCount === 0 ? "✓ Giám sát hợp lệ" : `⚠️ Vi phạm: ${violationCount}/3`}</span>
+            </div>
+
+            {/* Nút bật lại toàn màn hình nếu thí sinh lỡ thoát fullscreen */}
+            {!isFullscreen && (
+              <button
+                type="button"
+                onClick={requestFullscreen}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                title="Bắt buộc làm bài ở chế độ toàn màn hình"
+              >
+                <span>⛶</span>
+                <span>Toàn màn hình</span>
+              </button>
+            )}
+
             {/* Đồng hồ đếm ngược */}
             <div
-              className={`px-3 sm:px-4 py-1.5 rounded-xl border font-mono text-base sm:text-lg font-black tracking-tight flex items-center gap-2 ${
-                isDangerTime
-                  ? "bg-rose-50 border-rose-300 text-rose-600 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-400 animate-pulse"
-                  : isWarningTime
+              className={`px-3 sm:px-4 py-1.5 rounded-xl border font-mono text-base sm:text-lg font-black tracking-tight flex items-center gap-2 ${isDangerTime
+                ? "bg-rose-50 border-rose-300 text-rose-600 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-400 animate-pulse"
+                : isWarningTime
                   ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/60 dark:border-amber-800 dark:text-amber-300"
                   : "bg-slate-100 border-slate-200 text-slate-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-              }`}
+                }`}
             >
               <svg
                 className="w-4 h-4 shrink-0"
@@ -834,11 +1445,12 @@ export default function OfficialExamSessionView({
       </header>
 
       {/* Khu vực làm bài 2 cột */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Cột trái: Nội dung câu hỏi hiện tại */}
-        <section className="lg:col-span-8 flex flex-col justify-between gap-5">
+        <section className="lg:col-span-8 flex flex-col justify-between gap-4">
           {currentQuestion ? (
             <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-7 shadow-2xs space-y-6">
+              {/* Header câu hỏi */}
               <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold">
@@ -852,22 +1464,26 @@ export default function OfficialExamSessionView({
                 <button
                   type="button"
                   onClick={() => toggleFlagQuestion(currentQuestion._id)}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer ${
-                    flaggedIds.has(currentQuestion._id)
-                      ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/50 dark:border-amber-700 dark:text-amber-300"
-                      : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${flaggedIds.has(currentQuestion._id)
+                    ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/50 dark:border-amber-700 dark:text-amber-300 font-bold"
+                    : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    }`}
                 >
-                  {flaggedIds.has(currentQuestion._id)
-                    ? "⚑ Đã đánh dấu xem lại"
-                    : "⚐ Đánh dấu xem lại"}
+                  <span>{flaggedIds.has(currentQuestion._id) ? "⚑" : "⚐"}</span>
+                  <span>
+                    {flaggedIds.has(currentQuestion._id)
+                      ? "Đã đánh dấu xem lại"
+                      : "Đánh dấu xem lại"}
+                  </span>
                 </button>
               </div>
 
+              {/* Nội dung câu hỏi */}
               <div className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white leading-relaxed whitespace-pre-wrap">
                 {currentQuestion.content}
               </div>
 
+              {/* Danh sách các lựa chọn đáp án */}
               <div className="space-y-3">
                 {currentQuestion.options.map((opt) => {
                   const isSelected =
@@ -881,27 +1497,63 @@ export default function OfficialExamSessionView({
                       onClick={() =>
                         handleSelectOption(currentQuestion._id, opt._id)
                       }
-                      className={`w-full text-left rounded-xl border p-4 transition flex items-start gap-3.5 cursor-pointer disabled:cursor-not-allowed ${
-                        isSelected
-                          ? "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-blue-500/20"
-                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600"
-                      }`}
+                      className={`w-full text-left rounded-2xl border p-4 transition-all flex items-center gap-3.5 cursor-pointer disabled:cursor-not-allowed ${isSelected
+                        ? "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-blue-500/25 shadow-xs"
+                        : "border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50/50 dark:hover:bg-slate-800/60"
+                        }`}
                     >
                       <span
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition ${
-                          isSelected
-                            ? "bg-blue-600 text-white"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                        }`}
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${isSelected
+                          ? "bg-blue-600 text-white shadow-xs"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                          }`}
                       >
                         {opt.option_label}
                       </span>
-                      <span className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed pt-0.5">
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-relaxed flex-1">
                         {opt.content}
                       </span>
+                      {isSelected && (
+                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs shrink-0 font-bold shadow-xs">
+                          ✓
+                        </span>
+                      )}
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Điều hướng Trước / Sau gắn liền card câu hỏi */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  disabled={currentIndex === 0}
+                  onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed shadow-2xs transition"
+                >
+                  ← Câu trước
+                </button>
+
+                {currentIndex < questions.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))
+                    }
+                    className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs sm:text-sm font-bold hover:opacity-90 cursor-pointer shadow-xs transition"
+                  >
+                    Câu tiếp theo →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isLocked || submitting}
+                    onClick={() => setShowSubmitConfirm(true)}
+                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold cursor-pointer shadow-xs transition"
+                  >
+                    Hoàn tất &amp; Nộp bài ✓
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -909,114 +1561,91 @@ export default function OfficialExamSessionView({
               Không có câu hỏi nào trong đề thi.
             </div>
           )}
-
-          {/* Điều hướng Trước / Sau */}
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              disabled={currentIndex === 0}
-              onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-            >
-              ← Câu trước
-            </button>
-
-            {currentIndex < questions.length - 1 ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))
-                }
-                className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs sm:text-sm font-bold hover:opacity-90 cursor-pointer"
-              >
-                Câu tiếp theo →
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={isLocked || submitting}
-                onClick={() => setShowSubmitConfirm(true)}
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold cursor-pointer"
-              >
-                Hoàn tất &amp; Nộp bài ✓
-              </button>
-            )}
-          </div>
         </section>
 
-        {/* Cột phải: Bảng tổng quan câu hỏi (Question Palette) */}
-        <aside className="lg:col-span-4">
-          <div className="sticky top-22 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 space-y-4">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                Danh Sách Câu Hỏi
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Bấm vào số câu để chuyển nhanh
-              </p>
-            </div>
-
-            <div className="grid grid-cols-5 sm:grid-cols-6 lg:grid-cols-5 gap-2">
-              {questions.map((q, idx) => {
-                const isCurrent = idx === currentIndex;
-                const isAnswered = selectedAnswers.has(q._id);
-                const isFlagged = flaggedIds.has(q._id);
-
-                let btnStyle =
-                  "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300";
-                if (isAnswered) {
-                  btnStyle =
-                    "border-blue-600 bg-blue-600 text-white font-bold";
-                }
-                if (isFlagged && !isAnswered) {
-                  btnStyle =
-                    "border-amber-400 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-bold";
-                }
-
-                return (
-                  <button
-                    key={q._id}
-                    type="button"
-                    onClick={() => setCurrentIndex(idx)}
-                    className={`relative h-10 rounded-xl border text-xs font-semibold transition cursor-pointer ${btnStyle} ${
-                      isCurrent ? "ring-2 ring-slate-900 dark:ring-white ring-offset-1" : ""
-                    }`}
-                  >
-                    {idx + 1}
-                    {isFlagged && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white dark:border-slate-900" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Chú thích màu sắc */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded bg-blue-600 inline-block" />
-                <span>Đã làm ({answeredCount})</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded bg-slate-200 dark:bg-slate-700 inline-block" />
-                <span>
-                  Chưa làm ({Math.max(0, questions.length - answeredCount)})
+        {/* Cột phải: Bảng câu hỏi & Widget Camera AI (Cố định trong Sidebar) */}
+        <aside className="lg:col-span-4 space-y-4">
+          <div className="sticky top-20 space-y-4">
+            {/* Thẻ Bảng Danh Sách Câu Hỏi */}
+            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Danh Sách Câu Hỏi
+                  </h2>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Bấm số câu để chuyển nhanh
+                  </p>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  {answeredCount} / {questions.length}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded bg-amber-400 inline-block" />
-                <span>Đánh dấu ({flaggedIds.size})</span>
+
+              <div className="grid grid-cols-5 gap-2 max-h-56 overflow-y-auto pr-1">
+                {questions.map((q, idx) => {
+                  const isCurrent = idx === currentIndex;
+                  const isAnswered = selectedAnswers.has(q._id);
+                  const isFlagged = flaggedIds.has(q._id);
+
+                  let btnStyle =
+                    "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300";
+                  if (isAnswered) {
+                    btnStyle =
+                      "border-blue-600 bg-blue-600 text-white font-bold";
+                  }
+                  if (isFlagged && !isAnswered) {
+                    btnStyle =
+                      "border-amber-400 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-bold";
+                  }
+
+                  return (
+                    <button
+                      key={q._id}
+                      type="button"
+                      onClick={() => setCurrentIndex(idx)}
+                      className={`relative h-10 rounded-xl border text-xs font-semibold transition cursor-pointer ${btnStyle} ${isCurrent
+                        ? "ring-2 ring-slate-900 dark:ring-white ring-offset-1 font-bold"
+                        : ""
+                        }`}
+                    >
+                      {idx + 1}
+                      {isFlagged && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white dark:border-slate-900" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Chú thích màu sắc */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
+                  <span>Đã làm ({answeredCount})</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700 inline-block" />
+                  <span>Chưa làm ({Math.max(0, questions.length - answeredCount)})</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                  <span>Đánh dấu ({flaggedIds.size})</span>
+                </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              disabled={isLocked || submitting}
-              onClick={() => setShowSubmitConfirm(true)}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50"
-            >
-              Nộp Bài Thi ({answeredCount}/{questions.length} câu)
-            </button>
+            {/* Widget Camera Giám Sát AI Cố Định Trong Cột Phụ (PB12 Sidebar Variant) */}
+            <WebcamProctorView
+              videoRef={webcamProctor.videoRef}
+              canvasRef={webcamProctor.canvasRef}
+              stream={webcamProctor.stream}
+              faceStatus={webcamProctor.faceStatus}
+              detectedFaces={webcamProctor.detectedFaces}
+              errorMessage={webcamProctor.errorMessage}
+              hasCamera={webcamProctor.hasCamera}
+              variant="sidebar"
+            />
           </div>
         </aside>
       </main>
@@ -1063,6 +1692,19 @@ export default function OfficialExamSessionView({
           </div>
         </div>
       )}
+
+      {/* Modal Cảnh Báo Vi Phạm Toàn Màn Hình Khi Vi Phạm Quy Chế (PB12) */}
+      <ViolationAlertModal
+        isOpen={modalState.isOpen}
+        violationType={modalState.type}
+        description={modalState.description}
+        violationCount={violationCount}
+        maxViolations={3}
+        evidenceSnapshot={modalState.evidenceSnapshot}
+        isRevoked={violationCount >= 3 || isRevoked}
+        onConfirmDismiss={() => setModalState((prev) => ({ ...prev, isOpen: false }))}
+        onExitRevokedExam={() => router.push("/student")}
+      />
     </div>
   );
 }
