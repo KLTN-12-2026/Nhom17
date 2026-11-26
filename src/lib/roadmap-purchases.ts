@@ -45,7 +45,7 @@ export async function getStudentOrders(userId: string) {
   const orders = await Order.find({ user_id: new mongoose.Types.ObjectId(userId) }).sort({ createdAt: -1 }).lean();
   const roadmaps = await Roadmap.find({ _id: { $in: orders.map((order) => order.roadmap_id) } }).select("title cover_image").lean();
   const map = new Map(roadmaps.map((roadmap) => [String(roadmap._id), roadmap]));
-  return orders.map((order) => { const roadmap = map.get(String(order.roadmap_id)); return { id: String(order._id), order_code: order.order_code, roadmap_id: String(order.roadmap_id), roadmap_title: roadmap?.title || "Lộ trình học", cover_image: roadmap?.cover_image || "", amount: order.amount, payment_method: order.payment_method, status: order.status, created_at: order.createdAt.toISOString(), paid_at: order.paid_at?.toISOString() || null }; });
+  return orders.map((order) => { const roadmap = map.get(String(order.roadmap_id)); return { id: String(order._id), order_code: order.order_code, roadmap_id: String(order.roadmap_id), roadmap_title: roadmap?.title || "Lộ trình học", amount: order.amount, payment_method: order.payment_method, status: order.status, created_at: order.createdAt.toISOString(), paid_at: order.paid_at?.toISOString() || null }; });
 }
 
 export async function getOrderForStudent(orderId: string, userId: string) {
@@ -58,14 +58,31 @@ export async function getOrderForStudent(orderId: string, userId: string) {
 
 export async function updateRoadmapProgress(roadmapId: string, contentId: string, userId: string, completed: boolean) {
   await connectDB();
-  const roadmapObjectId = new mongoose.Types.ObjectId(roadmapId); const contentObjectId = new mongoose.Types.ObjectId(contentId); const userObjectId = new mongoose.Types.ObjectId(userId);
-  const [roadmap, purchase] = await Promise.all([Roadmap.findOne({ _id: roadmapObjectId, is_published: true }).select("stages").lean(), Order.findOne({ user_id: userObjectId, roadmap_id: roadmapObjectId, status: "completed" }).select("_id").lean()]);
+  const roadmapObjectId = new mongoose.Types.ObjectId(roadmapId);
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  const [roadmap, purchase] = await Promise.all([
+    Roadmap.findOne({ _id: roadmapObjectId, is_published: true }).select("stages").lean(),
+    Order.findOne({ user_id: userObjectId, roadmap_id: roadmapObjectId, status: "completed" }).select("_id").lean(),
+  ]);
   if (!roadmap) return { error: "Không tìm thấy lộ trình", status: 404 };
   if (!purchase) return { error: "Bạn cần mua lộ trình trước khi cập nhật tiến độ", status: 403 };
-  if (!roadmap.stages.some((stage) => stage.contents.some((content) => String(content._id) === contentId))) return { error: "Nội dung không thuộc lộ trình này", status: 400 };
-  const progress = await LearningProgress.findOneAndUpdate({ user_id: userObjectId, roadmap_id: roadmapObjectId }, { $setOnInsert: { user_id: userObjectId, roadmap_id: roadmapObjectId, completed_content_ids: [], completion_percentage: 0 }, $set: { last_activity_at: new Date() } }, { upsert: true, new: true });
-  const completedIds = new Set((progress.completed_content_ids || []).map(String)); completed ? completedIds.add(contentId) : completedIds.delete(contentId);
+  const contentExists = roadmap.stages.some((stage) => stage.contents.some((content) => String(content._id) === contentId));
+  if (!contentExists) return { error: "Nội dung không thuộc lộ trình này", status: 400 };
+  const progress = await LearningProgress.findOneAndUpdate(
+    { user_id: userObjectId, roadmap_id: roadmapObjectId },
+    { $setOnInsert: { user_id: userObjectId, roadmap_id: roadmapObjectId, completed_content_ids: [], completion_percentage: 0 }, $set: { last_activity_at: new Date() } },
+    { upsert: true, new: true },
+  );
+  const completedIds = new Set((progress.completed_content_ids || []).map(String));
+  if (completed) {
+    completedIds.add(contentId);
+  } else {
+    completedIds.delete(contentId);
+  }
   const totalContents = roadmap.stages.reduce((sum, stage) => sum + stage.contents.length, 0);
-  progress.completed_content_ids = [...completedIds].map((id) => new mongoose.Types.ObjectId(id)); progress.completion_percentage = totalContents ? Math.round((completedIds.size / totalContents) * 100) : 0; await progress.save();
+  progress.completed_content_ids = [...completedIds].map((id) => new mongoose.Types.ObjectId(id));
+  progress.completion_percentage = totalContents ? Math.round((completedIds.size / totalContents) * 100) : 0;
+  progress.last_activity_at = new Date();
+  await progress.save();
   return { completion_percentage: progress.completion_percentage, completed_content_ids: [...completedIds] };
 }
