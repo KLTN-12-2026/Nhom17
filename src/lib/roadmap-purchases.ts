@@ -7,6 +7,12 @@ export interface RoadmapContentDTO { id: string; content_type: "exam" | "practic
 export interface RoadmapStageDTO { id: string; stage_title: string; order: number; description: string; contents: RoadmapContentDTO[]; }
 export interface RoadmapDTO { id: string; title: string; description: string; price: number; cover_image: string; teacher_name: string; stage_count: number; content_count: number; is_purchased: boolean; completion_percentage: number; completed_content_ids: string[]; stages?: RoadmapStageDTO[]; }
 
+type RoadmapProgressSnapshot = {
+  stages: Array<{
+    contents: Array<{ _id: mongoose.Types.ObjectId }>;
+  }>;
+};
+
 function serializeRoadmap(roadmap: IRoadmap & { _id: mongoose.Types.ObjectId; teacher_id?: unknown }, options: { isPurchased: boolean; completionPercentage?: number; completedContentIds?: string[]; includeStages?: boolean }): RoadmapDTO {
   const stages = (roadmap.stages || []).map((stage) => ({ id: String(stage._id || ""), stage_title: stage.stage_title, order: stage.order, description: stage.description || "", contents: (stage.contents || []).map((content) => ({ id: String(content._id || ""), content_type: content.content_type, title: content.title, order: content.order })) }));
   const contentCount = stages.reduce((total, stage) => total + stage.contents.length, 0);
@@ -60,10 +66,11 @@ export async function updateRoadmapProgress(roadmapId: string, contentId: string
   await connectDB();
   const roadmapObjectId = new mongoose.Types.ObjectId(roadmapId);
   const userObjectId = new mongoose.Types.ObjectId(userId);
-  const [roadmap, purchase] = await Promise.all([
+  const [roadmapResult, purchase] = await Promise.all([
     Roadmap.findOne({ _id: roadmapObjectId, is_published: true }).select("stages").lean(),
     Order.findOne({ user_id: userObjectId, roadmap_id: roadmapObjectId, status: "completed" }).select("_id").lean(),
   ]);
+  const roadmap = roadmapResult as unknown as RoadmapProgressSnapshot | null;
   if (!roadmap) return { error: "Không tìm thấy lộ trình", status: 404 };
   if (!purchase) return { error: "Bạn cần mua lộ trình trước khi cập nhật tiến độ", status: 403 };
   const contentExists = roadmap.stages.some((stage) => stage.contents.some((content) => String(content._id) === contentId));
@@ -73,7 +80,8 @@ export async function updateRoadmapProgress(roadmapId: string, contentId: string
     { $setOnInsert: { user_id: userObjectId, roadmap_id: roadmapObjectId, completed_content_ids: [], completion_percentage: 0 }, $set: { last_activity_at: new Date() } },
     { upsert: true, new: true },
   );
-  const completedIds = new Set((progress.completed_content_ids || []).map(String));
+  if (!progress) return { error: "Không thể khởi tạo tiến độ học tập", status: 500 };
+  const completedIds = new Set<string>((progress.completed_content_ids || []).map((id) => String(id)));
   if (completed) {
     completedIds.add(contentId);
   } else {
