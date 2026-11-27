@@ -24,8 +24,11 @@ export interface IViolationLog {
 }
 
 export interface IAiAnalysis {
+  summary?: string;
+  strengths?: string;
   weak_points?: string; // danh_gia_diem_yeu
   ai_feedback?: string; // nhan_xet_ai
+  action_items?: string[];
   recommended_topics: mongoose.Types.ObjectId[]; // goi_y_chude_ids
   created_at: Date;
 }
@@ -113,6 +116,14 @@ const ViolationLogSchema = new Schema<IViolationLog>({
  */
 const AiAnalysisSchema = new Schema<IAiAnalysis>(
   {
+    summary: {
+      type: String,
+      default: "",
+    },
+    strengths: {
+      type: String,
+      default: "",
+    },
     weak_points: {
       type: String,
       default: "",
@@ -121,6 +132,11 @@ const AiAnalysisSchema = new Schema<IAiAnalysis>(
       type: String,
       default: "",
     },
+    action_items: [
+      {
+        type: String,
+      },
+    ],
     recommended_topics: [
       {
         type: Schema.Types.ObjectId,

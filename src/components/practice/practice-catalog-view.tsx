@@ -46,7 +46,13 @@ interface SubjectItem {
   description: string;
 }
 
-export default function PracticeCatalogView() {
+interface PracticeCatalogViewProps {
+  initialTopicId?: string;
+}
+
+export default function PracticeCatalogView({
+  initialTopicId,
+}: PracticeCatalogViewProps) {
   const router = useRouter();
 
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
@@ -73,17 +79,55 @@ export default function PracticeCatalogView() {
 
     async function fetchInitialTopics() {
       try {
-        const res = await fetch("/api/student/practice/topics");
+        const url = initialTopicId
+          ? `/api/student/practice/topics?topic_id=${encodeURIComponent(initialTopicId)}`
+          : "/api/student/practice/topics";
+        const res = await fetch(url);
         const data = await res.json();
 
         if (!isCancelled && data.success) {
+          const loadedChapters: ChapterItem[] = data.chapters || [];
           setSubjects(data.subjects || []);
           setSelectedSubjectId(data.selected_subject_id || "");
-          setChapters(data.chapters || []);
+          setChapters(loadedChapters);
           setStats(data.stats || { totalQuestions: 0, totalPracticedAttempts: 0 });
 
-          // Mặc định đóng (gập) tất cả các chuyên đề để giao diện gọn gàng, người dùng cần mở chuyên đề nào thì tự bấm
-          setExpandedChapterIds(new Set());
+          // Nếu có initialTopicId từ AI gợi ý -> tự động bung chương và mở modal ôn đúng chuyên đề đó
+          if (initialTopicId) {
+            let matchedChapterId: string | null = null;
+            let matchedSub: SubtopicItem | null = null;
+
+            for (const ch of loadedChapters) {
+              if (ch._id === initialTopicId) {
+                matchedChapterId = ch._id;
+                break;
+              }
+              const sub = ch.subtopics.find((s) => s._id === initialTopicId);
+              if (sub) {
+                matchedChapterId = ch._id;
+                matchedSub = sub;
+                break;
+              }
+            }
+
+            setExpandedChapterIds(
+              matchedChapterId ? new Set([matchedChapterId]) : new Set()
+            );
+
+            if (matchedSub && matchedSub.question_count > 0) {
+              setModalTopic(matchedSub);
+              const defaultCount =
+                matchedSub.question_count < 10
+                  ? Math.max(1, matchedSub.question_count)
+                  : 10;
+              setModalQuestionCount(defaultCount);
+              setModalDifficulty("all");
+              setStartError("");
+            }
+          } else {
+            // Mặc định đóng (gập) tất cả các chuyên đề để giao diện gọn gàng
+            setExpandedChapterIds(new Set());
+          }
         }
       } catch (err) {
         console.error("Lỗi khi tải cây kiến thức:", err);
@@ -99,7 +143,7 @@ export default function PracticeCatalogView() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [initialTopicId]);
 
   // Đổi môn học
   const handleSelectSubject = async (subId: string) => {

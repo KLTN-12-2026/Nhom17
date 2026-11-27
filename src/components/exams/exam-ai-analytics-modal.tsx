@@ -143,6 +143,13 @@ export default function ExamAiAnalyticsModal({
 
           {!loading && !error && summary && (
             <>
+              {analytics?.small_sample_warning && (
+                <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2">
+                  <span className="text-base shrink-0">⚠️</span>
+                  <span>{analytics.small_sample_warning}</span>
+                </div>
+              )}
+
               {/* 1. LƯỚI 4 THẺ THỐNG KÊ LỚP HỌC */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700">

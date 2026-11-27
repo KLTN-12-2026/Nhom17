@@ -2,8 +2,61 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { ExamAttempt } from "@/models";
 import { checkApiAuthorization } from "@/lib/auth-guards";
-import { analyzeStudentAttempt } from "@/lib/ai-analysis-service";
+import {
+  analyzeStudentAttempt,
+  computeStudentTopicBreakdown,
+  generateRuleBasedStudentDiagnosis,
+  type IAnswerWithQuestion,
+  type IStudentAiDiagnosisResult,
+} from "@/lib/ai-analysis-service";
 import mongoose from "mongoose";
+
+/**
+ * Xây dựng lại đối tượng kết quả từ cache MongoDB mà KHÔNG gọi lại Gemini API
+ */
+async function buildCachedAnalysisResponse(params: {
+  score: number;
+  max_score: number;
+  total_correct: number;
+  answers: IAnswerWithQuestion[];
+  ai_analysis: {
+    summary?: string;
+    strengths?: string;
+    weak_points?: string;
+    ai_feedback?: string;
+    action_items?: string[];
+  };
+}): Promise<IStudentAiDiagnosisResult> {
+  const { score, max_score, total_correct, answers, ai_analysis } = params;
+  const { topicBreakdown, recommendedTopics } =
+    await computeStudentTopicBreakdown(answers);
+  const norm10 =
+    max_score > 0 ? Math.round(((score / max_score) * 10) * 10) / 10 : score;
+
+  const fallback = generateRuleBasedStudentDiagnosis(
+    score,
+    max_score,
+    norm10,
+    total_correct,
+    answers.length,
+    topicBreakdown,
+    recommendedTopics
+  );
+
+  return {
+    summary: ai_analysis.summary?.trim() || fallback.summary,
+    strengths: ai_analysis.strengths?.trim() || fallback.strengths,
+    weak_points: ai_analysis.weak_points?.trim() || fallback.weak_points,
+    ai_feedback: ai_analysis.ai_feedback?.trim() || fallback.ai_feedback,
+    action_items:
+      Array.isArray(ai_analysis.action_items) &&
+      ai_analysis.action_items.length > 0
+        ? ai_analysis.action_items
+        : fallback.action_items,
+    recommended_topics: recommendedTopics,
+    topic_breakdown: topicBreakdown,
+  };
+}
 
 /**
  * POST /api/student/practice/ai-analysis
@@ -30,7 +83,6 @@ export async function POST(request: Request) {
 
     await connectDB();
 
-    // Học viên chỉ được xem bài của chính mình, giáo viên và admin có thể xem bài của học viên
     const query: Record<string, unknown> = {
       _id: new mongoose.Types.ObjectId(attempt_id),
     };
@@ -59,18 +111,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Điều kiện tiên quyết: Bài thi phải ở trạng thái submitted (đã nộp bài)
-    if (attempt.status !== "submitted") {
+    if (attempt.status !== "submitted" && attempt.status !== "timed_out") {
       return NextResponse.json(
         {
           success: false,
-          message: "Bài làm chưa được nộp. Vui lòng hoàn thành và nộp bài trước khi phân tích.",
+          message:
+            "Bài làm chưa được nộp. Vui lòng hoàn thành và nộp bài trước khi phân tích.",
         },
         { status: 400 }
       );
     }
 
-    // Điều kiện ràng buộc: Dữ liệu làm bài phải đủ (tối thiểu 3 câu hỏi) để mô hình AI đánh giá chính xác
     if (!attempt.answers || attempt.answers.length < 3) {
       return NextResponse.json(
         {
@@ -82,23 +133,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Caching check: Nếu đã có kết quả phân tích trong DB và không yêu cầu force_refresh
-    if (!force_refresh && attempt.ai_analysis?.weak_points) {
-      // Đã có phân tích trước đó, lấy và bổ sung thông tin topic_breakdown
-      const cachedResult = await analyzeStudentAttempt({
-        exam_title: attempt.practice_title || (attempt.exam_id as { title?: string })?.title || "Bài luyện tập",
-        score: attempt.score || 0,
-        total_correct: attempt.total_correct || 0,
-        total_wrong: attempt.total_wrong || 0,
-        duration_seconds: attempt.duration_seconds || 0,
-        answers: attempt.answers,
-      });
+    const examMeta = attempt.exam_id as {
+      title?: string;
+      max_score?: number;
+    } | null;
+    const maxScore = examMeta?.max_score || 10;
 
-      // Ghi đè bằng nội dung đã cache nếu có
-      cachedResult.weak_points = attempt.ai_analysis.weak_points;
-      if (attempt.ai_analysis.ai_feedback) {
-        cachedResult.ai_feedback = attempt.ai_analysis.ai_feedback;
-      }
+    // Trả về cache ngay lập tức mà KHÔNG gọi lại Gemini API
+    if (!force_refresh && attempt.ai_analysis?.weak_points) {
+      const cachedResult = await buildCachedAnalysisResponse({
+        score: attempt.score || 0,
+        max_score: maxScore,
+        total_correct: attempt.total_correct || 0,
+        answers: attempt.answers,
+        ai_analysis: attempt.ai_analysis,
+      });
 
       return NextResponse.json({
         success: true,
@@ -107,31 +156,30 @@ export async function POST(request: Request) {
       });
     }
 
-    // Lấy tiêu đề bài thi
-    let examTitle = attempt.practice_title || "Bài luyện tập";
-    if (attempt.exam_id && typeof attempt.exam_id === "object" && "title" in attempt.exam_id) {
-      examTitle = (attempt.exam_id as { title: string }).title;
-    }
+    const examTitle =
+      examMeta?.title || attempt.practice_title || "Bài luyện tập";
 
-    // Chạy phân tích AI thông minh
     const analysisResult = await analyzeStudentAttempt({
       exam_title: examTitle,
       score: attempt.score || 0,
+      max_score: maxScore,
       total_correct: attempt.total_correct || 0,
       total_wrong: attempt.total_wrong || 0,
       duration_seconds: attempt.duration_seconds || 0,
       answers: attempt.answers,
     });
 
-    // Lưu kết quả vào DB để cache
     const validTopicIds = analysisResult.recommended_topics
       .map((t) => t.topic_id)
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
 
     attempt.ai_analysis = {
+      summary: analysisResult.summary,
+      strengths: analysisResult.strengths,
       weak_points: analysisResult.weak_points,
       ai_feedback: analysisResult.ai_feedback,
+      action_items: analysisResult.action_items,
       recommended_topics: validTopicIds,
       created_at: new Date(),
     };
@@ -154,7 +202,7 @@ export async function POST(request: Request) {
 
 /**
  * GET /api/student/practice/ai-analysis?attempt_id=...
- * Lấy nhanh phân tích AI của một lượt làm bài đã lưu
+ * Lấy nhanh phân tích AI của một lượt làm bài đã lưu (tuyệt đối không tự động gọi lại Gemini)
  */
 export async function GET(request: Request) {
   const { user, errorResponse } = await checkApiAuthorization([
@@ -205,6 +253,13 @@ export async function GET(request: Request) {
       );
     }
 
+    if (attempt.status !== "submitted" && attempt.status !== "timed_out") {
+      return NextResponse.json({
+        success: false,
+        message: "Bài làm chưa hoàn thành.",
+      });
+    }
+
     if (!attempt.answers || attempt.answers.length < 3) {
       return NextResponse.json({
         success: false,
@@ -212,26 +267,28 @@ export async function GET(request: Request) {
       });
     }
 
-    const analysisResult = await analyzeStudentAttempt({
-      exam_title: attempt.practice_title || (attempt.exam_id as { title?: string })?.title || "Bài luyện tập",
-      score: attempt.score || 0,
-      total_correct: attempt.total_correct || 0,
-      total_wrong: attempt.total_wrong || 0,
-      duration_seconds: attempt.duration_seconds || 0,
-      answers: attempt.answers,
-    });
+    // Nếu chưa từng lưu kết quả AI -> trả về has_ai_analysis: false để UI hiện nút kích hoạt
+    if (!attempt.ai_analysis?.weak_points) {
+      return NextResponse.json({
+        success: true,
+        analysis: null,
+        has_ai_analysis: false,
+      });
+    }
 
-    if (attempt.ai_analysis?.weak_points) {
-      analysisResult.weak_points = attempt.ai_analysis.weak_points;
-    }
-    if (attempt.ai_analysis?.ai_feedback) {
-      analysisResult.ai_feedback = attempt.ai_analysis.ai_feedback;
-    }
+    const examMeta = attempt.exam_id as { max_score?: number } | null;
+    const analysisResult = await buildCachedAnalysisResponse({
+      score: attempt.score || 0,
+      max_score: examMeta?.max_score || 10,
+      total_correct: attempt.total_correct || 0,
+      answers: attempt.answers,
+      ai_analysis: attempt.ai_analysis,
+    });
 
     return NextResponse.json({
       success: true,
       analysis: analysisResult,
-      has_ai_analysis: !!attempt.ai_analysis?.weak_points,
+      has_ai_analysis: true,
     });
   } catch (error) {
     console.error("Lỗi khi tải phân tích AI:", error);

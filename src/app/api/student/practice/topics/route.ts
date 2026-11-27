@@ -22,6 +22,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const requestedSubjectId = searchParams.get("subject_id");
+    const requestedTopicId = searchParams.get("topic_id");
 
     // Lấy danh sách môn học
     const subjects = await Subject.find().sort({ subject_name: 1 }).lean();
@@ -35,12 +36,21 @@ export async function GET(request: Request) {
       });
     }
 
+    // Nếu truyền topic_id -> tra cứu môn học tương ứng
+    let resolvedSubjectId = requestedSubjectId?.trim() || "";
+    if (!resolvedSubjectId && requestedTopicId && mongoose.Types.ObjectId.isValid(requestedTopicId)) {
+      const targetTopic = await Topic.findById(requestedTopicId)
+        .select("subject_id")
+        .lean();
+      if (targetTopic?.subject_id) {
+        resolvedSubjectId = String(targetTopic.subject_id);
+      }
+    }
+
     // Chọn môn học mục tiêu
     let activeSubject = subjects[0];
-    if (requestedSubjectId) {
-      const found = subjects.find(
-        (s) => String(s._id) === requestedSubjectId.trim()
-      );
+    if (resolvedSubjectId) {
+      const found = subjects.find((s) => String(s._id) === resolvedSubjectId);
       if (found) activeSubject = found;
     }
 

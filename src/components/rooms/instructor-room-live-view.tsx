@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import ExamAiAnalyticsModal from "@/components/exams/exam-ai-analytics-modal";
 
 interface CandidateRecord {
   _id?: string;
@@ -122,6 +123,7 @@ export default function InstructorRoomLiveView({
   const [copiedType, setCopiedType] = useState<"code" | "link" | null>(null);
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [showAiReport, setShowAiReport] = useState(false);
 
   // Modal xem bằng chứng ảnh chụp vi phạm
   const [selectedEvidence, setSelectedEvidence] = useState<{
@@ -524,6 +526,16 @@ export default function InstructorRoomLiveView({
                 {actionLoading
                   ? "Đang thu bài..."
                   : "■ Thu Bài & Kết Thúc Ca Thi"}
+              </button>
+            )}
+
+            {room.status === "finished" && room.exam_id?._id && (
+              <button
+                type="button"
+                onClick={() => setShowAiReport(true)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-500/25 transition cursor-pointer"
+              >
+                📊 Báo Cáo AI Lớp Học
               </button>
             )}
           </div>
@@ -1045,6 +1057,12 @@ export default function InstructorRoomLiveView({
           </div>
         </div>
       )}
+      <ExamAiAnalyticsModal
+        isOpen={showAiReport}
+        onClose={() => setShowAiReport(false)}
+        examId={room.exam_id?._id || null}
+        examTitle={room.exam_id?.title}
+      />
     </div>
   );
 }
