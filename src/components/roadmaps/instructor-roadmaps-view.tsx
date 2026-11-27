@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Content = { content_type: "exam" | "practice" | "lesson"; title: string; order: number };
 type Stage = { stage_title: string; description: string; order: number; contents: Content[] };
@@ -17,7 +17,7 @@ export default function InstructorRoadmapsView() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const load = useCallback(async () => {
+  const load = async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/instructor/roadmaps", { cache: "no-store" });
@@ -29,9 +29,27 @@ export default function InstructorRoadmapsView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/instructor/roadmaps", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data: { success?: boolean; message?: string; roadmaps?: Roadmap[] }) => {
+        if (cancelled) return;
+        if (!data.success) throw new Error(data.message || "Không thể tải lộ trình.");
+        setRoadmaps(data.roadmaps || []);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Có lỗi xảy ra.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const edit = (roadmap: Roadmap) => {
     setEditingId(roadmap._id);
