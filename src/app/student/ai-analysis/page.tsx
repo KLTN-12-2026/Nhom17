@@ -139,8 +139,8 @@ export default async function StudentAiAnalysisPage({ searchParams }: PageProps)
   return (
     <RoleDashboardShell
       user={user}
-      title="Phân Tích Lỗ Hổng & Trợ Lý AI"
-      subtitle="Bảng theo dõi lỗ hổng kiến thức dài hạn kết hợp Trợ lý AI Agent định hướng ôn luyện cá nhân hóa"
+      title="Phân Tích Lỗ Hổng Kiến Thức"
+      subtitle="Bảng theo dõi các điểm yếu, thế mạnh và tiến trình ôn luyện dài hạn từ lịch sử làm bài"
     >
       <StudentAiAnalysisView
         stats={stats}

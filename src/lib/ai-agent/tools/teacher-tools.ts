@@ -38,6 +38,77 @@ async function verifyExamOwnership(examId: string, context: TeacherToolContext) 
 }
 
 /**
+ * Helper điều kiện lọc chỉ lấy bài thi chính thức của đề thi (LOẠI BỎ phần tự ôn tập của từng học viên)
+ */
+function buildOfficialExamAttemptFilter(examId: mongoose.Types.ObjectId) {
+  return {
+    exam_id: examId,
+    attempt_type: { $ne: "practice" },
+    status: { $in: ["submitted", "timed_out"] },
+  };
+}
+
+/**
+ * 0. Liệt kê danh sách các đề thi do chính giáo viên tạo kèm thống kê lượt làm bài thi chính thức
+ */
+export async function getMyCreatedExams(context: TeacherToolContext) {
+  await connectDB();
+
+  const examQuery: Record<string, unknown> = {};
+  if (context.role !== "admin") {
+    examQuery.created_by = new mongoose.Types.ObjectId(context.userId);
+  }
+
+  const exams = await Exam.find(examQuery)
+    .sort({ createdAt: -1 })
+    .select("title total_questions duration_minutes pass_score max_score is_published createdAt")
+    .lean();
+
+  if (!exams || exams.length === 0) {
+    return {
+      status: "no_data",
+      message: "Bạn chưa tạo đề thi nào trên hệ thống.",
+    };
+  }
+
+  const examIds = exams.map((e) => e._id);
+  const attempts = await ExamAttempt.find({
+    exam_id: { $in: examIds },
+    attempt_type: { $ne: "practice" },
+    status: { $in: ["submitted", "timed_out"] },
+  })
+    .select("exam_id score")
+    .lean();
+
+  const statsMap = new Map<string, { count: number; totalScore: number }>();
+  for (const att of attempts) {
+    if (!att.exam_id) continue;
+    const idStr = att.exam_id.toString();
+    const cur = statsMap.get(idStr) || { count: 0, totalScore: 0 };
+    cur.count += 1;
+    cur.totalScore += typeof att.score === "number" ? att.score : 0;
+    statsMap.set(idStr, cur);
+  }
+
+  return {
+    status: "success",
+    tong_so_de_thi: exams.length,
+    danh_sach_de_thi: exams.map((e) => {
+      const stat = statsMap.get(e._id.toString()) || { count: 0, totalScore: 0 };
+      return {
+        ma_de_thi: e._id.toString(),
+        ten_de_thi: e.title,
+        so_cau_hoi: e.total_questions,
+        thoi_gian_phut: e.duration_minutes,
+        trang_thai: e.is_published ? "Đã công bố" : "Bản nháp",
+        so_bai_thi_da_nop: stat.count,
+        diem_trung_binh: stat.count > 0 ? Math.round((stat.totalScore / stat.count) * 10) / 10 : 0,
+      };
+    }),
+  };
+}
+
+/**
  * 1. Phân tích kết quả toàn diện của một đề thi
  */
 export async function analyzeExamResults(
@@ -50,10 +121,7 @@ export async function analyzeExamResults(
     return { status: "permission_denied", message: error };
   }
 
-  const attempts = await ExamAttempt.find({
-    exam_id: exam._id,
-    status: "submitted",
-  })
+  const attempts = await ExamAttempt.find(buildOfficialExamAttemptFilter(exam._id))
     .populate({
       path: "answers.question_id",
       select: "content difficulty_level topic_id options",
@@ -98,10 +166,7 @@ export async function getExamStatistics(
     return { status: "permission_denied", message: error };
   }
 
-  const attempts = await ExamAttempt.find({
-    exam_id: exam._id,
-    status: "submitted",
-  })
+  const attempts = await ExamAttempt.find(buildOfficialExamAttemptFilter(exam._id))
     .select("score total_correct total_wrong duration_seconds submit_time")
     .lean();
 
@@ -151,10 +216,7 @@ export async function getMostIncorrectQuestions(
 
   const limit = Math.min(Math.max(Number(params.limit) || 5, 1), 15);
 
-  const attempts = await ExamAttempt.find({
-    exam_id: exam._id,
-    status: "submitted",
-  })
+  const attempts = await ExamAttempt.find(buildOfficialExamAttemptFilter(exam._id))
     .populate({
       path: "answers.question_id",
       select: "content difficulty_level topic_id options",
@@ -218,9 +280,8 @@ export async function analyzeStudentPerformance(
   }
 
   const attempt = await ExamAttempt.findOne({
-    exam_id: exam._id,
+    ...buildOfficialExamAttemptFilter(exam._id),
     user_id: student._id,
-    status: "submitted",
   })
     .populate({
       path: "answers.question_id",

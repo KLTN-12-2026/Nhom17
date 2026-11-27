@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "@/components/auth/logout-button";
+import FloatingAiWidget from "@/components/ai-agent/floating-ai-widget";
 
 interface UserProfile {
   id: string;
@@ -172,16 +173,6 @@ const defaultNavItems: Record<"admin" | "instructor" | "student", NavItem[]> = {
       icon: ({ className }) => (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-    },
-    {
-      label: "Trợ lý AI Giảng dạy",
-      href: "/instructor/ai-assistant",
-      badge: "AI Agent",
-      icon: ({ className }) => (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
     },
@@ -562,6 +553,9 @@ export default function RoleDashboardShell({
           </div>
         </div>
       </footer>
+
+      {/* Bong bóng chat Trợ lý AI góc dưới bên phải cho Học sinh và Giáo viên */}
+      <FloatingAiWidget role={user.role === "student" ? "student" : "teacher"} />
     </div>
   );
 }

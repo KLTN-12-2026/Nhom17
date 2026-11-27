@@ -93,6 +93,15 @@ export const studentFunctionDeclarations: FunctionDeclaration[] = [
 
 export const teacherFunctionDeclarations: FunctionDeclaration[] = [
   {
+    name: "getMyCreatedExams",
+    description:
+      "Lấy danh sách các đề thi mà giáo viên đang đăng nhập đã tạo kèm số lượt học viên đã nộp bài thi và điểm trung bình. Dùng công cụ này trước khi cần tìm mã đề thi (examId) để phân tích.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {},
+    },
+  },
+  {
     name: "analyzeExamResults",
     description:
       "Phân tích toàn diện kết quả của một đề thi do giáo viên quản lý (KPI điểm số, chuyên đề học sinh hay sai, các câu hỏi mất điểm nhiều nhất và chẩn đoán sư phạm).",

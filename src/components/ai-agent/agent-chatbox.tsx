@@ -22,6 +22,13 @@ interface ConversationItem {
   context_id?: string;
 }
 
+export interface ExternalPromptPayload {
+  text: string;
+  contextType?: "exam" | "attempt" | "general";
+  contextId?: string;
+  nonce: number;
+}
+
 interface AgentChatboxProps {
   role: "student" | "teacher";
   title: string;
@@ -29,7 +36,12 @@ interface AgentChatboxProps {
   initialContextType?: "exam" | "attempt" | "general";
   initialContextId?: string;
   initialPrompt?: string;
+  externalPrompt?: ExternalPromptPayload | null;
   suggestedPrompts: string[];
+  isFloating?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+  onClose?: () => void;
 }
 
 export default function AgentChatbox({
@@ -39,7 +51,12 @@ export default function AgentChatbox({
   initialContextType = "general",
   initialContextId,
   initialPrompt,
+  externalPrompt,
   suggestedPrompts,
+  isFloating = false,
+  isExpanded = false,
+  onToggleExpand,
+  onClose,
 }: AgentChatboxProps) {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -147,12 +164,28 @@ export default function AgentChatbox({
   };
 
   // Gửi tin nhắn
-  const handleSendMessage = async (textToSend?: string) => {
+  const handleSendMessage = async (
+    textToSend?: string,
+    overrideContext?: {
+      contextType?: "exam" | "attempt" | "general";
+      contextId?: string;
+      forceNewConversation?: boolean;
+    }
+  ) => {
     const text = (textToSend || inputMessage).trim();
     if (!text || isLoading) return;
 
     setError(null);
     setInputMessage("");
+
+    const convIdToUse = overrideContext?.forceNewConversation
+      ? undefined
+      : activeConversationId || undefined;
+
+    if (overrideContext?.forceNewConversation) {
+      setActiveConversationId(null);
+      setMessages([]);
+    }
 
     // Cập nhật UI ngay với tin nhắn của người dùng
     const userMsg: Message = {
@@ -160,7 +193,9 @@ export default function AgentChatbox({
       content: text,
       timestamp: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) =>
+      overrideContext?.forceNewConversation ? [userMsg] : [...prev, userMsg]
+    );
     setIsLoading(true);
 
     try {
@@ -169,9 +204,9 @@ export default function AgentChatbox({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          conversation_id: activeConversationId || undefined,
-          context_type: initialContextType,
-          context_id: initialContextId || undefined,
+          conversation_id: convIdToUse,
+          context_type: overrideContext?.contextType || initialContextType,
+          context_id: overrideContext?.contextId || initialContextId || undefined,
         }),
       });
 
@@ -182,7 +217,7 @@ export default function AgentChatbox({
       }
 
       // Cập nhật conversation ID nếu là chat mới
-      if (!activeConversationId && data.conversationId) {
+      if ((!activeConversationId || overrideContext?.forceNewConversation) && data.conversationId) {
         setActiveConversationId(data.conversationId);
         reloadConversations();
       }
@@ -219,20 +254,35 @@ export default function AgentChatbox({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt]);
 
-  // Phân tích hiển thị tên công cụ thân thiện
+  // Tự động nhận câu hỏi từ sự kiện bên ngoài (vd: bấm "Hỏi AI cách ôn" mở bong bóng chat)
+  const lastExternalNonce = useRef<number>(0);
+  useEffect(() => {
+    if (externalPrompt && externalPrompt.nonce !== lastExternalNonce.current) {
+      lastExternalNonce.current = externalPrompt.nonce;
+      handleSendMessage(externalPrompt.text, {
+        contextType: externalPrompt.contextType,
+        contextId: externalPrompt.contextId,
+        forceNewConversation: Boolean(externalPrompt.contextId),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalPrompt]);
+
+  // Phân tích hiển thị tên dữ liệu đã tra cứu thân thiện với người dùng
   const formatToolName = (toolName: string) => {
     const dict: Record<string, string> = {
-      analyzeMyLearningResults: "Phân tích kết quả học tập cá nhân",
-      getMyExamHistory: "Truy xuất lịch sử làm bài",
-      getMyExamResult: "Lấy chi tiết kết quả bài thi",
-      explainMyAnswer: "Phân tích câu hỏi & đáp án",
-      searchLearningKnowledge: "Tra cứu cơ sở kiến thức & bài giảng",
-      analyzeExamResults: "Phân tích phổ điểm đề thi",
-      getExamStatistics: "Tổng hợp thống kê lớp học",
-      getMostIncorrectQuestions: "Phát hiện các câu hỏi sai nhiều nhất",
-      analyzeStudentPerformance: "Đánh giá chi tiết năng lực học viên",
-      explainQuestion: "Tra cứu câu hỏi ngân hàng",
-      teachingAssistant: "Tư vấn phương pháp sư phạm",
+      analyzeMyLearningResults: "Tổng hợp kết quả học tập",
+      getMyExamHistory: "Lịch sử làm bài của bạn",
+      getMyExamResult: "Chi tiết bài làm của bạn",
+      explainMyAnswer: "Nội dung câu hỏi & đáp án",
+      searchLearningKnowledge: "Kiến thức môn học",
+      getMyCreatedExams: "Danh sách đề thi của bạn",
+      analyzeExamResults: "Phổ điểm & kết quả đề thi",
+      getExamStatistics: "Thống kê bài thi",
+      getMostIncorrectQuestions: "Các câu hỏi sai nhiều nhất",
+      analyzeStudentPerformance: "Kết quả thi của học viên",
+      explainQuestion: "Ngân hàng câu hỏi",
+      teachingAssistant: "Tài liệu gợi ý giảng dạy",
     };
     return dict[toolName] || toolName;
   };
@@ -372,32 +422,49 @@ export default function AgentChatbox({
   };
 
   return (
-    <div className="flex flex-col h-[750px] max-h-[82vh] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xl overflow-hidden relative">
+    <div
+      className={`flex flex-col bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden relative ${
+        isFloating
+          ? "h-full w-full rounded-2xl shadow-2xl"
+          : "h-[750px] max-h-[82vh] rounded-2xl shadow-xl"
+      }`}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+      <div
+        className={`flex items-center justify-between bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-b border-slate-800 shrink-0 ${
+          isFloating ? "px-4 py-3" : "px-5 py-3.5"
+        }`}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div
+            className={`rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0 ${
+              isFloating ? "w-9 h-9" : "w-10 h-10"
+            }`}
+          >
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm tracking-wide text-white">{title}</h3>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Agent Active
-              </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-bold text-sm tracking-wide text-white truncate">{title}</h3>
+              {!isFloating && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                  Agent Active
+                </span>
+              )}
             </div>
-            <p className="text-xs text-slate-300/90">{subtitle}</p>
+            <p className="text-[11px] text-slate-300/90 truncate">{subtitle}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Nút xem lịch sử hội thoại */}
           <button
+            type="button"
             onClick={() => setShowHistory(!showHistory)}
             title="Lịch sử cuộc trò chuyện"
-            className={`p-2 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border ${
+            className={`p-1.5 sm:p-2 rounded-lg text-xs font-medium transition flex items-center gap-1 border cursor-pointer ${
               showHistory
                 ? "bg-indigo-600 text-white border-indigo-500"
                 : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-700"
@@ -411,26 +478,72 @@ export default function AgentChatbox({
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="hidden sm:inline">Lịch sử ({conversations.length})</span>
+            {!isFloating && (
+              <span className="hidden sm:inline">Lịch sử ({conversations.length})</span>
+            )}
           </button>
 
           {/* Nút Tạo đoạn chat mới */}
           <button
+            type="button"
             onClick={handleStartNewChat}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 shadow-md shadow-emerald-700/20"
+            title="Tạo đoạn chat mới"
+            className={`rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1 shadow-md shadow-emerald-700/20 cursor-pointer ${
+              isFloating ? "p-1.5 sm:px-2.5 sm:py-1.5" : "px-3 py-1.5 gap-1.5"
+            }`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
             </svg>
-            <span>Đoạn chat mới</span>
+            {!isFloating && <span>Đoạn chat mới</span>}
           </button>
+
+          {/* Nút phóng to/thu nhỏ khi ở chế độ bong bóng */}
+          {isFloating && onToggleExpand && (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              title={isExpanded ? "Thu nhỏ khung chat" : "Mở rộng khung chat"}
+              className="hidden sm:flex p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
+            >
+              {isExpanded ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 9L4 4m0 0v4m0-4h4m6 6l5 5m0 0v-4m0 4h-4" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              )}
+            </button>
+          )}
+
+          {/* Nút đóng popup khi ở chế độ bong bóng */}
+          {isFloating && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Thu gọn thành bong bóng chat"
+              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-600 text-slate-300 hover:text-white border border-slate-700 hover:border-rose-500 transition cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Lịch sử Sidebar Drawer */}
         {showHistory && (
-          <div className="w-72 bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col z-10 animate-in slide-in-from-left duration-200">
+          <div
+            className={`bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col animate-in slide-in-from-left duration-200 ${
+              isFloating
+                ? "absolute inset-y-0 left-0 w-72 max-w-[85%] z-20 shadow-2xl"
+                : "w-72 z-10"
+            }`}
+          >
             <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                 Các phiên trò chuyện
@@ -509,8 +622,8 @@ export default function AgentChatbox({
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {role === "student"
-                    ? "Agent có khả năng truy xuất lịch sử bài thi, chỉ ra chuyên đề bạn yếu nhất và giải thích từng câu hỏi dễ hiểu."
-                    : "Agent hỗ trợ tổng hợp thống kê đề thi, phát hiện câu hỏi nhiều học sinh sai và đề xuất hướng giảng bài hiệu quả."}
+                    ? "Mình có thể xem lại kết quả bài làm của bạn, chỉ ra phần hay sai và giải thích từng câu thật dễ hiểu."
+                    : "Tôi hỗ trợ xem nhanh kết quả các đề thi Thầy/Cô đã tạo, tìm câu học sinh hay sai và gợi ý cách giảng bài."}
                 </p>
 
                 {/* Gợi ý câu hỏi */}
@@ -565,7 +678,7 @@ export default function AgentChatbox({
                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
-                        Công cụ AI đã dùng:
+                        Đã tham khảo:
                       </span>
                       {msg.tool_calls.map((tc, tIdx) => (
                         <span
@@ -635,12 +748,12 @@ export default function AgentChatbox({
                     <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
                     <span>
                       {isToolCalling
-                        ? `AI đang truy xuất dữ liệu: ${toolNameDisplay || "Database MongoDB"}...`
-                        : "AI đang suy nghĩ và tổng hợp câu trả lời..."}
+                        ? `Đang xem dữ liệu: ${toolNameDisplay || "bài thi"}...`
+                        : "AI đang suy nghĩ và soạn câu trả lời..."}
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    Hệ thống đang đối chiếu dữ liệu điểm số và kiến thức chuẩn xác...
+                    Đang đối chiếu dữ liệu bài làm và kiến thức liên quan...
                   </div>
                 </div>
               </div>
@@ -726,7 +839,7 @@ export default function AgentChatbox({
             </form>
             <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-400">
               <span>Shift + Enter để xuống dòng</span>
-              <span>Được bảo vệ bởi Gemini AI & RBAC Rules</span>
+              <span>Trợ lý AI hỗ trợ học tập &amp; giảng dạy</span>
             </div>
           </div>
         </div>
