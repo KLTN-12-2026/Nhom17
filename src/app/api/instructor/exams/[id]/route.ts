@@ -116,6 +116,22 @@ export async function PUT(
     const body = await request.json();
     const parsed = updateExamSchema.parse(body);
 
+    // Chặn sửa cấu trúc / ẩn đề thi nếu đang có phòng thi ở trạng thái waiting hoặc in_progress
+    const hasOpenRoom = await ExamRoom.exists({
+      exam_id: id,
+      status: { $in: ["waiting", "in_progress"] },
+    });
+    if (hasOpenRoom) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Đề thi đang được sử dụng trong phòng thi trực tuyến đang mở. Vui lòng kết thúc phòng thi trước khi chỉnh sửa.",
+        },
+        { status: 400 },
+      );
+    }
+
     if (parsed.title !== undefined) existingExam.title = parsed.title;
     if (parsed.subject_id !== undefined && mongoose.Types.ObjectId.isValid(parsed.subject_id)) {
       existingExam.subject_id = new mongoose.Types.ObjectId(parsed.subject_id);
@@ -212,6 +228,22 @@ export async function DELETE(
 
     if (user.role !== "admin" && String(exam.created_by) !== user.id) {
       return NextResponse.json({ success: false, message: "Bạn không có quyền xóa đề thi này" }, { status: 403 });
+    }
+
+    // Kiểm tra xem đề thi có đang được mở phòng thi trực tuyến không
+    const hasOpenRoom = await ExamRoom.exists({
+      exam_id: id,
+      status: { $in: ["waiting", "in_progress"] },
+    });
+    if (hasOpenRoom) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Không thể xóa đề thi khi đang có phòng thi trực tuyến đang chờ hoặc đang diễn ra.",
+        },
+        { status: 400 },
+      );
     }
 
     // Kiểm tra xem đề thi đã có lượt thi chưa

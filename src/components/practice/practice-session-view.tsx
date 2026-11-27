@@ -9,7 +9,7 @@ interface PracticeOption {
   _id: string;
   option_label: string;
   content: string;
-  is_correct: boolean;
+  is_correct?: boolean;
 }
 
 interface PracticeQuestion {
@@ -25,6 +25,11 @@ interface PracticeTopic {
   _id: string | null;
   topic_name: string;
   level: number;
+}
+
+interface PracticeHintItem {
+  text: string;
+  source: string;
 }
 
 interface PracticeSessionViewProps {
@@ -47,10 +52,17 @@ export default function PracticeSessionView({
     new Map()
   );
 
-  // Set các câu hỏi đã bấm "Kiểm tra đáp án" để xem giải thích tức thì
-  const [checkedQuestionIds, setCheckedQuestionIds] = useState<Set<string>>(
+  // Tập các câu hỏi được học sinh đánh dấu xem lại trước khi nộp
+  const [flaggedQuestionIds, setFlaggedQuestionIds] = useState<Set<string>>(
     new Set()
   );
+
+  // Bộ nhớ tạm lưu Gợi ý tư duy AI (không lộ đáp án) theo question_id
+  const [hintsByQuestion, setHintsByQuestion] = useState<
+    Map<string, PracticeHintItem>
+  >(new Map());
+  const [loadingHintId, setLoadingHintId] = useState<string | null>(null);
+  const [hintError, setHintError] = useState<string>("");
 
   // Đồng hồ đếm xuôi (thời gian làm bài tính bằng giây)
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
@@ -70,7 +82,7 @@ export default function PracticeSessionView({
   // Bộ lọc sau khi nộp bài
   const [filterQuestionType, setFilterQuestionType] = useState<"all" | "correct" | "wrong">("all");
 
-  // Tải dữ liệu phiên tự luyện (ưu tiên từ sessionStorage, fallback sang API)
+  // Tải dữ liệu phiên tự luyện (ưu tiên cache phiên mới chưa nộp, fallback sang API)
   useEffect(() => {
     let isMounted = true;
 
@@ -78,34 +90,52 @@ export default function PracticeSessionView({
       try {
         setLoading(true);
 
-        // 1. Kiểm tra cache sessionStorage trước
         if (typeof window !== "undefined") {
           const cached = sessionStorage.getItem(`practice_session_${attemptId}`);
           if (cached) {
             try {
               const parsed = JSON.parse(cached);
-              if (parsed && parsed.questions && parsed.questions.length > 0) {
+              if (
+                parsed &&
+                parsed.status !== "submitted" &&
+                Array.isArray(parsed.questions) &&
+                parsed.questions.length > 0
+              ) {
                 if (isMounted) {
                   setTopic(parsed.topic || null);
-                  setQuestions(parsed.questions || []);
+                  // Đảm bảo không mang theo is_correct/explanation cũ nếu còn sót trong cache
+                  setQuestions(
+                    (parsed.questions as PracticeQuestion[]).map((q) => ({
+                      _id: q._id,
+                      content: q.content,
+                      difficulty_level: q.difficulty_level,
+                      selected_option_id: q.selected_option_id ?? null,
+                      options: (q.options || []).map((opt) => ({
+                        _id: opt._id,
+                        option_label: opt.option_label,
+                        content: opt.content,
+                      })),
+                    }))
+                  );
                   setLoading(false);
                   return;
                 }
               }
             } catch {
-              // Parse lỗi thì bỏ qua fallback sang API
+              // Parse lỗi thì fallback sang API
             }
           }
         }
 
-        // 2. Fetch từ API nếu không có trong cache
         const res = await fetch(`/api/student/practice/session/${attemptId}`);
         const data = await res.json();
 
         if (!isMounted) return;
 
         if (!res.ok || !data.success) {
-          setLoadError(data.message || "Không thể tải dữ liệu phiên tự luyện.");
+          setLoadError(
+            data.message || "Không thể tải dữ liệu phiên tự luyện."
+          );
           setLoading(false);
           return;
         }
@@ -113,7 +143,6 @@ export default function PracticeSessionView({
         setTopic(data.topic || null);
         setQuestions(data.questions || []);
 
-        // Phục hồi câu trả lời cũ nếu có
         const initialAnswers = new Map<string, string>();
         for (const q of data.questions) {
           if (q.selected_option_id) {
@@ -122,8 +151,7 @@ export default function PracticeSessionView({
         }
         setSelectedAnswers(initialAnswers);
 
-        // Nếu đã nộp trước đó
-        if (data.status === "submitted") {
+        if (data.status && data.status !== "in_progress") {
           setIsSubmitted(true);
           setResultSummary({
             score: data.score,
@@ -132,10 +160,6 @@ export default function PracticeSessionView({
             total_questions: data.total_questions,
             duration_seconds: data.duration_seconds,
           });
-          // Tự động đánh dấu kiểm tra tất cả câu hỏi
-          setCheckedQuestionIds(
-            new Set((data.questions as PracticeQuestion[]).map((q) => q._id))
-          );
         }
 
         setLoading(false);
@@ -166,16 +190,15 @@ export default function PracticeSessionView({
     return () => clearInterval(interval);
   }, [loading, isSubmitted]);
 
-  // Định dạng thời gian mm:ss
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Chọn phương án
+  // Chọn phương án (không hiện đúng/sai trước khi nộp bài)
   const handleSelectOption = (questionId: string, optionId: string) => {
-    if (isSubmitted) return; // Đã nộp bài thì không sửa
+    if (isSubmitted) return;
     setSelectedAnswers((prev) => {
       const next = new Map(prev);
       next.set(questionId, optionId);
@@ -183,16 +206,56 @@ export default function PracticeSessionView({
     });
   };
 
-  // Bấm "Kiểm tra đáp án" câu hiện tại (Instant Feedback)
-  const handleCheckAnswer = (questionId: string) => {
-    setCheckedQuestionIds((prev) => {
+  // Đánh dấu / bỏ đánh dấu câu hỏi cần xem lại
+  const handleToggleFlag = (questionId: string) => {
+    if (isSubmitted) return;
+    setFlaggedQuestionIds((prev) => {
       const next = new Set(prev);
-      next.add(questionId);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
       return next;
     });
   };
 
-  // Nộp bài tự luyện
+  // Xin gợi ý hướng làm từ AI (không tiết lộ đáp án đúng)
+  const handleRequestHint = async (questionId: string) => {
+    if (isSubmitted || loadingHintId || hintsByQuestion.has(questionId)) return;
+
+    setLoadingHintId(questionId);
+    setHintError("");
+
+    try {
+      const res = await fetch("/api/student/practice/hint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attempt_id: attemptId,
+          question_id: questionId,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success || !data.hint) {
+        setHintError(data.message || "Không thể lấy gợi ý lúc này.");
+        return;
+      }
+
+      setHintsByQuestion((prev) => {
+        const next = new Map(prev);
+        next.set(questionId, {
+          text: data.hint,
+          source: data.source || "smart-guide",
+        });
+        return next;
+      });
+    } catch {
+      setHintError("Lỗi kết nối máy chủ khi tạo gợi ý.");
+    } finally {
+      setLoadingHintId(null);
+    }
+  };
+
+  // Nộp bài tự luyện -> server chấm điểm & trả đáp án đúng + lời giải chi tiết
   const handleSubmitPractice = useCallback(async () => {
     try {
       setSubmitting(true);
@@ -220,6 +283,14 @@ export default function PracticeSessionView({
         return;
       }
 
+      if (Array.isArray(data.questions) && data.questions.length > 0) {
+        setQuestions(data.questions);
+      }
+
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(`practice_session_${attemptId}`);
+      }
+
       setIsSubmitted(true);
       setResultSummary({
         score: data.score,
@@ -228,9 +299,6 @@ export default function PracticeSessionView({
         total_questions: data.total_questions,
         duration_seconds: data.duration_seconds,
       });
-
-      // Mở bung kiểm tra đáp án cho toàn bộ câu hỏi
-      setCheckedQuestionIds(new Set(questions.map((q) => q._id)));
       setSubmitting(false);
     } catch (err) {
       console.error("Lỗi khi nộp bài:", err);
@@ -249,7 +317,9 @@ export default function PracticeSessionView({
       .map((q, i) => {
         const selectedId = selectedAnswers.get(q._id);
         const correctOpt = q.options.find((o) => o.is_correct);
-        const isCorrect = selectedId && correctOpt && selectedId === correctOpt._id;
+        const isCorrect = Boolean(
+          selectedId && correctOpt && selectedId === correctOpt._id
+        );
         if (filterQuestionType === "correct") {
           return isCorrect ? i : -1;
         }
@@ -326,12 +396,17 @@ export default function PracticeSessionView({
   }
 
   const currentSelectedOptionId = selectedAnswers.get(currentQuestion._id);
-  const isCurrentChecked = checkedQuestionIds.has(currentQuestion._id);
-  const currentCorrectOption = currentQuestion.options.find((o) => o.is_correct);
-  const isCurrentCorrect =
-    currentSelectedOptionId &&
-    currentCorrectOption &&
-    currentSelectedOptionId === currentCorrectOption._id;
+  const currentCorrectOption = isSubmitted
+    ? currentQuestion.options.find((o) => o.is_correct)
+    : undefined;
+  const isCurrentCorrect = Boolean(
+    isSubmitted &&
+      currentSelectedOptionId &&
+      currentCorrectOption &&
+      currentSelectedOptionId === currentCorrectOption._id
+  );
+  const isCurrentFlagged = flaggedQuestionIds.has(currentQuestion._id);
+  const currentHint = hintsByQuestion.get(currentQuestion._id);
 
   return (
     <div className="space-y-6 pb-12">
@@ -344,7 +419,9 @@ export default function PracticeSessionView({
                 if (
                   !isSubmitted &&
                   answeredCount > 0 &&
-                  !confirm("Bạn có chắc muốn rời khỏi bài luyện tập này? Tiến trình chưa nộp sẽ bị mất.")
+                  !confirm(
+                    "Bạn có chắc muốn rời khỏi bài luyện tập này? Tiến trình chưa nộp sẽ bị mất."
+                  )
                 ) {
                   return;
                 }
@@ -374,11 +451,25 @@ export default function PracticeSessionView({
           <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
             {/* Đồng hồ đếm xuôi */}
             <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-              <svg className="w-4 h-4 text-indigo-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-4 h-4 text-indigo-600 animate-pulse"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <div className="text-xs font-mono font-bold text-slate-800 dark:text-white">
-                {formatTime(isSubmitted && resultSummary ? resultSummary.duration_seconds : elapsedSeconds)}
+                {formatTime(
+                  isSubmitted && resultSummary
+                    ? resultSummary.duration_seconds
+                    : elapsedSeconds
+                )}
               </div>
             </div>
 
@@ -430,8 +521,12 @@ export default function PracticeSessionView({
                 Điểm số: {resultSummary.score} / 10.0
               </h2>
               <p className="mt-1 text-xs text-emerald-100">
-                Làm đúng: <strong>{resultSummary.total_correct}/{resultSummary.total_questions}</strong> câu •
-                Thời gian làm: <strong>{formatTime(resultSummary.duration_seconds)}</strong>
+                Làm đúng:{" "}
+                <strong>
+                  {resultSummary.total_correct}/{resultSummary.total_questions}
+                </strong>{" "}
+                câu • Thời gian làm:{" "}
+                <strong>{formatTime(resultSummary.duration_seconds)}</strong>
               </p>
             </div>
 
@@ -492,6 +587,13 @@ export default function PracticeSessionView({
                 </button>
               </div>
 
+              <Link
+                href={`/student/practice/history/${attemptId}`}
+                className="px-4 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-white font-bold text-xs shadow-md transition"
+              >
+                Xem báo cáo chi tiết ↗
+              </Link>
+
               <button
                 type="button"
                 onClick={() => router.push("/student/practice")}
@@ -542,13 +644,18 @@ export default function PracticeSessionView({
                 )}
               </div>
 
-              {/* Trạng thái câu này nếu đã kiểm tra */}
-              {isCurrentChecked && (
+              {/* Chỉ hiện đúng/sai SAU KHI NỘP BÀI */}
+              {isSubmitted && (
                 <div>
                   {isCurrentCorrect ? (
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       <span>✓</span>
                       <span>Chính xác</span>
+                    </span>
+                  ) : !currentSelectedOptionId ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                      <span>⚪</span>
+                      <span>Chưa trả lời</span>
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
@@ -569,27 +676,24 @@ export default function PracticeSessionView({
             <div className="space-y-3">
               {currentQuestion.options.map((opt) => {
                 const isSelected = currentSelectedOptionId === opt._id;
-                const isCorrectOption = opt.is_correct;
+                const isCorrectOption = Boolean(isSubmitted && opt.is_correct);
 
                 let cardStyle =
                   "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-700";
                 let badgeStyle =
                   "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
 
-                if (isCurrentChecked) {
+                if (isSubmitted) {
                   if (isCorrectOption) {
-                    // Đáp án đúng luôn tô xanh khi đã kiểm tra
                     cardStyle =
                       "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 shadow-xs";
                     badgeStyle = "bg-emerald-500 text-white font-black";
                   } else if (isSelected && !isCorrectOption) {
-                    // Đáp án học sinh chọn sai tô đỏ
                     cardStyle =
                       "border-rose-500 bg-rose-50/70 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100";
                     badgeStyle = "bg-rose-500 text-white font-black";
                   }
                 } else if (isSelected) {
-                  // Đang chọn bình thường
                   cardStyle =
                     "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 shadow-sm";
                   badgeStyle = "bg-indigo-600 text-white font-black";
@@ -599,7 +703,9 @@ export default function PracticeSessionView({
                   <div
                     key={opt._id}
                     onClick={() => handleSelectOption(currentQuestion._id, opt._id)}
-                    className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 transition cursor-pointer ${cardStyle}`}
+                    className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 transition ${
+                      isSubmitted ? "cursor-default" : "cursor-pointer"
+                    } ${cardStyle}`}
                   >
                     <div
                       className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition ${badgeStyle}`}
@@ -611,12 +717,12 @@ export default function PracticeSessionView({
                       {opt.content}
                     </div>
 
-                    {isCurrentChecked && isCorrectOption && (
+                    {isSubmitted && isCorrectOption && (
                       <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 shrink-0 self-center">
                         ✓ Đáp án đúng
                       </span>
                     )}
-                    {isCurrentChecked && isSelected && !isCorrectOption && (
+                    {isSubmitted && isSelected && !isCorrectOption && (
                       <span className="text-xs font-bold text-rose-600 dark:text-rose-400 shrink-0 self-center">
                         ✗ Lựa chọn của bạn
                       </span>
@@ -628,33 +734,57 @@ export default function PracticeSessionView({
 
             {/* Nút hành động của câu hỏi */}
             <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                {/* Nút Kiểm Tra Đáp Án Ngay (Instant Feedback) */}
-                {!isCurrentChecked ? (
+              {!isSubmitted ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Nút Xin Gợi Ý Tư Duy AI (Không lộ đáp án) */}
                   <button
-                    onClick={() => handleCheckAnswer(currentQuestion._id)}
-                    disabled={!currentSelectedOptionId}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:hover:bg-amber-500 text-slate-900 font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
-                    title={
-                      !currentSelectedOptionId
-                        ? "Vui lòng chọn 1 phương án trước khi kiểm tra"
-                        : "Xem ngay đáp án & lời giải chi tiết"
+                    type="button"
+                    onClick={() => handleRequestHint(currentQuestion._id)}
+                    disabled={
+                      loadingHintId === currentQuestion._id ||
+                      Boolean(currentHint)
                     }
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-60 disabled:hover:bg-amber-500 text-slate-900 font-bold text-xs shadow-sm transition active:scale-95 cursor-pointer"
+                    title="Nhận gợi ý phương pháp tư duy (không tiết lộ đáp án đúng)"
                   >
                     <span>💡</span>
-                    <span>Kiểm Tra Đáp Án Ngay</span>
+                    <span>
+                      {loadingHintId === currentQuestion._id
+                        ? "AI đang tạo gợi ý..."
+                        : currentHint
+                          ? "Đã mở gợi ý bên dưới"
+                          : "Gợi ý hướng làm (AI)"}
+                    </span>
                   </button>
-                ) : (
-                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                    <span>Đã kiểm tra</span>
-                  </span>
-                )}
-              </div>
+
+                  {/* Nút Đánh dấu xem lại */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFlag(currentQuestion._id)}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                      isCurrentFlagged
+                        ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300"
+                        : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span>🚩</span>
+                    <span>
+                      {isCurrentFlagged ? "Đã đánh dấu" : "Xem lại sau"}
+                    </span>
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Đã nộp bài • Đáp án và lời giải đã được mở
+                </span>
+              )}
 
               {/* Điều hướng Câu trước / Câu sau */}
               <div className="flex items-center gap-2 ml-auto">
                 <button
-                  onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+                  onClick={() =>
+                    setCurrentIndex((prev) => Math.max(0, prev - 1))
+                  }
                   disabled={currentIndex === 0}
                   className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 transition cursor-pointer"
                 >
@@ -662,7 +792,9 @@ export default function PracticeSessionView({
                 </button>
                 <button
                   onClick={() =>
-                    setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))
+                    setCurrentIndex((prev) =>
+                      Math.min(totalQuestions - 1, prev + 1)
+                    )
                   }
                   disabled={currentIndex === totalQuestions - 1}
                   className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 disabled:opacity-30 transition cursor-pointer"
@@ -671,10 +803,42 @@ export default function PracticeSessionView({
                 </button>
               </div>
             </div>
+
+            {hintError && !isSubmitted && (
+              <p className="mt-3 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                {hintError}
+              </p>
+            )}
           </div>
 
-          {/* Hộp Lời Giải Chi Tiết & Bẫy Nhận Thức (Tự động mở khi bấm kiểm tra hoặc sau khi nộp) */}
-          {isCurrentChecked && (
+          {/* Hộp Gợi Ý Tư Duy (Chỉ hiện trong lúc làm bài khi bấm Gợi ý — KHÔNG lộ đáp án) */}
+          {!isSubmitted && currentHint && (
+            <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/70 rounded-3xl p-5 sm:p-6 shadow-xs space-y-2.5 animate-in fade-in duration-300">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                  <span className="text-base">💡</span>
+                  <h3 className="font-extrabold text-sm">
+                    Gợi Ý Tư Duy (Chưa Mở Đáp Án)
+                  </h3>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200">
+                  {currentHint.source === "gemini"
+                    ? "Gemini AI Hint"
+                    : "Hướng dẫn phương pháp"}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">
+                {currentHint.text}
+              </p>
+              <p className="text-[11px] text-amber-700/80 dark:text-amber-300/80">
+                * Đáp án đúng và lời giải chi tiết sẽ được mở sau khi bạn bấm{" "}
+                <strong>Nộp Bài Tự Luyện</strong>.
+              </p>
+            </div>
+          )}
+
+          {/* Hộp Lời Giải Chi Tiết & Bẫy Nhận Thức (CHỈ MỞ SAU KHI NỘP BÀI) */}
+          {isSubmitted && (
             <div className="bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800/80 rounded-3xl p-6 shadow-xs animate-in fade-in duration-300 space-y-3">
               <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
                 <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center font-bold text-sm">
@@ -690,12 +854,14 @@ export default function PracticeSessionView({
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 text-xs text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line border border-indigo-100 dark:border-indigo-900/60 font-mono">
+              <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line border border-indigo-100 dark:border-indigo-900/60">
                 {currentQuestion.explanation?.trim() ? (
                   currentQuestion.explanation
                 ) : (
-                  <span className="italic text-slate-400 font-sans">
-                    Đáp án đúng là: <strong>{currentCorrectOption?.option_label}</strong>. (Nội dung phương pháp giải đang được thầy cô hoàn thiện).
+                  <span className="italic text-slate-400">
+                    Đáp án đúng là:{" "}
+                    <strong>{currentCorrectOption?.option_label}</strong>. (Nội
+                    dung phương pháp giải đang được thầy cô hoàn thiện).
                   </span>
                 )}
               </div>
@@ -717,21 +883,30 @@ export default function PracticeSessionView({
                   return null;
                 }
                 const isSelected = selectedAnswers.has(q._id);
-                const isChecked = checkedQuestionIds.has(q._id);
+                const isFlagged = !isSubmitted && flaggedQuestionIds.has(q._id);
                 const isCurrent = idx === effectiveIndex;
-                const correctOpt = q.options.find((o) => o.is_correct);
-                const isCorrect =
-                  isSelected && correctOpt && selectedAnswers.get(q._id) === correctOpt._id;
+                const correctOpt = isSubmitted
+                  ? q.options.find((o) => o.is_correct)
+                  : undefined;
+                const isCorrect = Boolean(
+                  isSubmitted &&
+                    isSelected &&
+                    correctOpt &&
+                    selectedAnswers.get(q._id) === correctOpt._id
+                );
 
                 let btnStyle =
                   "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200";
 
-                if (isChecked) {
+                if (isSubmitted) {
                   btnStyle = isCorrect
                     ? "bg-emerald-500 text-white font-bold"
                     : "bg-rose-500 text-white font-bold";
                 } else if (isSelected) {
                   btnStyle = "bg-indigo-600 text-white font-bold";
+                } else if (isFlagged) {
+                  btnStyle =
+                    "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-bold";
                 }
 
                 if (isCurrent) {
@@ -742,9 +917,15 @@ export default function PracticeSessionView({
                   <button
                     key={q._id}
                     onClick={() => setCurrentIndex(idx)}
-                    className={`h-10 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer ${btnStyle}`}
+                    className={`relative h-10 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer ${btnStyle}`}
                   >
                     {idx + 1}
+                    {isFlagged && isSelected && (
+                      <span
+                        className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white dark:border-slate-900"
+                        title="Đã đánh dấu xem lại"
+                      />
+                    )}
                   </button>
                 );
               })}
@@ -752,22 +933,33 @@ export default function PracticeSessionView({
 
             {/* Chú thích màu sắc */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 text-[11px] text-slate-500">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-md bg-slate-200 dark:bg-slate-700 shrink-0" />
-                <span>Chưa chọn đáp án</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-md bg-indigo-600 shrink-0" />
-                <span>Đã chọn (chưa kiểm tra)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-md bg-emerald-500 shrink-0" />
-                <span>Đã kiểm tra đúng (✓)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-md bg-rose-500 shrink-0" />
-                <span>Đã kiểm tra sai (✗)</span>
-              </div>
+              {!isSubmitted ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-slate-200 dark:bg-slate-700 shrink-0" />
+                    <span>Chưa chọn đáp án</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-indigo-600 shrink-0" />
+                    <span>Đã chọn đáp án</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-amber-400 shrink-0" />
+                    <span>Đã đánh dấu xem lại (🚩)</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-emerald-500 shrink-0" />
+                    <span>Trả lời đúng (✓)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-rose-500 shrink-0" />
+                    <span>Trả lời sai / Bỏ trống (✗)</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Nút Nộp Bài dưới bảng câu hỏi */}
@@ -800,10 +992,15 @@ export default function PracticeSessionView({
                 Xác nhận nộp bài tự luyện?
               </h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Bạn đã làm <strong>{answeredCount}/{totalQuestions}</strong> câu hỏi.
+                Bạn đã làm{" "}
+                <strong>
+                  {answeredCount}/{totalQuestions}
+                </strong>{" "}
+                câu hỏi.
                 {answeredCount < totalQuestions && (
                   <span className="text-amber-600 dark:text-amber-400 font-semibold block mt-1">
-                    Lưu ý: Bạn còn {totalQuestions - answeredCount} câu chưa chọn đáp án!
+                    Lưu ý: Bạn còn {totalQuestions - answeredCount} câu chưa chọn
+                    đáp án!
                   </span>
                 )}
               </p>

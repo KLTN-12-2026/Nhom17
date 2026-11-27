@@ -5,6 +5,7 @@ export interface IRoomCandidate {
   _id?: mongoose.Types.ObjectId;
   user_id: mongoose.Types.ObjectId; // hocvien_id
   joined_at: Date; // vao_phong_luc
+  last_seen_at?: Date; // lan_tuong_tac_cuoi
   connection_status: "connected" | "disconnected" | "submitted"; // trang_thai_ket_noi
 }
 
@@ -31,6 +32,10 @@ const RoomCandidateSchema = new Schema<IRoomCandidate>({
     required: true,
   },
   joined_at: {
+    type: Date,
+    default: Date.now,
+  },
+  last_seen_at: {
     type: Date,
     default: Date.now,
   },

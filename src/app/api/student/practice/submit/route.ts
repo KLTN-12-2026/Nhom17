@@ -13,12 +13,68 @@ interface IGradingOption {
 
 interface IGradingQuestion {
   _id: mongoose.Types.ObjectId;
+  content: string;
+  difficulty_level: "easy" | "medium" | "hard";
+  explanation?: string;
   options?: IGradingOption[];
+}
+
+interface IAttemptAnswerRef {
+  question_id: mongoose.Types.ObjectId;
+  selected_option_id?: mongoose.Types.ObjectId | null;
+}
+
+/**
+ * Định dạng danh sách câu hỏi kèm đáp án đúng và lời giải chi tiết sau khi nộp bài
+ */
+function formatSubmittedQuestions(
+  answers: IAttemptAnswerRef[],
+  qMap: Map<string, IGradingQuestion>
+) {
+  return answers
+    .map((ans) => {
+      const q = qMap.get(String(ans.question_id));
+      if (!q) return null;
+
+      return {
+        _id: String(q._id),
+        content: q.content,
+        difficulty_level: q.difficulty_level,
+        explanation: q.explanation || "",
+        selected_option_id: ans.selected_option_id
+          ? String(ans.selected_option_id)
+          : null,
+        options: (q.options || []).map((opt) => ({
+          _id: String(opt._id),
+          option_label: opt.option_label,
+          content: opt.content,
+          is_correct: Boolean(opt.is_correct),
+        })),
+      };
+    })
+    .filter(Boolean);
+}
+
+/**
+ * Tải map Question từ DB theo danh sách ObjectId
+ */
+async function loadQuestionsMap(
+  questionIds: mongoose.Types.ObjectId[]
+): Promise<Map<string, IGradingQuestion>> {
+  const questionsFromDb = (await Question.find({
+    _id: { $in: questionIds },
+  }).lean()) as unknown as IGradingQuestion[];
+
+  const qMap = new Map<string, IGradingQuestion>();
+  for (const q of questionsFromDb) {
+    qMap.set(String(q._id), q);
+  }
+  return qMap;
 }
 
 /**
  * POST /api/student/practice/submit
- * Chấm điểm và nộp bài tự luyện, cập nhật điểm số, số câu đúng/sai và lưu lịch sử
+ * Chấm điểm và nộp bài tự luyện, cập nhật điểm số, số câu đúng/sai và trả đáp án + lời giải chi tiết
  */
 export async function POST(request: Request) {
   const { user, errorResponse } = await checkApiAuthorization([
@@ -32,7 +88,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { attempt_id, duration_seconds = 0, answers = [] } = body;
 
-    if (!attempt_id || typeof attempt_id !== "string") {
+    if (
+      !attempt_id ||
+      typeof attempt_id !== "string" ||
+      !mongoose.Types.ObjectId.isValid(attempt_id)
+    ) {
       return NextResponse.json(
         { success: false, message: "Mã phiên làm bài không hợp lệ" },
         { status: 400 }
@@ -53,31 +113,76 @@ export async function POST(request: Request) {
       );
     }
 
-    // Trích xuất danh sách question_id cần chấm
-    const questionIds = answers
-      .map((a: { question_id: string }) => a.question_id)
-      .filter(Boolean);
-
-    const questionsFromDb = (await Question.find({
-      _id: { $in: questionIds },
-    }).lean()) as unknown as IGradingQuestion[];
-
-    const qMap = new Map<string, IGradingQuestion>();
-    for (const q of questionsFromDb) {
-      qMap.set(String(q._id), q);
+    if (attempt.attempt_type === "official" || attempt.room_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Không thể nộp bài thi phòng trực tuyến qua API tự luyện.",
+        },
+        { status: 403 }
+      );
     }
+
+    const existingAnswers = (attempt.answers || []) as IAttemptAnswerRef[];
+
+    if (attempt.status !== "in_progress") {
+      const qMap = await loadQuestionsMap(
+        existingAnswers.map((a) => a.question_id)
+      );
+      return NextResponse.json({
+        success: true,
+        already_submitted: true,
+        message: "Bài tự luyện này đã được nộp trước đó.",
+        attempt_id: String(attempt._id),
+        score: attempt.score || 0,
+        total_correct: attempt.total_correct || 0,
+        total_wrong: attempt.total_wrong || 0,
+        total_questions: existingAnswers.length || 1,
+        duration_seconds: attempt.duration_seconds || 0,
+        questions: formatSubmittedQuestions(existingAnswers, qMap),
+      });
+    }
+
+    // Ánh xạ lựa chọn của học sinh gửi lên theo question_id
+    const selectedOptionMap = new Map<string, string | null>();
+    if (Array.isArray(answers)) {
+      for (const a of answers as Array<{
+        question_id?: string;
+        selected_option_id?: string | null;
+      }>) {
+        if (a?.question_id) {
+          selectedOptionMap.set(
+            String(a.question_id),
+            a.selected_option_id ? String(a.selected_option_id) : null
+          );
+        }
+      }
+    }
+
+    // Chấm dựa trên danh sách câu hỏi gốc của phiên thi để bảo toàn thứ tự & chống giả mạo
+    const canonicalQuestionIds: mongoose.Types.ObjectId[] =
+      existingAnswers.length > 0
+        ? existingAnswers.map((a) => a.question_id)
+        : Array.from(selectedOptionMap.keys())
+            .filter((id) => mongoose.Types.ObjectId.isValid(id))
+            .map((id) => new mongoose.Types.ObjectId(id));
+
+    const qMap = await loadQuestionsMap(canonicalQuestionIds);
 
     let totalCorrect = 0;
     let totalWrong = 0;
 
-    const gradedAnswers = answers.map(
-      (ans: { question_id: string; selected_option_id: string | null }) => {
-        const qData = qMap.get(String(ans.question_id));
+    const gradedAnswers = canonicalQuestionIds.map(
+      (qObjId: mongoose.Types.ObjectId) => {
+        const qIdStr = String(qObjId);
+        const selectedOptId = selectedOptionMap.get(qIdStr) ?? null;
+        const qData = qMap.get(qIdStr);
         let isCorrect = false;
 
-        if (qData && ans.selected_option_id) {
+        if (qData && selectedOptId) {
           const selectedOpt = (qData.options || []).find(
-            (o) => String(o._id) === String(ans.selected_option_id)
+            (o) => String(o._id) === selectedOptId
           );
           if (selectedOpt && selectedOpt.is_correct) {
             isCorrect = true;
@@ -91,10 +196,11 @@ export async function POST(request: Request) {
         }
 
         return {
-          question_id: new mongoose.Types.ObjectId(String(ans.question_id)),
-          selected_option_id: ans.selected_option_id
-            ? new mongoose.Types.ObjectId(String(ans.selected_option_id))
-            : null,
+          question_id: qObjId,
+          selected_option_id:
+            selectedOptId && mongoose.Types.ObjectId.isValid(selectedOptId)
+              ? new mongoose.Types.ObjectId(selectedOptId)
+              : null,
           is_correct: isCorrect,
           answered_at: new Date(),
         };
@@ -104,7 +210,7 @@ export async function POST(request: Request) {
     const totalQuestions = gradedAnswers.length || 1;
     // Tính điểm trên thang 10, làm tròn 1 chữ số thập phân
     const calculatedScore =
-      Math.round(((totalCorrect / totalQuestions) * 10) * 10) / 10;
+      Math.round((totalCorrect / totalQuestions) * 10 * 10) / 10;
 
     attempt.status = "submitted";
     attempt.submit_time = new Date();
@@ -125,6 +231,7 @@ export async function POST(request: Request) {
       total_wrong: totalWrong,
       total_questions: totalQuestions,
       duration_seconds: attempt.duration_seconds,
+      questions: formatSubmittedQuestions(gradedAnswers, qMap),
     });
   } catch (error) {
     console.error("Lỗi khi nộp bài tự luyện:", error);

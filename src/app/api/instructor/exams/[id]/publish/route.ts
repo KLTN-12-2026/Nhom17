@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db";
-import { Exam } from "@/models";
+import { Exam, ExamRoom } from "@/models";
 import { checkApiAuthorization } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
@@ -33,6 +33,23 @@ export async function PATCH(
 
     const body = await request.json().catch(() => ({}));
     const newStatus = typeof body.is_published === "boolean" ? body.is_published : !exam.is_published;
+
+    if (!newStatus) {
+      const hasOpenRoom = await ExamRoom.exists({
+        exam_id: id,
+        status: { $in: ["waiting", "in_progress"] },
+      });
+      if (hasOpenRoom) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Không thể chuyển đề thi về bản nháp khi đang có phòng thi trực tuyến đang mở.",
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     exam.is_published = newStatus;
     await exam.save();
