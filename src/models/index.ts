@@ -18,6 +18,7 @@ export * from "./ExamRoom";
 
 // Phân hệ 4: Làm Bài, Giám Sát Gian Lận & AI
 export * from "./ExamAttempt";
+export * from "./AiConversation";
 
 // Phân hệ 5: Lộ Trình Học & Doanh Thu
 export * from "./Roadmap";

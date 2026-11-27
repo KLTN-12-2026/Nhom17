@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AiAttemptAnalysisCard from "@/components/student/ai-attempt-analysis-card";
 
 interface HistoryItem {
   _id: string;
@@ -84,7 +85,7 @@ export default function PracticeHistoryView() {
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
   const [attemptDetail, setAttemptDetail] = useState<AttemptDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
-  const [modalFilter, setModalFilter] = useState<"all" | "wrong" | "correct">("all");
+  const [filterQuestionType, setFilterQuestionType] = useState<"all" | "correct" | "wrong">("all");
 
   // Tải danh sách lịch sử khi mount
   useEffect(() => {
@@ -105,7 +106,7 @@ export default function PracticeHistoryView() {
             if (reviewId) {
               setSelectedAttemptId(reviewId);
               setLoadingDetail(true);
-              setModalFilter("all");
+              setFilterQuestionType("all");
               fetch(`/api/student/practice/history/${reviewId}`)
                 .then((r) => r.json())
                 .then((d) => {
@@ -141,7 +142,7 @@ export default function PracticeHistoryView() {
     try {
       setSelectedAttemptId(attemptId);
       setLoadingDetail(true);
-      setModalFilter("all");
+      setFilterQuestionType("all");
 
       const res = await fetch(`/api/student/practice/history/${attemptId}`);
       const data = await res.json();
@@ -684,7 +685,66 @@ export default function PracticeHistoryView() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {/* Bộ lọc phân loại câu hỏi (Tất cả / Câu đúng / Câu sai) */}
+                {attemptDetail && attemptDetail.can_view_details !== false && (
+                  <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+                    <button
+                      type="button"
+                      onClick={() => setFilterQuestionType("all")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        filterQuestionType === "all"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      Tất cả ({attemptDetail.total_questions})
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={attemptDetail.total_correct === 0}
+                      onClick={() => setFilterQuestionType("correct")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                        attemptDetail.total_correct === 0
+                          ? "opacity-40 cursor-not-allowed text-slate-400"
+                          : filterQuestionType === "correct"
+                          ? "bg-emerald-500 text-white shadow-xs cursor-pointer"
+                          : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                      }`}
+                      title={
+                        attemptDetail.total_correct === 0
+                          ? "Không có câu hỏi nào làm đúng"
+                          : `Lọc xem ${attemptDetail.total_correct} câu làm đúng`
+                      }
+                    >
+                      <span>✓ Đúng</span>
+                      <span>({attemptDetail.total_correct})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={attemptDetail.total_wrong === 0}
+                      onClick={() => setFilterQuestionType("wrong")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                        attemptDetail.total_wrong === 0
+                          ? "opacity-40 cursor-not-allowed text-slate-400"
+                          : filterQuestionType === "wrong"
+                          ? "bg-rose-500 text-white shadow-xs cursor-pointer"
+                          : "text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                      }`}
+                      title={
+                        attemptDetail.total_wrong === 0
+                          ? "Bài thi đạt điểm tuyệt đối 100%, không có câu sai nào"
+                          : `Lọc xem ${attemptDetail.total_wrong} câu làm sai`
+                      }
+                    >
+                      <span>✗ Sai</span>
+                      <span>({attemptDetail.total_wrong})</span>
+                    </button>
+                  </div>
+                )}
+
                 <Link
                   href={`/student/practice/history/${selectedAttemptId}`}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition shrink-0"
@@ -700,48 +760,18 @@ export default function PracticeHistoryView() {
               </div>
             </div>
 
-            {/* Modal Filter tabs */}
-            {attemptDetail && attemptDetail.can_view_details !== false && attemptDetail.answers && (
-              <div className="px-6 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2">
-                <span className="text-xs text-slate-400 font-medium">Lọc câu hỏi:</span>
-                <button
-                  type="button"
-                  onClick={() => setModalFilter("all")}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    modalFilter === "all"
-                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
-                  }`}
-                >
-                  Tất cả ({attemptDetail.answers.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalFilter("wrong")}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    modalFilter === "wrong"
-                      ? "bg-rose-600 text-white"
-                      : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 hover:bg-rose-100"
-                  }`}
-                >
-                  Câu làm sai ({attemptDetail.answers.filter((a) => !a.is_correct).length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalFilter("correct")}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    modalFilter === "correct"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100"
-                  }`}
-                >
-                  Câu làm đúng ({attemptDetail.answers.filter((a) => a.is_correct).length})
-                </button>
-              </div>
-            )}
-
-            {/* Modal Body: Danh sách câu hỏi */}
-            <div className="p-6 overflow-y-auto space-y-5 flex-1">
+            {/* Modal Body: Phân tích AI & Danh sách câu hỏi */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
+              {/* Trợ lý AI Phân Tích Lỗ Hổng Kiến Thức */}
+              {selectedAttemptId && attemptDetail?.can_view_details !== false && (
+                <AiAttemptAnalysisCard
+                  attemptId={selectedAttemptId}
+                  onTopicSelectedForPractice={(tId) => {
+                    setSelectedAttemptId(null);
+                    router.push(`/student/practice?topicId=${tId}`);
+                  }}
+                />
+              )}
               {loadingDetail ? (
                 <div className="py-12 text-center">
                   <div className="inline-block w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />
@@ -764,114 +794,145 @@ export default function PracticeHistoryView() {
                       : "Giảng viên đã cấu hình không hiển thị đáp án chi tiết cho đề thi này."}
                   </p>
                 </div>
-              ) : (
-                attemptDetail.answers
-                  .filter((ans) => {
-                    if (modalFilter === "wrong") return !ans.is_correct;
-                    if (modalFilter === "correct") return ans.is_correct;
-                    return true;
-                  })
-                  .map((ans, idx) => {
-                    const correctOpt = ans.options.find((o) => o.is_correct);
+              ) : (() => {
+                const filteredAnswers = attemptDetail.answers.filter((ans) => {
+                  if (filterQuestionType === "correct") return ans.is_correct;
+                  if (filterQuestionType === "wrong") return !ans.is_correct;
+                  return true;
+                });
 
-                    return (
-                      <div
-                        key={ans.question_id || idx}
-                        className={`p-4 sm:p-5 rounded-2xl border transition bg-white dark:bg-slate-900 shadow-xs ${
-                          ans.is_correct
-                            ? "border-emerald-200 dark:border-emerald-900/60"
-                            : "border-rose-200 dark:border-rose-900/60"
-                        }`}
+                if (filteredAnswers.length === 0) {
+                  return (
+                    <div className="py-8 px-6 text-center bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
+                        {filterQuestionType === "wrong" ? "🎉" : "ℹ️"}
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-white">
+                        {filterQuestionType === "wrong"
+                          ? "Không có câu hỏi nào làm sai!"
+                          : filterQuestionType === "correct"
+                          ? "Không có câu hỏi nào làm đúng!"
+                          : "Không có câu hỏi nào trong danh sách."}
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                        {filterQuestionType === "wrong"
+                          ? "Chúc mừng! Bạn đã trả lời đúng 100% tất cả các câu hỏi trong lượt làm bài này."
+                          : filterQuestionType === "correct"
+                          ? "Chưa có câu hỏi nào trả lời đúng trong lượt làm bài này."
+                          : "Không có câu hỏi nào phù hợp với bộ lọc hiện tại."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setFilterQuestionType("all")}
+                        className="mt-3.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-bold transition cursor-pointer"
                       >
-                        {/* Status bar */}
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200">
-                            Câu {ans.index}
+                        Hiển thị lại toàn bộ {attemptDetail.answers.length} câu hỏi
+                      </button>
+                    </div>
+                  );
+                }
+
+                return filteredAnswers.map((ans, idx) => {
+                  const correctOpt = ans.options.find((o) => o.is_correct);
+
+                  return (
+                    <div
+                      key={ans.question_id || idx}
+                      className={`p-4 sm:p-5 rounded-2xl border transition bg-white dark:bg-slate-900 shadow-xs ${
+                        ans.is_correct
+                          ? "border-emerald-200 dark:border-emerald-900/60"
+                          : "border-rose-200 dark:border-rose-900/60"
+                      }`}
+                    >
+                      {/* Status bar */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200">
+                          Câu {ans.index}
+                        </span>
+                        {ans.is_correct ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            ✓ Làm đúng
                           </span>
-                          {ans.is_correct ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                              ✓ Làm đúng
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                              ✗ Làm sai
-                            </span>
-                          )}
-                        </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                            ✗ Làm sai
+                          </span>
+                        )}
+                      </div>
 
-                        {/* Content */}
-                        <div className="text-sm font-medium text-slate-900 dark:text-white leading-relaxed mb-4 whitespace-pre-line">
-                          {ans.content}
-                        </div>
+                      {/* Content */}
+                      <div className="text-sm font-medium text-slate-900 dark:text-white leading-relaxed mb-4 whitespace-pre-line">
+                        {ans.content}
+                      </div>
 
-                        {/* Options */}
-                        <div className="space-y-2 mb-4">
-                          {ans.options.map((opt) => {
-                            const isChosen = ans.selected_option_id === opt._id;
-                            const isAnswerCorrect = Boolean(opt.is_correct);
+                      {/* Options */}
+                      <div className="space-y-2 mb-4">
+                        {ans.options.map((opt) => {
+                          const isChosen = ans.selected_option_id === opt._id;
+                          const isAnswerCorrect = Boolean(opt.is_correct);
 
-                            let optStyle =
-                              "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300";
-                            let badge = null;
+                          let optStyle =
+                            "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300";
+                          let badge = null;
 
-                            if (isAnswerCorrect && isChosen) {
-                              optStyle =
-                                "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 font-medium ring-1 ring-emerald-500/30";
-                              badge = (
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0 text-xs">
-                                  ✓ Đáp án đúng &amp; Bạn đã chọn
-                                </span>
-                              );
-                            } else if (isAnswerCorrect && !isChosen) {
-                              optStyle =
-                                "border-emerald-500/80 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200 font-medium";
-                              badge = (
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0 text-xs">
-                                  ✓ Đáp án đúng
-                                </span>
-                              );
-                            } else if (isChosen && !isAnswerCorrect) {
-                              optStyle =
-                                "border-rose-400 bg-rose-50/70 dark:bg-rose-950/40 text-rose-950 dark:text-rose-200 ring-1 ring-rose-400/40";
-                              badge = (
-                                <span className="font-bold text-rose-600 dark:text-rose-400 shrink-0 text-xs">
-                                  ✗ Bạn đã chọn
-                                </span>
-                              );
-                            }
-
-                            return (
-                              <div
-                                key={opt._id}
-                                className={`flex items-start justify-between gap-3 p-3 rounded-xl border text-xs sm:text-sm leading-relaxed ${optStyle}`}
-                              >
-                                <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                                  <span className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 font-bold shrink-0 flex items-center justify-center text-xs">
-                                    {opt.option_label}
-                                  </span>
-                                  <span className="pt-0.5 flex-1">{opt.content}</span>
-                                </div>
-                                {badge}
-                              </div>
+                          if (isAnswerCorrect && isChosen) {
+                            optStyle =
+                              "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 font-medium ring-1 ring-emerald-500/30";
+                            badge = (
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0 text-xs">
+                                ✓ Đáp án đúng &amp; Bạn đã chọn
+                              </span>
                             );
-                          })}
-                        </div>
+                          } else if (isAnswerCorrect && !isChosen) {
+                            optStyle =
+                              "border-emerald-500/80 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200 font-medium";
+                            badge = (
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0 text-xs">
+                                ✓ Đáp án đúng
+                              </span>
+                            );
+                          } else if (isChosen && !isAnswerCorrect) {
+                            optStyle =
+                              "border-rose-400 bg-rose-50/70 dark:bg-rose-950/40 text-rose-950 dark:text-rose-200 ring-1 ring-rose-400/40";
+                            badge = (
+                              <span className="font-bold text-rose-600 dark:text-rose-400 shrink-0 text-xs">
+                                ✗ Bạn đã chọn
+                              </span>
+                            );
+                          }
 
-                        {/* Explanation Box */}
-                        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
-                          <span className="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
-                            💡 Phương pháp giải &amp; Lời giải chi tiết:
-                          </span>
-                          <div className="whitespace-pre-line text-xs leading-relaxed">
-                            {ans.explanation?.trim()
-                              ? ans.explanation
-                              : `Đáp án đúng là ${correctOpt?.option_label}. (Chưa có phân tích bổ sung).`}
-                          </div>
+                          return (
+                            <div
+                              key={opt._id}
+                              className={`flex items-start justify-between gap-3 p-3 rounded-xl border text-xs sm:text-sm leading-relaxed ${optStyle}`}
+                            >
+                              <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                                <span className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 font-bold shrink-0 flex items-center justify-center text-xs">
+                                  {opt.option_label}
+                                </span>
+                                <span className="pt-0.5 flex-1">{opt.content}</span>
+                              </div>
+                              {badge}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Explanation Box */}
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
+                          💡 Phương pháp giải &amp; Lời giải chi tiết:
+                        </span>
+                        <div className="whitespace-pre-line text-xs leading-relaxed">
+                          {ans.explanation?.trim()
+                            ? ans.explanation
+                            : `Đáp án đúng là ${correctOpt?.option_label}. (Chưa có phân tích bổ sung).`}
                         </div>
                       </div>
-                    );
-                  })
-              )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Modal Footer */}
