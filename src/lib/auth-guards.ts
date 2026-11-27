@@ -50,12 +50,14 @@ export async function checkApiAuthorization(allowedRoles?: UserRole[]) {
   const user = await getCurrentUser();
 
   if (!user) {
+    const message = "Unauthorized: Vui lòng đăng nhập để thực hiện thao tác này.";
     return {
       user: null,
       errorResponse: NextResponse.json(
         {
           success: false,
-          error: "Unauthorized: Vui lòng đăng nhập để thực hiện thao tác này.",
+          error: message,
+          message,
         },
         { status: 401 },
       ),
@@ -67,12 +69,14 @@ export async function checkApiAuthorization(allowedRoles?: UserRole[]) {
     allowedRoles.length > 0 &&
     !allowedRoles.includes(user.role)
   ) {
+    const message = `Forbidden: Tài khoản của bạn [${user.role}] không có quyền truy cập tài nguyên này. Yêu cầu quyền: [${allowedRoles.join(", ")}].`;
     return {
       user: null,
       errorResponse: NextResponse.json(
         {
           success: false,
-          error: `Forbidden: Tài khoản của bạn [${user.role}] không có quyền truy cập tài nguyên này. Yêu cầu quyền: [${allowedRoles.join(", ")}].`,
+          error: message,
+          message,
         },
         { status: 403 },
       ),
