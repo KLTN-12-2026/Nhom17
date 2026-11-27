@@ -554,8 +554,10 @@ export default function RoleDashboardShell({
         </div>
       </footer>
 
-      {/* Bong bóng chat Trợ lý AI góc dưới bên phải cho Học sinh và Giáo viên */}
-      <FloatingAiWidget role={user.role === "student" ? "student" : "teacher"} />
+      {/* Bong bóng chat Trợ lý AI góc dưới bên phải cho Học sinh và Giáo viên (ẩn khi đang làm bài tự luyện và trang Admin) */}
+      {user.role !== "admin" && !pathname?.startsWith("/student/practice/session/") && (
+        <FloatingAiWidget role={user.role === "student" ? "student" : "teacher"} />
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
 } from "@google/generative-ai";
 import { STUDENT_AGENT_SYSTEM_PROMPT } from "./prompts/student-prompt";
 import { TEACHER_AGENT_SYSTEM_PROMPT } from "./prompts/teacher-prompt";
+import { getDefaultGeminiModel, getGeminiApiKey } from "@/lib/ai-gemini";
 
 // =========================================================================
 // 1. TOOL FUNCTION DECLARATIONS CHO HỌC VIÊN
@@ -208,9 +209,11 @@ export const teacherFunctionDeclarations: FunctionDeclaration[] = [
 /**
  * Khởi tạo Gemini Model được cấu hình riêng theo vai trò
  */
-export function getAgentGenerativeModel(role: "student" | "teacher") {
-  const rawKey = process.env.GEMINI_API_KEY || "";
-  const apiKey = rawKey.replace(/^["']|["']$/g, "").trim();
+export function getAgentGenerativeModel(
+  role: "student" | "teacher",
+  modelNameOverride?: string
+) {
+  const apiKey = getGeminiApiKey();
   if (!apiKey) {
     throw new Error(
       "Chưa cấu hình GEMINI_API_KEY trong file .env.local. Vui lòng lấy API Key miễn phí tại Google AI Studio (https://aistudio.google.com) và gán vào GEMINI_API_KEY=... trong .env.local, sau đó restart lại server Next.js."
@@ -232,7 +235,7 @@ export function getAgentGenerativeModel(role: "student" | "teacher") {
     },
   ];
 
-  const modelName = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
+  const modelName = modelNameOverride || getDefaultGeminiModel();
 
   return genAI.getGenerativeModel({
     model: modelName,

@@ -1,6 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Topic, ITopic } from "@/models";
 import mongoose from "mongoose";
+import {
+  generateGeminiContentWithFallback,
+  getGeminiApiKey,
+} from "@/lib/ai-gemini";
 
 // =========================================================================
 // INTERFACES CHO PHÂN TÍCH HỌC VIÊN
@@ -91,6 +94,7 @@ export interface ITopFailedQuestion {
 }
 
 export interface IInstructorAiReportResult {
+  small_sample_warning?: string;
   class_summary: {
     total_candidates: number;
     average_score: number;
@@ -109,20 +113,15 @@ export interface IInstructorAiReportResult {
 }
 
 // =========================================================================
-// 1. DỊCH VỤ PHÂN TÍCH BÀI LÀM HỌC VIÊN
+// HELPER CHUNG: TÍNH TOÁN PHÂN BỔ CHUYÊN ĐỀ (THUẦN JS + TRA TÊN TOPIC)
 // =========================================================================
 
-export async function analyzeStudentAttempt(data: {
-  exam_title?: string;
-  score: number;
-  total_correct: number;
-  total_wrong: number;
-  duration_seconds: number;
-  answers: IAnswerWithQuestion[];
-}): Promise<IStudentAiDiagnosisResult> {
-  const { exam_title, score, total_correct, total_wrong, answers } = data;
-
-  // 1. Tổng hợp dữ liệu câu hỏi theo chủ đề (Topic)
+export async function computeStudentTopicBreakdown(
+  answers: IAnswerWithQuestion[]
+): Promise<{
+  topicBreakdown: ITopicPerformance[];
+  recommendedTopics: { topic_id: string; topic_name: string }[];
+}> {
   const topicStatsMap = new Map<
     string,
     {
@@ -131,7 +130,6 @@ export async function analyzeStudentAttempt(data: {
       total: number;
       correct: number;
       wrong: number;
-      difficulty_wrongs: { easy: number; medium: number; hard: number };
     }
   >();
 
@@ -160,7 +158,6 @@ export async function analyzeStudentAttempt(data: {
         total: 0,
         correct: 0,
         wrong: 0,
-        difficulty_wrongs: { easy: 0, medium: 0, hard: 0 },
       });
     }
 
@@ -170,75 +167,94 @@ export async function analyzeStudentAttempt(data: {
       stat.correct += 1;
     } else {
       stat.wrong += 1;
-      const diff: "easy" | "medium" | "hard" =
-        q.difficulty_level === "easy" || q.difficulty_level === "hard"
-          ? q.difficulty_level
-          : "medium";
-      stat.difficulty_wrongs[diff] += 1;
     }
   }
 
-  // Tra cứu tên chủ đề nếu chưa có
   if (unresolvedTopicIds.size > 0) {
-    const topicDocs = await Topic.find({
-      _id: { $in: Array.from(unresolvedTopicIds) },
-    }).select("topic_name").lean();
-    for (const doc of topicDocs) {
-      const stat = topicStatsMap.get(String(doc._id));
-      if (stat) {
-        stat.topic_name = doc.topic_name;
+    const validIds = Array.from(unresolvedTopicIds).filter((id) =>
+      mongoose.Types.ObjectId.isValid(id)
+    );
+    if (validIds.length > 0) {
+      const topicDocs = await Topic.find({ _id: { $in: validIds } })
+        .select("topic_name")
+        .lean();
+      for (const doc of topicDocs) {
+        const stat = topicStatsMap.get(String(doc._id));
+        if (stat) {
+          stat.topic_name = doc.topic_name;
+        }
       }
     }
   }
 
-  // Xếp loại từng chủ đề
-  const topicBreakdown: ITopicPerformance[] = Array.from(topicStatsMap.values()).map(
-    (t) => {
-      const acc = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
-      let status: "good" | "needs_review" | "warning" = "good";
-      if (acc < 50) status = "warning";
-      else if (acc < 75) status = "needs_review";
+  // Ngưỡng đánh giá thống nhất: < 50% -> warning; 50-74% -> needs_review; >= 75% -> good
+  const topicBreakdown: ITopicPerformance[] = Array.from(
+    topicStatsMap.values()
+  ).map((t) => {
+    const acc = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
+    let status: "good" | "needs_review" | "warning" = "good";
+    if (acc < 50) status = "warning";
+    else if (acc < 75) status = "needs_review";
 
-      return {
-        topic_id: t.topic_id,
-        topic_name: t.topic_name,
-        total: t.total,
-        correct: t.correct,
-        wrong: t.wrong,
-        accuracy_percent: acc,
-        status,
-      };
-    }
-  );
+    return {
+      topic_id: t.topic_id,
+      topic_name: t.topic_name,
+      total: t.total,
+      correct: t.correct,
+      wrong: t.wrong,
+      accuracy_percent: acc,
+      status,
+    };
+  });
 
-  // Sắp xếp các chủ đề yếu lên trước
   topicBreakdown.sort((a, b) => a.accuracy_percent - b.accuracy_percent);
 
-  // Xác định các chủ đề đề xuất ôn luyện (tỷ lệ sai > 30% hoặc accuracy < 70%)
   const weakTopics = topicBreakdown.filter((t) => t.status !== "good");
   const recommendedTopics = (
     weakTopics.length > 0 ? weakTopics : topicBreakdown
   )
+    .filter((t) => t.topic_id !== "general")
     .slice(0, 3)
     .map((t) => ({ topic_id: t.topic_id, topic_name: t.topic_name }));
 
-  // 2. Thử gọi AI Gemini phân tích chuyên sâu
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  return { topicBreakdown, recommendedTopics };
+}
 
-  if (geminiApiKey) {
+// =========================================================================
+// 1. DỊCH VỤ PHÂN TÍCH BÀI LÀM HỌC VIÊN
+// =========================================================================
+
+export async function analyzeStudentAttempt(data: {
+  exam_title?: string;
+  score: number;
+  max_score?: number;
+  total_correct: number;
+  total_wrong: number;
+  duration_seconds: number;
+  answers: IAnswerWithQuestion[];
+}): Promise<IStudentAiDiagnosisResult> {
+  const {
+    exam_title,
+    score,
+    max_score = 10,
+    total_correct,
+    total_wrong,
+    answers,
+  } = data;
+
+  const { topicBreakdown, recommendedTopics } =
+    await computeStudentTopicBreakdown(answers);
+
+  const normalized10 =
+    max_score > 0 ? Math.round(((score / max_score) * 10) * 10) / 10 : score;
+
+  if (getGeminiApiKey()) {
     try {
-      const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const model = genAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.3,
-        },
-      });
-
       const promptData = {
         exam_title: exam_title || "Bài luyện tập trắc nghiệm",
         score,
+        max_score,
+        normalized_score_10: normalized10,
         total_questions: answers.length,
         total_correct,
         total_wrong,
@@ -250,10 +266,16 @@ export async function analyzeStudentAttempt(data: {
           ty_le_dung: `${t.accuracy_percent}%`,
         })),
         sample_wrongs: answers
-          .filter((a) => !a.is_correct && a.question_id && typeof a.question_id === "object")
+          .filter(
+            (a) =>
+              !a.is_correct && a.question_id && typeof a.question_id === "object"
+          )
           .slice(0, 5)
           .map((a) => {
-            const q = a.question_id as { content?: string; difficulty_level?: string };
+            const q = a.question_id as {
+              content?: string;
+              difficulty_level?: string;
+            };
             return {
               noi_dung_cau_hoi: q.content?.slice(0, 150),
               do_kho: q.difficulty_level,
@@ -281,15 +303,25 @@ Yêu cầu xuất ra định dạng JSON duy nhất với cấu trúc sau:
 Chú ý: Ngôn từ tích cực, mạch lạc, chính xác với chương trình THPT.
 `;
 
-      const aiResponse = await model.generateContent(systemPrompt);
-      const text = aiResponse.response.text();
+      const text = await generateGeminiContentWithFallback(systemPrompt, {
+        responseMimeType: "application/json",
+        temperature: 0.3,
+      });
       const parsed = JSON.parse(text);
 
       return {
-        summary: parsed.summary || `Bạn đạt ${score}/10 điểm, đúng ${total_correct}/${answers.length} câu.`,
-        strengths: parsed.strengths || "Bạn đã nắm được các câu hỏi ở mức độ nhận biết cơ bản.",
-        weak_points: parsed.weak_points || "Còn nhầm lẫn ở một số câu hỏi có độ khó cao hoặc tính toán nhiều bước.",
-        ai_feedback: parsed.ai_feedback || "Hãy tiếp tục duy trì thói quen luyện tập đều đặn để cải thiện phản xạ làm bài.",
+        summary:
+          parsed.summary ||
+          `Bạn đạt ${score}/${max_score} điểm, đúng ${total_correct}/${answers.length} câu.`,
+        strengths:
+          parsed.strengths ||
+          "Bạn đã nắm được các câu hỏi ở mức độ nhận biết cơ bản.",
+        weak_points:
+          parsed.weak_points ||
+          "Còn nhầm lẫn ở một số câu hỏi có độ khó cao hoặc tính toán nhiều bước.",
+        ai_feedback:
+          parsed.ai_feedback ||
+          "Hãy tiếp tục duy trì thói quen luyện tập đều đặn để cải thiện phản xạ làm bài.",
         recommended_topics: recommendedTopics,
         action_items: parsed.action_items || [
           "Xem lại lời giải chi tiết của các câu trả lời sai.",
@@ -303,9 +335,10 @@ Chú ý: Ngôn từ tích cực, mạch lạc, chính xác với chương trình
     }
   }
 
-  // 3. Fallback: Rule-Based Analytics Engine (Dự phòng chuẩn xác khi không có API Key hoặc lỗi mạng)
   return generateRuleBasedStudentDiagnosis(
     score,
+    max_score,
+    normalized10,
     total_correct,
     answers.length,
     topicBreakdown,
@@ -313,47 +346,56 @@ Chú ý: Ngôn từ tích cực, mạch lạc, chính xác với chương trình
   );
 }
 
-function generateRuleBasedStudentDiagnosis(
+export function generateRuleBasedStudentDiagnosis(
   score: number,
+  maxScore: number,
+  normalized10: number,
   correct: number,
   total: number,
   topicBreakdown: ITopicPerformance[],
   recommendedTopics: { topic_id: string; topic_name: string }[]
 ): IStudentAiDiagnosisResult {
   const goodTopics = topicBreakdown.filter((t) => t.status === "good");
-  const warnTopics = topicBreakdown.filter((t) => t.status === "warning");
+  const warnTopics = topicBreakdown.filter((t) => t.status !== "good");
 
-  let summary = `Bạn đã hoàn thành bài thi với kết quả ${score}/10 điểm (đúng ${correct}/${total} câu).`;
-  if (score >= 8.0) {
+  let summary = `Bạn đã hoàn thành bài thi với kết quả ${score}/${maxScore} điểm (đúng ${correct}/${total} câu).`;
+  if (normalized10 >= 8.0) {
     summary += " Phong độ làm bài xuất sắc, nắm rất chắc kiến thức trọng tâm!";
-  } else if (score >= 5.0) {
-    summary += " Đạt chuẩn kiến thức cơ bản, cần rèn luyện thêm để bứt phá điểm số.";
+  } else if (normalized10 >= 5.0) {
+    summary +=
+      " Đạt chuẩn kiến thức cơ bản, cần rèn luyện thêm để bứt phá điểm số.";
   } else {
-    summary += " Kết quả cho thấy còn nhiều lỗ hổng kiến thức cần ôn tập bổ sung ngay.";
+    summary +=
+      " Kết quả cho thấy còn nhiều lỗ hổng kiến thức cần ôn tập bổ sung ngay.";
   }
 
-  let strengths = "";
-  if (goodTopics.length > 0) {
-    strengths = `Bạn thể hiện sự tự tin và chính xác cao ở các chuyên đề: ${goodTopics.map((t) => `"${t.topic_name}" (${t.accuracy_percent}% đúng)`).join(", ")}.`;
-  } else {
-    strengths = "Bạn đã có nỗ lực hoàn thành tất cả các câu hỏi trong thời gian quy định.";
-  }
+  const strengths =
+    goodTopics.length > 0
+      ? `Bạn thể hiện sự tự tin và chính xác cao ở các chuyên đề: ${goodTopics
+          .map((t) => `"${t.topic_name}" (${t.accuracy_percent}% đúng)`)
+          .join(", ")}.`
+      : "Bạn đã có nỗ lực hoàn thành tất cả các câu hỏi trong thời gian quy định.";
 
-  let weak_points = "";
-  if (warnTopics.length > 0) {
-    weak_points = `Lỗ hổng kiến thức tập trung ở các chuyên đề: ${warnTopics.map((t) => `"${t.topic_name}" (sai ${t.wrong}/${t.total} câu)`).join(", ")}. Cần xem lại phương pháp giải và lý thuyết cốt lõi.`;
-  } else {
-    weak_points = "Một số câu hỏi mức độ vận dụng còn tính toán chậm hoặc chưa tối ưu thời gian chọn đáp án.";
-  }
+  const weak_points =
+    warnTopics.length > 0
+      ? `Lỗ hổng kiến thức tập trung ở các chuyên đề: ${warnTopics
+          .map((t) => `"${t.topic_name}" (sai ${t.wrong}/${t.total} câu)`)
+          .join(", ")}. Cần xem lại phương pháp giải và lý thuyết cốt lõi.`
+      : "Một số câu hỏi mức độ vận dụng còn tính toán chậm hoặc chưa tối ưu thời gian chọn đáp án.";
 
   const ai_feedback =
-    score >= 7.0
+    normalized10 >= 7.0
       ? "Bạn có nền tảng tư duy rất tốt. Hãy tập trung nâng cao phản xạ ở các câu hỏi bẫy và bài toán thực tế để đạt điểm tối đa."
       : "Đừng nản lòng! Hãy dành 15-20 phút xem kỹ lại phần Lời giải chi tiết của từng câu sai bên dưới và luyện tập lại các chuyên đề được gợi ý.";
 
+  const recText =
+    recommendedTopics.length > 0
+      ? ` (${recommendedTopics.map((t) => t.topic_name).join(", ")})`
+      : "";
+
   const action_items = [
     "Đọc kỹ phần Giải thích chi tiết cho từng câu hỏi đã chọn sai trong bài thi này.",
-    `Bấm vào các chuyên đề đề xuất bên dưới (${recommendedTopics.map((t) => t.topic_name).join(", ")}) để luyện thêm bài tập.`,
+    `Bấm vào các chuyên đề đề xuất bên dưới${recText} để luyện thêm bài tập.`,
     "Ghi chú lại các công thức và điều kiện xác định thường xuyên gặp lỗi.",
   ];
 
@@ -384,7 +426,7 @@ export async function analyzeClassExamAttempts(data: {
     answers: IAnswerWithQuestion[];
   }[];
 }): Promise<IInstructorAiReportResult> {
-  const { exam_title, pass_score, attempts } = data;
+  const { exam_title, pass_score, max_score, attempts } = data;
   const totalCandidates = attempts.length;
 
   if (totalCandidates === 0) {
@@ -407,6 +449,11 @@ export async function analyzeClassExamAttempts(data: {
     };
   }
 
+  const smallSampleWarning =
+    totalCandidates < 3
+      ? `Hiện mới có ${totalCandidates} bài nộp chính thức. Theo ràng buộc độ tin cậy, nhận định AI hiện mang tính tham khảo ban đầu và sẽ chính xác hơn khi có từ 3 học sinh trở lên nộp bài.`
+      : undefined;
+
   // 1. Tính toán phổ điểm lớp học
   const scores = attempts.map((a) => a.score || 0);
   const totalScoreSum = scores.reduce((sum, s) => sum + s, 0);
@@ -422,11 +469,15 @@ export async function analyzeClassExamAttempts(data: {
     {
       question_id: string;
       content: string;
+      topic_id: string;
       topic_name: string;
       difficulty_level: string;
       wrong_count: number;
       total_count: number;
-      option_counts: Map<string, { label: string; content: string; count: number }>;
+      option_counts: Map<
+        string,
+        { label: string; content: string; count: number }
+      >;
     }
   >();
 
@@ -462,11 +513,11 @@ export async function analyzeClassExamAttempts(data: {
         }
       }
 
-      // Thống kê câu hỏi
       if (!questionMap.has(qId)) {
         questionMap.set(qId, {
           question_id: qId,
           content: q.content || "Nội dung câu hỏi",
+          topic_id: topicId,
           topic_name: topicName,
           difficulty_level: q.difficulty_level || "medium",
           wrong_count: 0,
@@ -479,10 +530,10 @@ export async function analyzeClassExamAttempts(data: {
       qStat.total_count += 1;
       if (!ans.is_correct) {
         qStat.wrong_count += 1;
-        // Ghi nhận phương án sai học sinh đã chọn
         if (ans.selected_option_id && q.options) {
           const opt = q.options.find(
-            (o: IPopulatedQuestionOption) => String(o._id) === String(ans.selected_option_id)
+            (o: IPopulatedQuestionOption) =>
+              String(o._id) === String(ans.selected_option_id)
           );
           if (opt && !opt.is_correct) {
             const optKey = opt.option_label;
@@ -498,7 +549,6 @@ export async function analyzeClassExamAttempts(data: {
         }
       }
 
-      // Thống kê chuyên đề
       if (!topicAggregateMap.has(topicId)) {
         topicAggregateMap.set(topicId, {
           topic_id: topicId,
@@ -516,30 +566,36 @@ export async function analyzeClassExamAttempts(data: {
     }
   }
 
-  // Tra cứu tên chủ đề nếu còn ID dạng string
+  // Tra cứu đúng tên chủ đề theo từng topic_id (sửa lỗi map nhầm cho câu khác chuyên đề)
   if (unresolvedTopicIds.size > 0) {
-    const topicDocs = await Topic.find({
-      _id: { $in: Array.from(unresolvedTopicIds) },
-    }).select("topic_name").lean();
-    for (const doc of topicDocs) {
-      const docId = String(doc._id);
-      const tStat = topicAggregateMap.get(docId);
-      if (tStat) tStat.topic_name = doc.topic_name;
+    const validIds = Array.from(unresolvedTopicIds).filter((id) =>
+      mongoose.Types.ObjectId.isValid(id)
+    );
+    if (validIds.length > 0) {
+      const topicDocs = await Topic.find({ _id: { $in: validIds } })
+        .select("topic_name")
+        .lean();
+      for (const doc of topicDocs) {
+        const docId = String(doc._id);
+        const tStat = topicAggregateMap.get(docId);
+        if (tStat) tStat.topic_name = doc.topic_name;
 
-      for (const qStat of questionMap.values()) {
-        if (qStat.topic_name === "Chuyên đề chung") {
-          qStat.topic_name = doc.topic_name;
+        for (const qStat of questionMap.values()) {
+          if (qStat.topic_id === docId) {
+            qStat.topic_name = doc.topic_name;
+          }
         }
       }
     }
   }
 
-  // Danh sách chẩn đoán chuyên đề
   const topicDiagnostics: IClassTopicDiagnostic[] = Array.from(
     topicAggregateMap.values()
   ).map((t) => {
     const errRate =
-      t.total_answers > 0 ? Math.round((t.total_wrong / t.total_answers) * 100) : 0;
+      t.total_answers > 0
+        ? Math.round((t.total_wrong / t.total_answers) * 100)
+        : 0;
     let severity: "low" | "medium" | "high" = "low";
     if (errRate >= 50) severity = "high";
     else if (errRate >= 30) severity = "medium";
@@ -556,11 +612,12 @@ export async function analyzeClassExamAttempts(data: {
 
   topicDiagnostics.sort((a, b) => b.error_rate - a.error_rate);
 
-  // Top 5 câu hỏi học sinh sai nhiều nhất
   const sortedQuestions = Array.from(questionMap.values())
     .map((q) => {
       const wrongPercent =
-        q.total_count > 0 ? Math.round((q.wrong_count / q.total_count) * 100) : 0;
+        q.total_count > 0
+          ? Math.round((q.wrong_count / q.total_count) * 100)
+          : 0;
       const sortedOptions = Array.from(q.option_counts.values()).sort(
         (a, b) => b.count - a.count
       );
@@ -583,22 +640,11 @@ export async function analyzeClassExamAttempts(data: {
 
   const topFailedQuestions: ITopFailedQuestion[] = sortedQuestions.slice(0, 5);
 
-  // 3. Tương tác AI Gemini để nhận diện sai lầm chung và gợi ý sư phạm
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-
-  if (geminiApiKey) {
+  if (getGeminiApiKey()) {
     try {
-      const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const model = genAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.3,
-        },
-      });
-
       const promptData = {
         ten_de_thi: exam_title,
+        thang_diem: max_score,
         tong_so_hoc_sinh_lam_bai: totalCandidates,
         diem_trung_binh: avgScore,
         ty_le_dat: `${passRate}%`,
@@ -644,11 +690,14 @@ Yêu cầu xuất ra JSON duy nhất:
 }
 `;
 
-      const aiResponse = await model.generateContent(systemPrompt);
-      const text = aiResponse.response.text();
+      const text = await generateGeminiContentWithFallback(systemPrompt, {
+        responseMimeType: "application/json",
+        temperature: 0.3,
+      });
       const parsed = JSON.parse(text);
 
       return {
+        ...(smallSampleWarning ? { small_sample_warning: smallSampleWarning } : {}),
         class_summary: {
           total_candidates: totalCandidates,
           average_score: avgScore,
@@ -659,8 +708,12 @@ Yêu cầu xuất ra JSON duy nhất:
         topic_diagnostics: topicDiagnostics,
         top_failed_questions: topFailedQuestions,
         ai_pedagogical_report: {
-          general_assessment: parsed.general_assessment || "Học sinh có tinh thần làm bài tốt, phổ điểm tương đối đồng đều.",
-          common_misconceptions: parsed.common_misconceptions || "Nhiều học sinh mắc bẫy ở các câu hỏi điều kiện ràng buộc hoặc nhầm lẫn giữa các khái niệm tương tự.",
+          general_assessment:
+            parsed.general_assessment ||
+            "Học sinh có tinh thần làm bài tốt, phổ điểm tương đối đồng đều.",
+          common_misconceptions:
+            parsed.common_misconceptions ||
+            "Nhiều học sinh mắc bẫy ở các câu hỏi điều kiện ràng buộc hoặc nhầm lẫn giữa các khái niệm tương tự.",
           remedial_strategies: parsed.remedial_strategies || [
             "Dành thời gian chữa kỹ 5 câu hỏi có tỷ lệ sai cao nhất trên lớp.",
             "Ôn tập lại phương pháp phân biệt các dạng bài học sinh hay chọn nhầm đáp án gây nhiễu.",
@@ -676,8 +729,8 @@ Yêu cầu xuất ra JSON duy nhất:
     }
   }
 
-  // Fallback Rule-based cho Giáo viên
   return {
+    ...(smallSampleWarning ? { small_sample_warning: smallSampleWarning } : {}),
     class_summary: {
       total_candidates: totalCandidates,
       average_score: avgScore,
@@ -688,7 +741,7 @@ Yêu cầu xuất ra JSON duy nhất:
     topic_diagnostics: topicDiagnostics,
     top_failed_questions: topFailedQuestions,
     ai_pedagogical_report: {
-      general_assessment: `Lớp có ${totalCandidates} thí sinh làm bài. Điểm trung bình đạt ${avgScore}/10 đ, tỷ lệ đạt chuẩn là ${passRate}%. ${
+      general_assessment: `Lớp có ${totalCandidates} thí sinh làm bài. Điểm trung bình đạt ${avgScore}/${max_score} đ, tỷ lệ đạt chuẩn là ${passRate}%. ${
         passRate >= 70
           ? "Đa số học sinh đã nắm được trọng tâm kiến thức đề thi."
           : "Tỷ lệ học sinh chưa đạt còn tương đối cao, cần có kế hoạch phụ đạo bổ trợ."
@@ -702,7 +755,9 @@ Yêu cầu xuất ra JSON duy nhất:
         "Phân tích rõ vì sao các phương án nhiễu phổ biến là sai để học sinh rút kinh nghiệm sâu sắc.",
         "Tổ chức làm bài kiểm tra nhanh 15 phút cho các chuyên đề có tỷ lệ sai vượt quá 40%.",
       ],
-      focus_topics_for_next_class: topicDiagnostics.slice(0, 2).map((t) => t.topic_name),
+      focus_topics_for_next_class: topicDiagnostics
+        .slice(0, 2)
+        .map((t) => t.topic_name),
     },
   };
 }

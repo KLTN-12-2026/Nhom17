@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { AttemptDetail } from "@/lib/practice-history-detail";
+import AiAttemptAnalysisCard from "@/components/student/ai-attempt-analysis-card";
 
 type FilterMode = "all" | "wrong" | "unanswered" | "correct";
 
@@ -200,6 +201,11 @@ export default function PracticeResultDetailView({
           <Stat label="Độ chính xác" value={`${accuracy}%`} />
         </div>
       </section>
+
+      {/* Trợ lý AI Phân Tích Lỗ Hổng Kiến Thức (Chỉ hiện khi được phép xem chi tiết và đủ >= 3 câu) */}
+      {attempt.can_view_details && totalQuestions >= 3 && (
+        <AiAttemptAnalysisCard attemptId={attempt._id} />
+      )}
 
       {/* Details Section */}
       {!attempt.can_view_details ? (

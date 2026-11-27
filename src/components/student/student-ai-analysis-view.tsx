@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import Link from "next/link";
 
 export interface ITopicStat {
+  topic_id?: string;
   topic_name: string;
   total_questions: number;
   total_wrong: number;
@@ -81,7 +83,7 @@ export default function StudentAiAnalysisView({
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 px-5 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
         <div className="flex items-center text-xs text-slate-600 dark:text-slate-300 gap-2 font-medium">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Dữ liệu phân tích lỗ hổng tự động cập nhật từ MongoDB theo thời gian thực</span>
+          <span>Hệ thống tự động cập nhật kết quả phân tích sau mỗi bài thi & tự luyện</span>
         </div>
         <button
           type="button"
@@ -177,16 +179,29 @@ export default function StudentAiAnalysisView({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleAskAgentAboutTopic(topic.topic_name)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
-                  >
-                    <span>Hỏi AI cách ôn</span>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {topic.topic_id && (
+                      <Link
+                        href={`/student/practice?topicId=${topic.topic_id}`}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5 shadow-sm"
+                      >
+                        <span>Luyện tập ngay</span>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleAskAgentAboutTopic(topic.topic_name)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <span>Hỏi AI cách ôn</span>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

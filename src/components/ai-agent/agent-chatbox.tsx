@@ -534,7 +534,7 @@ export default function AgentChatbox({
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 min-w-0 overflow-hidden relative">
         {/* Lịch sử Sidebar Drawer */}
         {showHistory && (
           <div
@@ -600,9 +600,9 @@ export default function AgentChatbox({
         )}
 
         {/* Khung chat chính */}
-        <div className="flex-1 flex flex-col bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="flex-1 min-w-0 flex flex-col bg-slate-50/50 dark:bg-slate-900/50">
           {/* Danh sách tin nhắn */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4">
             {messages.length === 0 && (
               <div className="max-w-xl mx-auto py-8 text-center space-y-4">
                 <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-xl shadow-indigo-500/25">
@@ -660,7 +660,7 @@ export default function AgentChatbox({
                 )}
 
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
+                  className={`max-w-[85%] min-w-0 overflow-hidden break-words rounded-2xl px-4 py-3 shadow-sm ${
                     msg.role === "user"
                       ? "bg-indigo-600 text-white rounded-tr-none"
                       : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none border border-slate-200/80 dark:border-slate-700/80"
@@ -693,9 +693,9 @@ export default function AgentChatbox({
 
                   {/* Nội dung tin nhắn */}
                   {msg.role === "user" ? (
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
                   ) : (
-                    <div className="prose-sm dark:prose-invert max-w-none">
+                    <div className="prose-sm dark:prose-invert max-w-none min-w-0 break-words">
                       {renderFormattedText(msg.content)}
                     </div>
                   )}
@@ -794,7 +794,7 @@ export default function AgentChatbox({
               }}
               className="flex items-end gap-2"
             >
-              <div className="flex-1 relative">
+              <div className="flex-1 min-w-0 relative">
                 <textarea
                   ref={inputRef}
                   value={inputMessage}

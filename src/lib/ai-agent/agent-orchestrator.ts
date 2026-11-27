@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { AiConversation, IAiConversation } from "@/models/AiConversation";
 import { getAgentGenerativeModel } from "./gemini-client";
+import { getGeminiCandidateModels } from "@/lib/ai-gemini";
 import * as studentTools from "./tools/student-tools";
 import * as teacherTools from "./tools/teacher-tools";
 
@@ -180,54 +181,75 @@ export async function runAgentConversation(
   const executedToolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
 
   try {
-    const model = getAgentGenerativeModel(agentRole);
-    const chat = model.startChat({
-      history: geminiHistory,
-    });
+    const candidateModels = getGeminiCandidateModels();
+    let lastModelError: unknown = null;
 
-    let result = await chat.sendMessage(contextualMessage);
-    let iterations = 0;
-    const MAX_TOOL_STEPS = 4;
-
-    // Vòng lặp Function Calling
-    while (iterations < MAX_TOOL_STEPS) {
-      iterations += 1;
-      const calls = result.response.functionCalls();
-
-      if (!calls || calls.length === 0) {
-        responseText = result.response.text();
-        break;
-      }
-
-      // Xử lý từng Function Call
-      const functionResponses = [];
-      for (const call of calls) {
-        executedToolCalls.push({
-          name: call.name,
-          args: (call.args as Record<string, unknown>) || {},
+    for (const modelName of candidateModels) {
+      try {
+        const model = getAgentGenerativeModel(agentRole, modelName);
+        const chat = model.startChat({
+          history: geminiHistory,
         });
 
-        let toolOutput: Record<string, unknown>;
-        if (agentRole === "student") {
-          toolOutput = await executeStudentTool(call.name, (call.args as Record<string, unknown>) || {}, userId);
-        } else {
-          toolOutput = await executeTeacherTool(call.name, (call.args as Record<string, unknown>) || {}, userId, userRole);
+        let result = await chat.sendMessage(contextualMessage);
+        let iterations = 0;
+        const MAX_TOOL_STEPS = 4;
+        const stepToolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+        let modelReply = "";
+
+        // Vòng lặp Function Calling
+        while (iterations < MAX_TOOL_STEPS) {
+          iterations += 1;
+          const calls = result.response.functionCalls();
+
+          if (!calls || calls.length === 0) {
+            modelReply = result.response.text();
+            break;
+          }
+
+          // Xử lý từng Function Call
+          const functionResponses = [];
+          for (const call of calls) {
+            stepToolCalls.push({
+              name: call.name,
+              args: (call.args as Record<string, unknown>) || {},
+            });
+
+            let toolOutput: Record<string, unknown>;
+            if (agentRole === "student") {
+              toolOutput = await executeStudentTool(call.name, (call.args as Record<string, unknown>) || {}, userId);
+            } else {
+              toolOutput = await executeTeacherTool(call.name, (call.args as Record<string, unknown>) || {}, userId, userRole);
+            }
+
+            functionResponses.push({
+              functionResponse: {
+                name: call.name,
+                response: toolOutput,
+              },
+            });
+          }
+
+          // Gửi kết quả Tool về lại cho Gemini tiếp tục suy luận
+          result = await chat.sendMessage(functionResponses);
         }
 
-        functionResponses.push({
-          functionResponse: {
-            name: call.name,
-            response: toolOutput,
-          },
-        });
-      }
+        if (!modelReply) {
+          modelReply = result.response.text();
+        }
 
-      // Gửi kết quả Tool về lại cho Gemini tiếp tục suy luận
-      result = await chat.sendMessage(functionResponses);
+        responseText = modelReply;
+        executedToolCalls.push(...stepToolCalls);
+        lastModelError = null;
+        break;
+      } catch (err) {
+        lastModelError = err;
+        console.warn(`Gemini model ${modelName} failed, trying fallback:`, err);
+      }
     }
 
-    if (!responseText) {
-      responseText = result.response.text();
+    if (lastModelError) {
+      throw lastModelError;
     }
   } catch (apiError) {
     console.error("Lỗi Gemini API trong Agent Orchestrator:", apiError);

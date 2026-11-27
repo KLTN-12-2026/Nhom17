@@ -16,7 +16,7 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
 
   const attempts = await ExamAttempt.find({
     user_id: userObjId,
-    status: "submitted",
+    status: { $in: ["submitted", "timed_out"] },
   })
     .sort({ createdAt: -1 })
     .populate({
@@ -35,7 +35,7 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
     })
     .populate({
       path: "exam_id",
-      select: "title subject_id",
+      select: "title max_score subject_id",
       populate: { path: "subject_id", select: "subject_name" },
     })
     .lean();
@@ -47,24 +47,34 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
     };
   }
 
-  let totalQuestions = 0;
+  const MIN_TOPIC_QUESTIONS = 4;
   let totalCorrect = 0;
   let totalWrong = 0;
-  let totalScoreSum = 0;
+  let totalNormalizedScore10 = 0;
 
   const topicStatsMap = new Map<
     string,
     { topic_name: string; subject_name: string; total: number; correct: number; wrong: number }
   >();
+  const subjectStatsMap = new Map<
+    string,
+    { subject_name: string; total: number; correct: number; wrong: number }
+  >();
 
   for (const att of attempts) {
-    totalScoreSum += typeof att.score === "number" ? att.score : 0;
+    const attTopic = att.topic_id as { topic_name?: string; subject_id?: { subject_name?: string } } | null;
+    const attExam = att.exam_id as { title?: string; max_score?: number; subject_id?: { subject_name?: string } } | null;
+
+    // Quy đổi điểm bài làm về thang 10 thống nhất với trang /student/ai-analysis
+    const maxScore = attExam?.max_score || 10;
+    const rawScore = typeof att.score === "number" ? att.score : 0;
+    const norm10 = maxScore > 0 ? (rawScore / maxScore) * 10 : rawScore;
+    totalNormalizedScore10 += norm10;
+
     totalCorrect += att.total_correct || 0;
     totalWrong += att.total_wrong || 0;
 
     // Suy luận tên môn học từ dữ liệu populate hoặc tiêu đề bài luyện
-    const attTopic = att.topic_id as { topic_name?: string; subject_id?: { subject_name?: string } } | null;
-    const attExam = att.exam_id as { title?: string; subject_id?: { subject_name?: string } } | null;
     let fallbackSubject = attTopic?.subject_id?.subject_name || attExam?.subject_id?.subject_name || "";
 
     if (!fallbackSubject && att.practice_title) {
@@ -74,7 +84,6 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
     }
 
     for (const ans of att.answers || []) {
-      totalQuestions += 1;
       const q = ans.question_id as {
         topic_id?: { topic_name?: string; subject_id?: { subject_name?: string } } | unknown;
       } | null;
@@ -107,11 +116,31 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
         existing.wrong += 1;
       }
       topicStatsMap.set(mapKey, existing);
+
+      const subjEntry = subjectStatsMap.get(subjectName) || {
+        subject_name: subjectName,
+        total: 0,
+        correct: 0,
+        wrong: 0,
+      };
+      subjEntry.total += 1;
+      if (ans.is_correct) subjEntry.correct += 1;
+      else subjEntry.wrong += 1;
+      subjectStatsMap.set(subjectName, subjEntry);
     }
   }
 
   const topicBreakdown = Array.from(topicStatsMap.values()).map((t) => {
     const accuracy = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
+    const isReliable = t.total >= MIN_TOPIC_QUESTIONS;
+    const danhGia = !isReliable
+      ? `Chưa đủ dữ liệu (mới làm ${t.total} câu)`
+      : accuracy >= 75
+        ? "Vững chắc"
+        : accuracy >= 50
+          ? "Cần củng cố"
+          : "Hổng kiến thức";
+
     return {
       mon_hoc: t.subject_name,
       chuyen_de: `${t.topic_name} (Môn: ${t.subject_name})`,
@@ -119,15 +148,39 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
       dung: t.correct,
       sai: t.wrong,
       ty_le_chinh_xac: `${accuracy}%`,
-      danh_gia: accuracy >= 75 ? "Vững chắc" : accuracy >= 50 ? "Cần củng cố" : "Hổng kiến thức",
+      du_lieu_du_tin_cay: isReliable,
+      danh_gia: danhGia,
+      _accuracy_num: accuracy,
     };
   });
 
-  const averageScore = Math.round((totalScoreSum / attempts.length) * 10) / 10;
-  const overallAccuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+  const totalAnswered = totalCorrect + totalWrong;
+  const averageScore = Math.round((totalNormalizedScore10 / attempts.length) * 10) / 10;
+  const overallAccuracy =
+    totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 1000) / 10 : 0;
 
-  const strongTopics = topicBreakdown.filter((t) => t.danh_gia === "Vững chắc").slice(0, 3);
-  const weakTopics = topicBreakdown.filter((t) => t.danh_gia !== "Vững chắc").slice(0, 3);
+  const strongTopics = topicBreakdown
+    .filter((t) => t.du_lieu_du_tin_cay && t._accuracy_num >= 75)
+    .sort((a, b) => b._accuracy_num - a._accuracy_num || b.tong_cau - a.tong_cau)
+    .slice(0, 5);
+
+  const weakTopics = topicBreakdown
+    .filter((t) => t.du_lieu_du_tin_cay && t._accuracy_num < 75)
+    .sort((a, b) => a._accuracy_num - b._accuracy_num || b.sai - a.sai)
+    .slice(0, 5);
+
+  const insufficientDataTopics = topicBreakdown
+    .filter((t) => !t.du_lieu_du_tin_cay)
+    .sort((a, b) => b.tong_cau - a.tong_cau);
+
+  const subjectSummary = Array.from(subjectStatsMap.values()).map((s) => ({
+    mon_hoc: s.subject_name,
+    tong_cau: s.total,
+    dung: s.correct,
+    sai: s.wrong,
+    ty_le_chinh_xac: s.total > 0 ? `${Math.round((s.correct / s.total) * 100)}%` : "0%",
+    du_du_lieu_danh_gia: s.total >= 5,
+  }));
 
   // Lấy thêm phân tích AI của bài gần nhất nếu có
   const latestAttempt = attempts[0];
@@ -138,11 +191,23 @@ export async function analyzeMyLearningResults(context: StudentToolContext) {
     tong_luot_lam_bai: attempts.length,
     diem_trung_binh: averageScore,
     ty_le_chinh_xac_chung: `${overallAccuracy}%`,
+    tong_cau_da_giai: totalAnswered,
     tong_cau_dung: totalCorrect,
     tong_cau_sai: totalWrong,
-    chuyen_de_manh: strongTopics.map((t) => `${t.chuyen_de} (${t.ty_le_chinh_xac})`),
-    chuyen_de_yeu_can_cai_thien: weakTopics.map((t) => `${t.chuyen_de} (${t.ty_le_chinh_xac} - ${t.danh_gia})`),
-    chi_tiet_chuyen_de: topicBreakdown,
+    thong_ke_theo_mon: subjectSummary,
+    chuyen_de_manh: strongTopics.map(
+      (t) => `${t.chuyen_de} (${t.dung}/${t.tong_cau} câu - ${t.ty_le_chinh_xac})`
+    ),
+    chuyen_de_yeu_can_cai_thien: weakTopics.map(
+      (t) => `${t.chuyen_de} (đúng ${t.dung}/${t.tong_cau} câu, sai ${t.sai} câu - ${t.ty_le_chinh_xac} - ${t.danh_gia})`
+    ),
+    chuyen_de_chua_du_du_lieu: insufficientDataTopics.map(
+      (t) => `${t.chuyen_de} (${t.dung}/${t.tong_cau} câu - mới làm ít câu, chưa đủ kết luận)`
+    ),
+    chi_tiet_chuyen_de: topicBreakdown.map(({ _accuracy_num, ...rest }) => {
+      void _accuracy_num;
+      return rest;
+    }),
     nhan_xet_gan_nhat: latestAiNote,
   };
 }
@@ -160,7 +225,7 @@ export async function getMyExamHistory(
 
   const attempts = await ExamAttempt.find({
     user_id: userObjId,
-    status: "submitted",
+    status: { $in: ["submitted", "timed_out"] },
   })
     .sort({ createdAt: -1 })
     .limit(limit)
@@ -233,19 +298,41 @@ export async function getMyExamResult(
   const attempt = await ExamAttempt.findOne({
     _id: new mongoose.Types.ObjectId(attemptId),
     user_id: new mongoose.Types.ObjectId(context.userId),
-    status: "submitted",
+    status: { $in: ["submitted", "timed_out"] },
   })
     .populate({
       path: "answers.question_id",
       select: "content difficulty_level explanation options",
     })
     .populate("topic_id", "topic_name")
+    .populate("exam_id", "title allow_view_result_immediately")
+    .populate("room_id", "room_code status")
     .lean();
 
   if (!attempt) {
     return {
       status: "not_found",
       message: "Không tìm thấy bài làm này hoặc bạn không có quyền xem bài làm của người khác.",
+    };
+  }
+
+  const examDoc = attempt.exam_id as { title?: string; allow_view_result_immediately?: boolean } | null;
+  const roomDoc = attempt.room_id as { room_code?: string; status?: string } | null;
+  const isOfficial = attempt.attempt_type === "official" || Boolean(examDoc);
+  const allowExamReview = examDoc?.allow_view_result_immediately !== false;
+  const canViewDetails =
+    !isOfficial || (allowExamReview && (!roomDoc || roomDoc.status === "finished"));
+
+  if (!canViewDetails) {
+    return {
+      status: "locked",
+      tieu_de: attempt.practice_title || examDoc?.title || "Bài thi phòng trực tuyến",
+      diem_so: attempt.score,
+      dung_sai: `${attempt.total_correct} đúng / ${attempt.total_wrong} sai`,
+      message:
+        roomDoc && roomDoc.status !== "finished"
+          ? "Phòng thi vẫn đang diễn ra nên đáp án chi tiết tạm thời bị khóa để bảo mật đề thi. Vui lòng đợi giảng viên kết thúc ca thi."
+          : "Giảng viên đã cấu hình không hiển thị đáp án chi tiết cho đề thi này.",
     };
   }
 
@@ -316,17 +403,37 @@ export async function explainMyAnswer(
     studentAttempt = await ExamAttempt.findOne({
       _id: new mongoose.Types.ObjectId(attemptId),
       user_id: userObjId,
-      status: "submitted",
-    }).lean();
+      status: { $in: ["submitted", "timed_out"] },
+    })
+      .populate("exam_id", "allow_view_result_immediately")
+      .populate("room_id", "status")
+      .lean();
   } else {
     // Tìm bài thi gần nhất mà học sinh có trả lời câu này
     studentAttempt = await ExamAttempt.findOne({
       user_id: userObjId,
-      status: "submitted",
+      status: { $in: ["submitted", "timed_out"] },
       "answers.question_id": qObjId,
     })
       .sort({ createdAt: -1 })
+      .populate("exam_id", "allow_view_result_immediately")
+      .populate("room_id", "status")
       .lean();
+  }
+
+  // Bảo vệ đáp án nếu câu hỏi thuộc phòng thi Live đang diễn ra hoặc đề không cho xem đáp án
+  if (studentAttempt) {
+    const examDoc = studentAttempt.exam_id as { allow_view_result_immediately?: boolean } | null;
+    const roomDoc = studentAttempt.room_id as { status?: string } | null;
+    const isOfficial = studentAttempt.attempt_type === "official" || Boolean(examDoc);
+    const allowReview = examDoc?.allow_view_result_immediately !== false;
+    if (isOfficial && (!allowReview || (roomDoc && roomDoc.status !== "finished"))) {
+      return {
+        status: "locked",
+        message:
+          "Câu hỏi này nằm trong bài thi phòng trực tuyến chưa kết thúc hoặc chưa được mở đáp án, nên trợ lý chưa thể tiết lộ lời giải chi tiết lúc này.",
+      };
+    }
   }
 
   // 2. Lấy thông tin câu hỏi
