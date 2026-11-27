@@ -4,4 +4,27 @@ import { checkApiAuthorization } from "@/lib/auth-guards";
 import { getRoadmapDetail, updateRoadmapProgress } from "@/lib/roadmap-purchases";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) { const { user, errorResponse } = await checkApiAuthorization(["student"]); if (errorResponse) return errorResponse; const { id } = await params; if (!mongoose.Types.ObjectId.isValid(id)) return NextResponse.json({ success: false, message: "Mã lộ trình không hợp lệ." }, { status: 400 }); try { const roadmap = await getRoadmapDetail(id, user.id); if (!roadmap) return NextResponse.json({ success: false, message: "Không tìm thấy lộ trình." }, { status: 404 }); return NextResponse.json({ success: true, roadmap }); } catch (error) { console.error(error); return NextResponse.json({ success: false, message: "Không thể tải lộ trình." }, { status: 500 }); } }
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) { const { user, errorResponse } = await checkApiAuthorization(["student"]); if (errorResponse) return errorResponse; const { id } = await params; try { const body = await request.json(); if (!body.content_id || typeof body.completed !== "boolean") return NextResponse.json({ success: false, message: "Thiếu dữ liệu tiến độ." }, { status: 400 }); const result = await updateRoadmapProgress(id, body.content_id, user.id, body.completed); if ("error" in result) return NextResponse.json({ success: false, message: result.error }, { status: result.status }); return NextResponse.json({ success: true, progress: result }); } catch (error) { console.error(error); return NextResponse.json({ success: false, message: "Không thể lưu tiến độ." }, { status: 500 }); } }
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user, errorResponse } = await checkApiAuthorization(["student"]);
+  if (errorResponse) return errorResponse;
+  const { id } = await params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ success: false, message: "Mã lộ trình không hợp lệ." }, { status: 400 });
+  }
+  try {
+    const body = await request.json();
+    if (
+      typeof body.content_id !== "string" ||
+      !mongoose.Types.ObjectId.isValid(body.content_id) ||
+      typeof body.completed !== "boolean"
+    ) {
+      return NextResponse.json({ success: false, message: "Dữ liệu tiến độ không hợp lệ." }, { status: 400 });
+    }
+    const result = await updateRoadmapProgress(id, body.content_id, user.id, body.completed);
+    if ("error" in result) return NextResponse.json({ success: false, message: result.error }, { status: result.status });
+    return NextResponse.json({ success: true, progress: result });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ success: false, message: "Không thể lưu tiến độ." }, { status: 500 });
+  }
+}

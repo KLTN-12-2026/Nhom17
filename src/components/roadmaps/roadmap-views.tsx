@@ -47,9 +47,27 @@ interface OrderDetail extends OrderItem {
   cover_image: string;
   paid_at: string | null;
 }
-interface ApiResponse<T> {
+interface VietQrData {
+  bank_id: string;
+  account_no: string;
+  account_name: string;
+  transfer_content: string;
+  amount: number;
+  qr_url: string;
+}
+interface OrderCheckoutPayload {
   success: boolean;
   message?: string;
+  error?: string;
+  order?: OrderDetail;
+  vietqr?: VietQrData | null;
+  sepay_sync_enabled?: boolean;
+  demo_payment_enabled?: boolean;
+}
+interface ApiResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
   [key: string]: unknown;
 }
 
@@ -64,9 +82,9 @@ const statusLabel: Record<string, string> = {
 
 async function getApiData<T>(url: string, key: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
-  const data = (await response.json()) as ApiResponse<T>;
+  const data = (await response.json()) as ApiResponse;
   if (!response.ok || !data.success) {
-    throw new Error(data.message || "Không thể tải dữ liệu.");
+    throw new Error(data.message || data.error || "Không thể tải dữ liệu.");
   }
   return data[key] as T;
 }
@@ -141,7 +159,6 @@ export function RoadmapCatalogView() {
 
 export function RoadmapDetailView({ roadmapId }: { roadmapId: string }) {
   const [roadmap, setRoadmap] = useState<RoadmapDetail | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("banking");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -166,11 +183,11 @@ export function RoadmapDetailView({ roadmapId }: { roadmapId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content_id: contentId, completed }),
       });
-      const data = (await response.json()) as ApiResponse<{ completion_percentage: number; completed_content_ids: string[] }> & {
+      const data = (await response.json()) as ApiResponse & {
         progress?: { completion_percentage: number; completed_content_ids: string[] };
       };
       if (!response.ok || !data.success || !data.progress) {
-        throw new Error(data.message || "Không lưu được tiến độ.");
+        throw new Error(data.message || data.error || "Không lưu được tiến độ.");
       }
       setRoadmap((current) => current ? { ...current, ...data.progress } : current);
       setError("");
@@ -186,11 +203,11 @@ export function RoadmapDetailView({ roadmapId }: { roadmapId: string }) {
       const response = await fetch(`/api/student/roadmaps/${roadmapId}/purchase`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment_method: paymentMethod }),
+        body: JSON.stringify({ payment_method: "banking" }),
       });
-      const data = (await response.json()) as ApiResponse<{ redirect_url: string }> & { redirect_url?: string };
+      const data = (await response.json()) as ApiResponse & { redirect_url?: string };
       if (!response.ok && response.status !== 202) {
-        throw new Error(data.message || "Không tạo được đơn hàng.");
+        throw new Error(data.message || data.error || "Không tạo được đơn hàng.");
       }
       if (!data.redirect_url) throw new Error("Không nhận được đường dẫn đơn hàng.");
       window.location.href = data.redirect_url;
@@ -217,9 +234,15 @@ export function RoadmapDetailView({ roadmapId }: { roadmapId: string }) {
         <section className="rounded-2xl border bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div><p className="text-xs text-slate-500">Giá lộ trình</p><p className="text-2xl font-black text-indigo-700 dark:text-indigo-300">{money(roadmap.price)}</p></div>
-            <div className="flex flex-wrap items-center gap-2">
-              {roadmap.price > 0 && <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="rounded-xl border px-3 py-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"><option value="banking">Chuyển khoản (demo)</option><option value="momo">MoMo (chờ tích hợp)</option><option value="vnpay">VNPay (chờ tích hợp)</option></select>}
-              <button onClick={purchase} disabled={busy} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50">{busy ? "Đang tạo đơn..." : roadmap.price <= 0 ? "Nhận lộ trình miễn phí" : "Tạo đơn mua lộ trình"}</button>
+            <div className="flex flex-wrap items-center gap-3">
+              {roadmap.price > 0 && (
+                <span className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950 dark:text-indigo-300">
+                  Chuyển khoản MB Bank (VietQR)
+                </span>
+              )}
+              <button onClick={purchase} disabled={busy} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50">
+                {busy ? "Đang tạo đơn..." : roadmap.price <= 0 ? "Nhận lộ trình miễn phí" : "Thanh toán qua MB Bank"}
+              </button>
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-500">Đơn có phí sẽ chờ cổng thanh toán xác nhận. Quyền truy cập chỉ được cấp sau khi đơn thanh toán thành công.</p>
@@ -288,20 +311,33 @@ export function StudentOrdersView() {
   );
 }
 
+async function fetchOrderCheckout(orderId: string) {
+  const response = await fetch(`/api/student/orders/${orderId}`, { cache: "no-store" });
+  const data = (await response.json()) as OrderCheckoutPayload;
+  if (!response.ok || !data.success || !data.order) {
+    throw new Error(data.message || data.error || "Không thể tải đơn hàng.");
+  }
+  return data;
+}
+
 export function OrderCheckoutView({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [demoEnabled, setDemoEnabled] = useState(false);
+  const [vietqr, setVietqr] = useState<VietQrData | null>(null);
+  const [sepaySyncEnabled, setSepaySyncEnabled] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkNote, setCheckNote] = useState("");
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    getApiData<OrderDetail & { demo_payment_enabled?: boolean }>(`/api/student/orders/${orderId}`, "order")
+    fetchOrderCheckout(orderId)
       .then((data) => {
         if (cancelled) return;
-        setOrder(data);
-        setDemoEnabled(Boolean(data.demo_payment_enabled));
+        setOrder(data.order || null);
+        setVietqr(data.vietqr || null);
+        setSepaySyncEnabled(Boolean(data.sepay_sync_enabled));
       })
       .catch((cause: unknown) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : "Có lỗi xảy ra.");
@@ -314,20 +350,54 @@ export function OrderCheckoutView({ orderId }: { orderId: string }) {
     };
   }, [orderId]);
 
-  const completeDemo = async () => {
-    setBusy(true);
+  const orderStatus = order?.status;
+  useEffect(() => {
+    if (orderStatus !== "pending") return;
+    const timer = window.setInterval(() => {
+      fetchOrderCheckout(orderId)
+        .then((data) => {
+          if (!data.order) return;
+          setOrder(data.order);
+          setVietqr(data.vietqr || null);
+          setSepaySyncEnabled(Boolean(data.sepay_sync_enabled));
+        })
+        .catch(() => {
+          // Bỏ qua lỗi mạng tạm thời khi polling trạng thái đơn
+        });
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [orderStatus, orderId]);
+
+  const checkNow = async () => {
+    setChecking(true);
+    setCheckNote("");
     setError("");
     try {
-      const response = await fetch(`/api/student/orders/${orderId}`, { method: "POST" });
-      const result = (await response.json()) as ApiResponse<unknown>;
-      if (!response.ok || !result.success) throw new Error(result.message || "Thanh toán thất bại.");
-      const updatedOrder = await getApiData<OrderDetail & { demo_payment_enabled?: boolean }>(`/api/student/orders/${orderId}`, "order");
-      setOrder(updatedOrder);
-      setDemoEnabled(Boolean(updatedOrder.demo_payment_enabled));
+      const updated = await fetchOrderCheckout(orderId);
+      setOrder(updated.order || null);
+      setVietqr(updated.vietqr || null);
+      setSepaySyncEnabled(Boolean(updated.sepay_sync_enabled));
+      if (updated.order?.status === "pending") {
+        setCheckNote(
+          updated.sepay_sync_enabled
+            ? "Chưa thấy giao dịch khớp trong SePay. Nếu bạn vừa chuyển khoản, hãy đợi vài giây rồi bấm kiểm tra lại."
+            : "Vui lòng thanh toán. Nếu bạn đã chuyển khoản, hệ thống đang chờ xác nhận từ ngân hàng.",
+        );
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Có lỗi xảy ra.");
     } finally {
-      setBusy(false);
+      setChecking(false);
+    }
+  };
+
+  const copyTransferContent = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore clipboard permission errors
     }
   };
 
@@ -337,12 +407,59 @@ export function OrderCheckoutView({ orderId }: { orderId: string }) {
     <div className="mx-auto max-w-2xl space-y-5">
       <div className="rounded-3xl border bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Thanh toán lộ trình</p><h2 className="mt-2 text-2xl font-black">{order.roadmap_title}</h2>
-        <div className="mt-5 space-y-3 border-t pt-4 text-sm"><div className="flex justify-between"><span className="text-slate-500">Mã đơn</span><strong>{order.order_code}</strong></div><div className="flex justify-between"><span className="text-slate-500">Phương thức</span><strong>{order.payment_method.toUpperCase()}</strong></div><div className="flex justify-between"><span className="text-slate-500">Tổng thanh toán</span><strong className="text-xl">{money(order.amount)}</strong></div><div className="flex justify-between"><span className="text-slate-500">Trạng thái</span><strong className={order.status === "completed" ? "text-emerald-600" : "text-amber-600"}>{statusLabel[order.status] || order.status}</strong></div></div>
+        <div className="mt-5 space-y-3 border-t pt-4 text-sm"><div className="flex justify-between"><span className="text-slate-500">Mã đơn</span><strong>{order.order_code}</strong></div><div className="flex justify-between"><span className="text-slate-500">Phương thức</span><strong>{order.payment_method === "free" ? "Miễn phí" : "MB Bank (VietQR)"}</strong></div><div className="flex justify-between"><span className="text-slate-500">Tổng thanh toán</span><strong className="text-xl">{money(order.amount)}</strong></div><div className="flex justify-between"><span className="text-slate-500">Trạng thái</span><strong className={order.status === "completed" ? "text-emerald-600" : "text-amber-600"}>{statusLabel[order.status] || order.status}</strong></div></div>
       </div>
       {order.status === "completed" ? (
         <div className="rounded-2xl bg-emerald-50 p-5 text-sm text-emerald-800">Thanh toán thành công. <Link className="font-bold underline" href={`/student/roadmaps/${order.roadmap_id}`}>Vào lộ trình học →</Link></div>
       ) : (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><strong>Đơn hàng đang chờ xác nhận.</strong><p className="mt-2">Cổng MoMo/VNPay chưa được tích hợp. Chỉ xác nhận mô phỏng khi phát triển và bật <code>ROADMAP_DEMO_PAYMENTS=true</code>.</p>{demoEnabled && <button onClick={completeDemo} disabled={busy} className="mt-4 rounded-xl bg-amber-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{busy ? "Đang xác nhận..." : "Xác nhận thanh toán mô phỏng"}</button>}</div>
+        <div className="space-y-4">
+          {vietqr ? (
+            <div className="rounded-3xl border bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-sm font-bold text-slate-900 dark:text-white">Quét mã VietQR để thanh toán</p>
+              <p className="mt-1 text-xs text-slate-500">Hệ thống tự động kiểm tra giao dịch mỗi 4 giây sau khi bạn chuyển khoản đúng nội dung.</p>
+              <div className="mt-5 flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={vietqr.qr_url} alt={`Mã QR thanh toán ${order.order_code}`} className="h-56 w-56 rounded-2xl border bg-white p-2 object-contain" />
+                <div className="flex-1 space-y-2.5 text-sm">
+                  <div className="flex justify-between gap-4 border-b pb-2"><span className="text-slate-500">Ngân hàng</span><strong>{vietqr.bank_id}</strong></div>
+                  <div className="flex justify-between gap-4 border-b pb-2"><span className="text-slate-500">Số tài khoản</span><strong>{vietqr.account_no}</strong></div>
+                  {vietqr.account_name && <div className="flex justify-between gap-4 border-b pb-2"><span className="text-slate-500">Chủ tài khoản</span><strong>{vietqr.account_name}</strong></div>}
+                  <div className="flex justify-between gap-4 border-b pb-2"><span className="text-slate-500">Số tiền</span><strong className="text-indigo-600">{money(vietqr.amount)}</strong></div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500">Nội dung CK</span>
+                    <div className="flex items-center gap-2">
+                      <strong className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs dark:bg-slate-800">{vietqr.transfer_content}</strong>
+                      <button type="button" onClick={() => void copyTransferContent(vietqr.transfer_content)} className="rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800">
+                        {copied ? "Đã chép" : "Chép"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+              <strong>Đơn hàng đang chờ xác nhận.</strong>
+              <p className="mt-2">Chưa cấu hình <code>VIETQR_BANK_ID</code> / <code>VIETQR_ACCOUNT_NO</code> trong <code>.env.local</code> để hiển thị mã QR chuyển khoản.</p>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              {sepaySyncEnabled
+                ? "Đang tự động đối soát giao dịch qua SePay mỗi 4 giây."
+                : "Vui lòng thanh toán bằng mã QR phía trên. Trạng thái sẽ tự động cập nhật sau khi nhận được tiền."}
+            </p>
+            <button
+              type="button"
+              onClick={() => void checkNow()}
+              disabled={checking}
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+            >
+              {checking ? "Đang kiểm tra..." : "Tôi đã chuyển khoản — Kiểm tra ngay"}
+            </button>
+          </div>
+          {checkNote && <p className="text-xs text-amber-700 dark:text-amber-300">{checkNote}</p>}
+        </div>
       )}
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
     </div>

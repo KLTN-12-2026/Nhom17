@@ -1,9 +1,44 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { checkApiAuthorization } from "@/lib/auth-guards";
-import { connectDB } from "@/lib/db";
-import { LearningProgress, Order } from "@/models";
 import { getOrderForStudent } from "@/lib/roadmap-purchases";
+import { syncPendingOrderFromSePay } from "@/lib/sepay";
+import { buildVietQrInfo } from "@/lib/vietqr";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) { const { user, errorResponse } = await checkApiAuthorization(["student"]); if (errorResponse) return errorResponse; const { id } = await params; if (!mongoose.Types.ObjectId.isValid(id)) return NextResponse.json({ success: false, message: "Mã đơn hàng không hợp lệ." }, { status: 400 }); try { const order = await getOrderForStudent(id, user.id); if (!order) return NextResponse.json({ success: false, message: "Không tìm thấy đơn hàng." }, { status: 404 }); return NextResponse.json({ success: true, order, demo_payment_enabled: process.env.ROADMAP_DEMO_PAYMENTS === "true" }); } catch (error) { console.error(error); return NextResponse.json({ success: false, message: "Không thể tải đơn hàng." }, { status: 500 }); } }
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) { const { user, errorResponse } = await checkApiAuthorization(["student"]); if (errorResponse) return errorResponse; if (process.env.ROADMAP_DEMO_PAYMENTS !== "true") return NextResponse.json({ success: false, message: "Thanh toán mô phỏng đang tắt." }, { status: 403 }); const { id } = await params; try { await connectDB(); const order = await Order.findOne({ _id: new mongoose.Types.ObjectId(id), user_id: new mongoose.Types.ObjectId(user.id) }); if (!order) return NextResponse.json({ success: false, message: "Không tìm thấy đơn hàng." }, { status: 404 }); if (order.status === "completed") return NextResponse.json({ success: true }); if (order.status !== "pending") return NextResponse.json({ success: false, message: "Đơn hàng không còn chờ thanh toán." }, { status: 409 }); order.status = "completed"; order.paid_at = new Date(); await order.save(); await LearningProgress.updateOne({ user_id: order.user_id, roadmap_id: order.roadmap_id }, { $setOnInsert: { user_id: order.user_id, roadmap_id: order.roadmap_id, completion_percentage: 0, completed_content_ids: [], last_activity_at: new Date() } }, { upsert: true }); return NextResponse.json({ success: true }); } catch (error) { console.error(error); return NextResponse.json({ success: false, message: "Không thể xác nhận thanh toán." }, { status: 500 }); } }
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user, errorResponse } = await checkApiAuthorization(["student"]);
+  if (errorResponse) return errorResponse;
+  const { id } = await params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return NextResponse.json({ success: false, message: "Mã đơn hàng không hợp lệ." }, { status: 400 });
+  }
+  try {
+    let order = await getOrderForStudent(id, user.id);
+    if (!order) return NextResponse.json({ success: false, message: "Không tìm thấy đơn hàng." }, { status: 404 });
+
+    let sepaySyncEnabled = Boolean(process.env.SEPAY_API_TOKEN?.trim());
+    if (order.status === "pending" && sepaySyncEnabled) {
+      const syncResult = await syncPendingOrderFromSePay(order.id);
+      sepaySyncEnabled = syncResult.configured;
+      if (syncResult.synced) {
+        const refreshed = await getOrderForStudent(id, user.id);
+        if (refreshed) order = refreshed;
+      }
+    }
+
+    const vietqr =
+      order.status === "pending"
+        ? buildVietQrInfo({ amount: order.amount, orderCode: order.order_code })
+        : null;
+    return NextResponse.json({
+      success: true,
+      order,
+      vietqr,
+      sepay_sync_enabled: sepaySyncEnabled,
+      demo_payment_enabled: false,
+    });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ success: false, message: "Không thể tải đơn hàng." }, { status: 500 });
+  }
+}
