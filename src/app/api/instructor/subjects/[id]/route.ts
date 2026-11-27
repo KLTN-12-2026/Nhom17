@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db";
-import { Subject, Topic, Question } from "@/models";
+import { Question, Roadmap, Subject, Topic } from "@/models";
 import { checkApiAuthorization } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
 
@@ -121,6 +121,17 @@ export async function DELETE(request: Request, context: RouteParams) {
           message: "Bạn không có quyền xóa môn học này vì nó được tạo bởi giáo viên khác.",
         },
         { status: 403 }
+      );
+    }
+
+    const roadmapCount = await Roadmap.countDocuments({ subject_id: id });
+    if (roadmapCount > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Không thể xóa môn "${subject.subject_name}" vì đang được ${roadmapCount} lộ trình sử dụng.`,
+        },
+        { status: 409 }
       );
     }
 

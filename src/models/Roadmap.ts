@@ -1,39 +1,40 @@
 //src\models\Roadmap.ts
 import mongoose, { models, Schema, Document } from "mongoose";
 
-export interface IStageContent {
+export interface IRoadmapContent {
   _id?: mongoose.Types.ObjectId;
   content_type: "exam" | "practice" | "lesson"; // loai_noi_dung
   exam_id?: mongoose.Types.ObjectId | null; // dethi_id
+  topic_id?: mongoose.Types.ObjectId | null;
+  resource_url?: string;
+  file_name?: string;
   title: string;
   order: number; // thu_tu
 }
 
-export interface IRoadmapStage {
+export interface ILegacyRoadmapStage {
   _id?: mongoose.Types.ObjectId;
   stage_title: string; // ten_giai_doan
   order: number; // thu_tu
   description?: string; // mo_ta
-  contents: IStageContent[]; // NoiDungGiaiDoan nhúng
+  contents: IRoadmapContent[];
 }
 
 export interface IRoadmap extends Document {
   teacher_id: mongoose.Types.ObjectId; // giaovien_id
+  subject_id: mongoose.Types.ObjectId;
   title: string; // ten_lo_trinh
   description?: string; // mo_ta
   price: number; // gia_ban
   cover_image?: string; // anh_bia
   is_published: boolean; // da_xuat_ban
-  stages: IRoadmapStage[]; // GiaiDoanLoTrinh nhúng
+  contents: IRoadmapContent[];
+  stages?: ILegacyRoadmapStage[];
   createdAt: Date;
   updatedAt: Date;
 }
 
-/**
- * Subdocument: StageContentSchema (NoiDungGiaiDoan)
- * Tương ứng bảng NoiDungGiaiDoan trong sơ đồ CSDL
- */
-const StageContentSchema = new Schema<IStageContent>({
+const RoadmapContentSchema = new Schema<IRoadmapContent>({
   content_type: {
     type: String,
     enum: ["exam", "practice", "lesson"],
@@ -44,6 +45,23 @@ const StageContentSchema = new Schema<IStageContent>({
     type: Schema.Types.ObjectId,
     ref: "Exam",
     default: null,
+  },
+  topic_id: {
+    type: Schema.Types.ObjectId,
+    ref: "Topic",
+    default: null,
+  },
+  resource_url: {
+    type: String,
+    trim: true,
+    default: "",
+    maxlength: 2048,
+  },
+  file_name: {
+    type: String,
+    trim: true,
+    default: "",
+    maxlength: 255,
   },
   title: {
     type: String,
@@ -57,11 +75,7 @@ const StageContentSchema = new Schema<IStageContent>({
   },
 });
 
-/**
- * Subdocument: RoadmapStageSchema (GiaiDoanLoTrinh)
- * Tương ứng bảng GiaiDoanLoTrinh trong sơ đồ CSDL
- */
-const RoadmapStageSchema = new Schema<IRoadmapStage>({
+const LegacyRoadmapStageSchema = new Schema<ILegacyRoadmapStage>({
   stage_title: {
     type: String,
     required: [true, "Tên giai đoạn là bắt buộc"],
@@ -79,7 +93,7 @@ const RoadmapStageSchema = new Schema<IRoadmapStage>({
     default: "",
   },
   contents: {
-    type: [StageContentSchema],
+    type: [RoadmapContentSchema],
     default: [],
   },
 });
@@ -87,10 +101,16 @@ const RoadmapStageSchema = new Schema<IRoadmapStage>({
 /**
  * Model: Roadmap (LoTrinhHoc)
  * Phân hệ 5: Lộ trình học & Doanh thu
- * Tương ứng bảng LoTrinhHoc & nhúng GiaiDoanLoTrinh, NoiDungGiaiDoan
+ * Nội dung học được lưu trực tiếp trong lộ trình.
  */
 const RoadmapSchema = new Schema<IRoadmap>(
   {
+    subject_id: {
+      type: Schema.Types.ObjectId,
+      ref: "Subject",
+      required: [true, "Môn học của lộ trình là bắt buộc"],
+      index: true,
+    },
     teacher_id: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -123,8 +143,13 @@ const RoadmapSchema = new Schema<IRoadmap>(
       default: false,
       index: true,
     },
+    contents: {
+      type: [RoadmapContentSchema],
+      default: [],
+    },
+    // Kept only to read existing records; updates migrate contents to the flat field.
     stages: {
-      type: [RoadmapStageSchema],
+      type: [LegacyRoadmapStageSchema],
       default: [],
     },
   },
