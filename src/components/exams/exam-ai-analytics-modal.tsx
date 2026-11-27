@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { IInstructorAiReportResult } from "@/lib/ai-analysis-service";
 
 interface ExamAiAnalyticsModalProps {
@@ -383,13 +382,27 @@ export default function ExamAiAnalyticsModal({
         {/* ========================================================================= */}
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
           {examId ? (
-            <Link
-              href={`/instructor/ai-assistant?examId=${examId}`}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition flex items-center justify-center gap-2"
+            <button
+              type="button"
+              onClick={() => {
+                const targetExamId = examId;
+                const targetTitle = data?.exam?.title || examTitle || "đề thi này";
+                onClose();
+                window.dispatchEvent(
+                  new CustomEvent("open-ai-agent-chat", {
+                    detail: {
+                      prompt: `Hãy phân tích chi tiết phổ điểm, các câu hỏi học sinh làm sai nhiều nhất và gợi ý phương pháp giảng dạy cho đề thi "${targetTitle}" (Mã đề: ${targetExamId}).`,
+                      contextType: "exam",
+                      contextId: targetExamId,
+                    },
+                  })
+                );
+              }}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>💬 Mở Trợ Lý AI Giảng Dạy về đề này</span>
               <span>➔</span>
-            </Link>
+            </button>
           ) : (
             <span className="text-xs text-slate-500 text-center sm:text-left">
               Báo cáo tự động tổng hợp từ dữ liệu bài thi học sinh

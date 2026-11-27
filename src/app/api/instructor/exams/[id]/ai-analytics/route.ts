@@ -47,10 +47,11 @@ export async function GET(
       );
     }
 
-    // Lấy tất cả bài thi đã nộp của đề thi này
+    // Lấy tất cả bài thi chính thức đã nộp của đề thi này (không gộp bài tự ôn tập)
     const attempts = await ExamAttempt.find({
       exam_id: new mongoose.Types.ObjectId(id),
-      status: "submitted",
+      attempt_type: { $ne: "practice" },
+      status: { $in: ["submitted", "timed_out"] },
     })
       .populate({
         path: "answers.question_id",

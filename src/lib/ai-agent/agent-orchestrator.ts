@@ -77,6 +77,9 @@ async function executeTeacherTool(
   const context: teacherTools.TeacherToolContext = { userId, role: userRole };
 
   switch (toolName) {
+    case "getMyCreatedExams":
+      return await teacherTools.getMyCreatedExams(context);
+
     case "analyzeExamResults":
       return await teacherTools.analyzeExamResults(context, {
         examId: String(args.examId || ""),

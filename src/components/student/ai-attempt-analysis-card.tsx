@@ -336,11 +336,23 @@ export default function AiAttemptAnalysisCard({
             <button
               type="button"
               onClick={() => {
-                router.push(
-                  `/student/ai-analysis?attemptId=${attemptId}&q=${encodeURIComponent(
-                    "Hãy phân tích sâu các câu tôi đã làm sai trong bài này và hướng dẫn cách khắc phục từng dạng bài."
-                  )}`
-                );
+                const promptText =
+                  "Hãy phân tích sâu các câu tôi đã làm sai trong bài này và hướng dẫn cách khắc phục từng dạng bài.";
+                if (typeof document !== "undefined" && document.querySelector('[data-floating-ai="true"]')) {
+                  window.dispatchEvent(
+                    new CustomEvent("open-ai-agent-chat", {
+                      detail: {
+                        prompt: promptText,
+                        contextType: "attempt",
+                        contextId: attemptId,
+                      },
+                    })
+                  );
+                } else {
+                  router.push(
+                    `/student/ai-analysis?attemptId=${attemptId}&q=${encodeURIComponent(promptText)}`
+                  );
+                }
               }}
               className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-md shadow-indigo-600/20 cursor-pointer"
             >
